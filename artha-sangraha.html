@@ -955,11 +955,13 @@ function calcBalance(acc, asOfDate=null){
 // Auto-create income/expense accounts for a category
 async function ensureCategoryAccount(category, type){
   const classification=type==='income'?'income':'expense';
-  const existing=accounts.find(a=>a.category_account===category&&a.classification===classification);
+  const accountName=category+(type==='income'?' Income':' Expense');
+  // Check by category_account field or by name
+  const existing=accounts.find(a=>(a.category_account===category&&a.classification===classification)||a.name===accountName);
   if(existing)return existing;
   const acc={
     user_id:currentUser.id,
-    name:category+(type==='income'?' Income':' Expense'),
+    name:accountName,
     type:type==='income'?'custom-income':'custom-expense',
     classification,
     opening_balance:0,
@@ -974,7 +976,6 @@ async function ensureCategoryAccount(category, type){
 }
 async function loadAllData(){
   const uid=currentUser.id;
-  console.log('Loading data for user:', uid);
   const[a,t,tr,l,b]=await Promise.all([
     sb.from('accounts').select('*').eq('user_id',uid).order('created_at'),
     sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:false}),
@@ -982,14 +983,37 @@ async function loadAllData(){
     sb.from('loans').select('*').eq('user_id',uid).order('created_at'),
     sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false})
   ]);
-  console.log('Accounts:', a.data, 'Error:', a.error);
-  console.log('Transactions:', t.data, 'Error:', t.error);
   accounts=a.data||[];
   transactions=t.data||[];
   trades=tr.data||[];
   loans=l.data||[];
   budgets=b.data||[];
-  console.log('Loaded - accounts:',accounts.length,'transactions:',transactions.length);
+
+  // Auto-create income/expense accounts for existing transactions that don't have them
+  const needsProcessing=transactions.filter(t=>!t.debit_account_id&&!t.credit_account_id&&t.type!=='transfer');
+  for(const txn of needsProcessing){
+    const cat=txn.category||'Other';
+    if(txn.type==='income'){
+      const incAcc=await ensureCategoryAccount(cat,'income');
+      if(incAcc){
+        await sb.from('transactions').update({debit_account_id:txn.account_id,credit_account_id:incAcc.id}).eq('id',txn.id);
+        txn.debit_account_id=txn.account_id;
+        txn.credit_account_id=incAcc.id;
+      }
+    } else if(txn.type==='expense'){
+      const expAcc=await ensureCategoryAccount(cat,'expense');
+      if(expAcc){
+        await sb.from('transactions').update({debit_account_id:expAcc.id,credit_account_id:txn.account_id}).eq('id',txn.id);
+        txn.debit_account_id=expAcc.id;
+        txn.credit_account_id=txn.account_id;
+      }
+    }
+  }
+  // Reload accounts to include newly created ones
+  if(needsProcessing.length>0){
+    const fresh=await sb.from('accounts').select('*').eq('user_id',uid).order('created_at');
+    accounts=fresh.data||[];
+  }
 }
 
 // ═══════════════════════════════
