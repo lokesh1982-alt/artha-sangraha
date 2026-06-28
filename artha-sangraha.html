@@ -1570,49 +1570,94 @@ function toggleFnoFields(){
   document.getElementById('fno-fields').style.display=isFno?'block':'none';
 }
 
-function openAccountLedger(accId){
-  const acc=accounts.find(a=>a.id===accId);
-  if(!acc)return;
-  const accTxns=transactions.filter(t=>t.account_id===accId||t.to_account_id===accId).sort((a,b)=>a.date.localeCompare(b.date));
+function openAccountLedger(accId, fromDate='', toDate=''){
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  const today=todayISO();
+  const effectiveFrom=fromDate||'';
+  const effectiveTo=toDate||today;
+
+  const accTxns=transactions.filter(t=>{
+    const matches=t.debit_account_id===acc.id||t.credit_account_id===acc.id||t.account_id===acc.id||t.to_account_id===acc.id;
+    if(!matches)return false;
+    if(effectiveFrom&&t.date<effectiveFrom)return false;
+    if(t.date>effectiveTo)return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+
   let balance=parseFloat(acc.opening_balance||0);
   const rows=[];
-  // Opening balance row
-  rows.push(`<tr style="background:var(--bg2)"><td>${formatDate(acc.opening_date||acc.created_at?.split('T')[0])}</td><td><b>Opening Balance</b></td><td></td><td></td><td style="text-align:right;font-weight:700">${fmt(balance,acc.currency)}</td></tr>`);
+  rows.push(`<tr style="background:var(--bg2)">
+    <td>${formatDate(acc.opening_date||acc.created_at?.split('T')[0])}</td>
+    <td><b>Opening Balance</b></td><td></td><td></td>
+    <td style="text-align:right;font-weight:700">${fmt(balance,acc.currency)}</td>
+  </tr>`);
+
   accTxns.forEach(t=>{
     let debit=0,credit=0;
-    if(t.account_id===accId){
-      if(t.type==='income'){credit=parseFloat(t.amount);balance+=credit;}
-      else if(t.type==='expense'){debit=parseFloat(t.amount);balance-=debit;}
-      else if(t.type==='transfer'){debit=parseFloat(t.amount);balance-=debit;}
-    } else if(t.to_account_id===accId&&t.type==='transfer'){
-      credit=parseFloat(t.amount);balance+=credit;
+    const cls=acc.classification||'asset';
+    const amt=parseFloat(t.amount||0);
+    if(t.debit_account_id===acc.id){
+      debit=amt;
+      if(['asset','expense'].includes(cls))balance+=amt;else balance-=amt;
+    } else if(t.credit_account_id===acc.id){
+      credit=amt;
+      if(['asset','expense'].includes(cls))balance-=amt;else balance+=amt;
+    } else if(t.account_id===acc.id){
+      if(t.type==='income'){credit=amt;balance+=amt;}
+      else if(t.type==='expense'){debit=amt;balance-=amt;}
+      else if(t.type==='transfer'){debit=amt;balance-=amt;}
+    } else if(t.to_account_id===acc.id&&t.type==='transfer'){
+      credit=amt;balance+=amt;
     }
     const toAcc=t.to_account_id?accounts.find(a=>a.id===t.to_account_id):null;
+    const fromAcc=t.debit_account_id&&t.debit_account_id!==acc.id?accounts.find(a=>a.id===t.debit_account_id):null;
     rows.push(`<tr>
       <td style="white-space:nowrap">${formatDate(t.date)}</td>
-      <td>${t.description||t.category||'—'}${toAcc&&t.account_id===accId?`<div style="font-size:0.72rem;color:var(--text3)">→ ${toAcc.name}</div>`:''}</td>
+      <td>${t.description||t.category||'—'}
+        ${toAcc&&t.account_id===acc.id?`<div style="font-size:0.7rem;color:var(--text3)">→ ${toAcc.name}</div>`:''}
+        ${fromAcc?`<div style="font-size:0.7rem;color:var(--text3)">← ${fromAcc.name}</div>`:''}
+      </td>
       <td style="text-align:right;color:var(--red)">${debit>0?fmt(debit,acc.currency):''}</td>
       <td style="text-align:right;color:var(--green)">${credit>0?fmt(credit,acc.currency):''}</td>
       <td style="text-align:right;font-weight:600;color:${balance>=0?'var(--text)':'var(--red)'}">${fmt(balance,acc.currency)}</td>
     </tr>`);
   });
+
   const ledgerHTML=`
     <button class="back-btn" onclick="renderAccounts()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:inherit;margin-bottom:16px;padding:0">← Back to Accounts</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div>
         <div style="font-size:1.2rem;font-weight:700">${accIcon(acc.type)} ${acc.name}</div>
-        <div style="font-size:0.78rem;color:var(--text2)">${capitalize(acc.type)} · ${acc.currency} · Opening: ${fmt(acc.opening_balance,acc.currency)}</div>
+        <div style="font-size:0.78rem;color:var(--text2)">${capitalize(acc.classification||acc.type)} · ${acc.currency} · Opening: ${fmt(acc.opening_balance,acc.currency)}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:0.75rem;color:var(--text2)">Current Balance</div>
         <div style="font-size:1.5rem;font-weight:700;color:${balance>=0?'var(--accent)':'var(--red)'}">${fmt(balance,acc.currency)}</div>
       </div>
     </div>
+    <!-- Date Range Filter -->
+    <div class="card card-sm" style="margin-bottom:14px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:0.8rem;color:var(--text2);font-weight:500">Filter:</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:0.78rem;color:var(--text2)">From</label>
+          <input class="form-input" type="date" id="ledger-from" value="${effectiveFrom}" style="width:145px;padding:7px 10px"/>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:0.78rem;color:var(--text2)">To</label>
+          <input class="form-input" type="date" id="ledger-to" value="${effectiveTo}" style="width:145px;padding:7px 10px"/>
+        </div>
+        <button class="btn-sm" onclick="openAccountLedger('${accId}',document.getElementById('ledger-from').value,document.getElementById('ledger-to').value)">Apply</button>
+        <button class="btn-outline" onclick="openAccountLedger('${accId}','','')">All</button>
+      </div>
+    </div>
     <div class="card">
       <table class="data-table">
         <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th style="text-align:right">Balance</th></tr></thead>
         <tbody>${rows.join('')}
-        <tr class="total-row"><td colspan="2"><b>Closing Balance</b></td><td></td><td></td><td style="text-align:right;color:${balance>=0?'var(--accent)':'var(--red)'}"><b>${fmt(balance,acc.currency)}</b></td></tr>
+        <tr class="total-row"><td colspan="2"><b>Closing Balance</b></td><td></td><td></td>
+          <td style="text-align:right;color:${balance>=0?'var(--accent)':'var(--red)'}"><b>${fmt(balance,acc.currency)}</b></td>
+        </tr>
         </tbody>
       </table>
     </div>`;
