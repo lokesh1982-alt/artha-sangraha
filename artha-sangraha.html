@@ -778,7 +778,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 // ═══════════════════════════════
 let currentUser=null,currentProfile=null;
 let accounts=[],transactions=[],trades=[],loans=[],budgets=[];
-let selectedTxnType='income',editingTxnId=null,editingTradeId=null;
+let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null;
 let currentReportTab='monthly';
 
 // ═══════════════════════════════
@@ -919,8 +919,152 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 });
 
 // ═══════════════════════════════
-//  BALANCE CALCULATION
+//  EDIT FUNCTIONS
 // ═══════════════════════════════
+function editAccount(id){
+  const a=accounts.find(x=>x.id===id);if(!a)return;
+  editingAccId=id;
+  openModal('add-account-modal');
+  document.getElementById('acc-name').value=a.name||'';
+  document.getElementById('acc-balance').value=a.opening_balance||0;
+  document.getElementById('acc-notes').value=a.notes||'';
+  document.getElementById('acc-opening-date').value=a.opening_date||todayISO();
+  document.getElementById('acc-type').value=a.type||'bank';
+  document.getElementById('acc-currency').value=a.currency||'INR';
+  document.getElementById('acc-classification').value=a.classification||'asset';
+  document.querySelector('#add-account-modal .modal-title').textContent='Edit Account';
+}
+
+function editTxn(id){
+  const t=transactions.find(x=>x.id===id);if(!t)return;
+  editingTxnId=id;
+  openModal('add-txn-modal');
+  document.getElementById('txn-date').value=t.date||todayISO();
+  document.getElementById('txn-amount').value=t.amount||'';
+  document.getElementById('txn-currency').value=t.currency||'INR';
+  document.getElementById('txn-category').value=t.category||'Other';
+  document.getElementById('txn-desc').value=t.description||'';
+  selectedTxnType=t.type||'income';
+  const typeBtns=document.querySelectorAll('#txn-type-wrap .tab-btn');
+  const typeMap={income:0,expense:1,transfer:2};
+  typeBtns.forEach((b,i)=>b.classList.toggle('active',i===typeMap[selectedTxnType]));
+  const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  document.getElementById('txn-account').innerHTML=opts;
+  document.getElementById('txn-to-account').innerHTML=opts;
+  document.getElementById('txn-account').value=t.account_id||'';
+  if(t.to_account_id){
+    document.getElementById('txn-to-account-wrap').style.display='block';
+    document.getElementById('txn-to-account').value=t.to_account_id;
+  }
+  document.querySelector('#add-txn-modal .modal-title').textContent='Edit Transaction';
+}
+
+function editTrade(id){
+  const t=trades.find(x=>x.id===id);if(!t)return;
+  editingTradeId=id;
+  openModal('add-trade-modal');
+  document.getElementById('trade-date').value=t.date||todayISO();
+  document.getElementById('trade-stock').value=t.stock||'';
+  document.getElementById('trade-exchange').value=t.exchange||'NSE';
+  document.getElementById('trade-type').value=t.trade_type||'buy';
+  document.getElementById('trade-qty').value=t.quantity||'';
+  document.getElementById('trade-entry').value=t.entry_price||'';
+  document.getElementById('trade-exit').value=t.exit_price||'';
+  document.getElementById('trade-currency').value=t.currency||'INR';
+  document.getElementById('trade-notes').value=t.notes||'';
+  document.querySelector('#add-trade-modal .modal-title').textContent='Edit Trade';
+}
+
+function editLoan(id){
+  const l=loans.find(x=>x.id===id);if(!l)return;
+  editingLoanId=id;
+  openModal('add-loan-modal');
+  document.getElementById('loan-name').value=l.name||'';
+  document.getElementById('loan-principal').value=l.principal||'';
+  document.getElementById('loan-rate').value=l.interest_rate||'';
+  document.getElementById('loan-tenure').value=l.tenure_months||'';
+  document.getElementById('loan-emi').value=l.emi||'';
+  document.getElementById('loan-start').value=l.start_date||todayISO();
+  document.getElementById('loan-currency').value=l.currency||'INR';
+  document.querySelector('#add-loan-modal .modal-title').textContent='Edit Loan';
+}
+
+async function updateAccount(){
+  const a=accounts.find(x=>x.id===editingAccId);if(!a)return;
+  const updates={
+    name:document.getElementById('acc-name').value.trim(),
+    opening_balance:parseFloat(document.getElementById('acc-balance').value)||0,
+    notes:document.getElementById('acc-notes').value.trim(),
+    opening_date:document.getElementById('acc-opening-date').value,
+    type:document.getElementById('acc-type').value,
+    currency:document.getElementById('acc-currency').value,
+    classification:document.getElementById('acc-classification').value
+  };
+  const{error}=await sb.from('accounts').update(updates).eq('id',editingAccId);
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('add-account-modal');
+  editingAccId=null;
+  showToast('Account updated! ✅');
+  await loadAllData();renderAccounts();renderDashboard();
+}
+
+async function updateTxn(){
+  const updates={
+    date:document.getElementById('txn-date').value,
+    amount:parseFloat(document.getElementById('txn-amount').value),
+    currency:document.getElementById('txn-currency').value,
+    account_id:document.getElementById('txn-account').value,
+    to_account_id:selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null,
+    category:document.getElementById('txn-category').value,
+    description:document.getElementById('txn-desc').value.trim(),
+    type:selectedTxnType
+  };
+  const{error}=await sb.from('transactions').update(updates).eq('id',editingTxnId);
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('add-txn-modal');
+  editingTxnId=null;
+  showToast('Transaction updated! ✅');
+  await loadAllData();renderTransactions();renderDashboard();
+}
+
+async function updateTrade(){
+  const updates={
+    date:document.getElementById('trade-date').value,
+    stock:document.getElementById('trade-stock').value.toUpperCase(),
+    exchange:document.getElementById('trade-exchange').value,
+    trade_type:document.getElementById('trade-type').value,
+    quantity:parseFloat(document.getElementById('trade-qty').value),
+    entry_price:parseFloat(document.getElementById('trade-entry').value),
+    exit_price:document.getElementById('trade-exit').value?parseFloat(document.getElementById('trade-exit').value):null,
+    currency:document.getElementById('trade-currency').value,
+    notes:document.getElementById('trade-notes').value.trim(),
+    status:document.getElementById('trade-exit').value?'closed':'open'
+  };
+  const{error}=await sb.from('trades').update(updates).eq('id',editingTradeId);
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('add-trade-modal');
+  editingTradeId=null;
+  showToast('Trade updated! ✅');
+  await loadAllData();renderTrading();
+}
+
+async function updateLoan(){
+  const updates={
+    name:document.getElementById('loan-name').value.trim(),
+    principal:parseFloat(document.getElementById('loan-principal').value),
+    interest_rate:parseFloat(document.getElementById('loan-rate').value),
+    tenure_months:parseInt(document.getElementById('loan-tenure').value),
+    emi:parseFloat(document.getElementById('loan-emi').value),
+    start_date:document.getElementById('loan-start').value,
+    currency:document.getElementById('loan-currency').value
+  };
+  const{error}=await sb.from('loans').update(updates).eq('id',editingLoanId);
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('add-loan-modal');
+  editingLoanId=null;
+  showToast('Loan updated! ✅');
+  await loadAllData();renderLoans();
+}
 function calcBalance(acc, asOfDate=null){
   // Start from 0 — opening balance is now captured as a journal entry
   // But for accounts that have no opening balance journal entry, use opening_balance
@@ -1213,7 +1357,10 @@ function renderAccounts(){
       <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
       <div class="account-info"><div class="account-name">${a.name}</div><div class="account-type">${a.notes||capitalize(a.type)} · As of ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div></div>
       <div class="account-bal"><div class="account-bal-val">${fmt(calcBalance(a),a.currency)}</div><div class="account-bal-curr">${a.currency} · Current</div></div>
-      <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+      <div style="display:flex;gap:4px">
+        <button class="btn-outline" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
+        <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+      </div>
     </div>`).join('')}
     </div></div>`;
   });
@@ -1266,7 +1413,10 @@ function renderTransactions(){
           <td style="font-size:0.78rem;color:var(--text2)">${acc?.name||'—'}</td>
           <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':'badge-yellow'}">${capitalize(t.type)}</span></td>
           <td style="font-weight:600;color:${t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--text2)'};white-space:nowrap">${t.type==='income'?'+':t.type==='expense'?'-':''}${fmt(t.amount,t.currency)}</td>
-          <td><button class="btn-danger" onclick="deleteTxn('${t.id}')">🗑</button></td>
+          <td style="white-space:nowrap">
+            <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem;margin-right:4px" onclick="editTxn('${t.id}')">✏️</button>
+            <button class="btn-danger" onclick="deleteTxn('${t.id}')">🗑</button>
+          </td>
         </tr>`;
       }).join('')}</tbody>
     </table>`
@@ -1471,7 +1621,10 @@ function renderTrading(){
           <td>${t.exit_price?fmt(t.exit_price,curr):'—'}</td>
           <td style="font-weight:600;color:${pl===null?'var(--text2)':pl>=0?'var(--green)':'var(--red)'}">${pl===null?'—':(pl>=0?'+':'')+fmt(Math.abs(pl),curr)}</td>
           <td><span class="badge ${t.exit_price?'badge-green':'badge-yellow'}">${t.exit_price?'Closed':'Holding'}</span></td>
-          <td><button class="btn-danger" onclick="deleteTrade('${t.id}')">🗑</button></td>
+          <td style="white-space:nowrap">
+            <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem;margin-right:4px" onclick="editTrade('${t.id}')">✏️</button>
+            <button class="btn-danger" onclick="deleteTrade('${t.id}')">🗑</button>
+          </td>
         </tr>`;
       }).join('')}</tbody>
     </table>`
@@ -1491,7 +1644,10 @@ function renderLoans(){
         return `<div class="card">
           <div class="sec-header">
             <div><div class="sec-title">${l.name}</div><div style="font-size:0.75rem;color:var(--text2)">Started ${formatDate(l.start_date)}</div></div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editLoan('${l.id}')">✏️ Edit</button>
             <button class="btn-danger" onclick="deleteLoan('${l.id}')">🗑</button>
+          </div>
           </div>
           <div class="card-grid card-grid-2" style="margin-bottom:12px">
             <div><div style="font-size:0.72rem;color:var(--text2)">Principal</div><div style="font-weight:600">${fmt(l.principal,l.currency)}</div></div>
@@ -1683,6 +1839,7 @@ function selectTxnType(type,btn){
 }
 
 async function saveTxn(){
+  if(editingTxnId){await updateTxn();return;}
   if(!currentUser){showToast('Not logged in.');return;}
   const amount=parseFloat(document.getElementById('txn-amount').value);
   const date=document.getElementById('txn-date').value;
@@ -1733,7 +1890,7 @@ async function saveTxn(){
 }
 
 async function saveAccount(){
-  if(!currentUser){showToast('Not logged in.');return;}
+  if(editingAccId){await updateAccount();return;}
   const name=document.getElementById('acc-name').value.trim();
   const opening_balance=parseFloat(document.getElementById('acc-balance').value)||0;
   if(!name){showToast('Please enter account name.');return;}
@@ -1797,6 +1954,7 @@ async function saveAccount(){
 }
 
 async function saveTrade(){
+  if(editingTradeId){await updateTrade();return;}
   if(!currentUser){showToast('Not logged in.');return;}
   const stock=document.getElementById('trade-stock').value.trim();
   const qty=parseFloat(document.getElementById('trade-qty').value);
@@ -1830,6 +1988,7 @@ async function saveTrade(){
 }
 
 async function saveLoan(){
+  if(editingLoanId){await updateLoan();return;}
   if(!currentUser){showToast('Not logged in.');return;}
   const name=document.getElementById('loan-name').value.trim();
   const principal=parseFloat(document.getElementById('loan-principal').value);
@@ -1903,6 +2062,8 @@ async function deleteAccountPrompt(id){
 // ═══════════════════════════════
 function openModal(id){
   if(id==='add-txn-modal'){
+    editingTxnId=null;
+    document.querySelector('#add-txn-modal .modal-title').textContent='Add Transaction';
     document.getElementById('txn-date').value=todayISO();
     document.getElementById('txn-amount').value='';
     document.getElementById('txn-desc').value='';
@@ -1925,6 +2086,8 @@ function openModal(id){
     typeBtns.forEach((b,i)=>b.classList.toggle('active',i===0));
   }
   if(id==='add-trade-modal'){
+    editingTradeId=null;
+    document.querySelector('#add-trade-modal .modal-title').textContent='Add Trade';
     document.getElementById('trade-date').value=todayISO();
     document.getElementById('trade-stock').value='';
     document.getElementById('trade-entry').value='';
@@ -1934,6 +2097,8 @@ function openModal(id){
     document.getElementById('trade-instrument').value='equity';
   }
   if(id==='add-account-modal'){
+    editingAccId=null;
+    document.querySelector('#add-account-modal .modal-title').textContent='Add Account / Asset';
     document.getElementById('acc-name').value='';
     document.getElementById('acc-balance').value='';
     document.getElementById('acc-notes').value='';
@@ -1945,7 +2110,10 @@ function openModal(id){
     if(cw)cw.style.display='none';
   }
   if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
-  if(id==='add-loan-modal'){document.getElementById('loan-start').value=todayISO();}
+  if(id==='add-loan-modal'){
+    editingLoanId=null;
+    document.querySelector('#add-loan-modal .modal-title').textContent='Add Loan / EMI';
+    document.getElementById('loan-start').value=todayISO();}
   document.getElementById(id).classList.add('open');
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
