@@ -1211,18 +1211,42 @@ function switchSection(name,btn){
 // ═══════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════
+function getFinancialYear(){
+  const now=new Date();
+  const yr=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;
+  return{start:`${yr}-04-01`,end:`${yr+1}-03-31`,label:`FY ${yr}-${String(yr+1).slice(2)}`};
+}
+
+function calcIncomeExpense(txnList){
+  let income=0,expenses=0;
+  txnList.forEach(t=>{
+    const amt=parseFloat(t.amount||0);
+    if(t.type==='income') income+=amt;
+    else if(t.type==='expense') expenses+=amt;
+    else if(t.type==='journal'&&t.category!=='Opening Balance'){
+      const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+      const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+      if(creditAcc?.classification==='income') income+=amt;
+      if(debitAcc?.classification==='expense') expenses+=amt;
+    }
+  });
+  return{income,expenses};
+}
+
 function renderDashboard(){
-  const totalAssets=accounts.filter(a=>['asset','cash','bank','indian-stock','us-stock','property','fd','pf','gold','crypto','custom-asset','other'].includes(a.type||a.classification==='asset')?true:a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  const totalAssets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const totalLiabilities=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const netWorth=totalAssets-totalLiabilities;
-  const now=new Date();const monthStr=toMonthISO(now);
+  const fy=getFinancialYear();
+  const fyTxns=transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end);
+  const{income:fyIncome,expenses:fyExp}=calcIncomeExpense(fyTxns);
+  const monthStr=toMonthISO(new Date());
   const monthTxns=transactions.filter(t=>t.date.startsWith(monthStr));
-  const income=monthTxns.filter(t=>t.type==='income').reduce((s,t)=>s+parseFloat(t.amount),0);
-  const expenses=monthTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const{income:mIncome,expenses:mExp}=calcIncomeExpense(monthTxns);
 
   document.getElementById('nw-banner-wrap').innerHTML=`
   <div class="nw-banner">
-    <div class="nw-label">Total Net Worth</div>
+    <div class="nw-label">Total Net Worth · ${fy.label}</div>
     <div class="nw-val">${fmt(netWorth,'INR')}</div>
     <div class="nw-grid">
       <div class="nw-box"><div class="nw-box-label">Total Assets</div><div class="nw-box-val">${fmt(totalAssets,'INR')}</div></div>
@@ -1231,32 +1255,38 @@ function renderDashboard(){
   </div>`;
 
   document.getElementById('dash-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-label">Income this month</div><div class="stat-val" style="color:var(--green)">${fmt(income,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Expenses this month</div><div class="stat-val" style="color:var(--red)">${fmt(expenses,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Net surplus</div><div class="stat-val" style="color:${income-expenses>=0?'var(--green)':'var(--red)'}">${fmt(income-expenses,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total accounts</div><div class="stat-val">${accounts.length}</div></div>`;
+    <div class="stat-card"><div class="stat-label">${fy.label} Income</div><div class="stat-val" style="color:var(--green)">${fmt(fyIncome,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">${fy.label} Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(fyExp,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">This Month Income</div><div class="stat-val" style="color:var(--green)">${fmt(mIncome,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">This Month Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(mExp,'INR')}</div></div>`;
 
-  // Recent transactions
-  const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+  const seen=new Set();
+  const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;}).slice(0,8);
   document.getElementById('dash-recent-txns').innerHTML=recent.length
-    ?`<table class="data-table">${recent.map(t=>`<tr>
-      <td><div style="font-size:0.82rem;font-weight:500">${t.description||t.category}</div><div style="font-size:0.7rem;color:var(--text3)">${t.category} · ${formatDate(t.date)}</div></td>
-      <td style="text-align:right;font-weight:600;color:${t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--text2)'}">${t.type==='income'?'+':'-'}${fmt(t.amount,t.currency)}</td>
-    </tr>`).join('')}</table>`
+    ?`<div style="overflow-x:auto"><table class="data-table" style="min-width:500px">${recent.map(t=>{
+        const debitAcc=t.debit_account_id?accounts.find(a=>a.id===t.debit_account_id):null;
+        const creditAcc=t.credit_account_id?accounts.find(a=>a.id===t.credit_account_id):null;
+        const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--text2)';
+        return `<tr>
+          <td style="white-space:nowrap;font-size:0.78rem">${formatDate(t.date)}</td>
+          <td><div style="font-size:0.82rem;font-weight:500">${t.description||t.category||'—'}</div><div style="font-size:0.7rem;color:var(--text3)">${t.category||''}</div></td>
+          <td style="font-size:0.75rem;color:var(--green)">${debitAcc?.name||'—'}</td>
+          <td style="font-size:0.75rem;color:var(--red)">${creditAcc?.name||'—'}</td>
+          <td style="text-align:right;font-weight:600;color:${typeColor};white-space:nowrap">${fmt(t.amount,t.currency)}</td>
+        </tr>`;
+      }).join('')}</table></div>`
     :`<div class="empty-state"><div class="empty-icon">💳</div><div class="empty-text">No transactions yet.</div></div>`;
 
-  // Accounts overview
-  document.getElementById('dash-accounts').innerHTML=accounts.length
-    ?accounts.slice(0,5).map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+  const assetAccs=accounts.filter(a=>a.classification==='asset').slice(0,6);
+  document.getElementById('dash-accounts').innerHTML=assetAccs.length
+    ?assetAccs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px"><span style="font-size:1rem">${accIcon(a.type)}</span><div><div style="font-size:0.82rem;font-weight:600;color:var(--text)">${a.name}</div><div style="font-size:0.7rem;color:var(--text3)">${capitalize(a.type)} · ${a.currency}</div></div></div>
       <div style="font-weight:600;font-size:0.85rem;color:var(--accent)">${fmt(calcBalance(a),a.currency)}</div>
     </div>`).join('')
     :`<div class="empty-state"><div class="empty-text">No accounts yet.</div></div>`;
 
-  // Simple bar chart
   renderDashChart();
 }
-
 function renderDashChart(){
   const months=[];
   for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short'}),key:toMonthISO(d)});}
@@ -1413,7 +1443,9 @@ function renderTransactions(){
   const accFilter=document.getElementById('txn-filter-account')?.value||'all';
   const from=document.getElementById('txn-filter-from').value;
   const to=document.getElementById('txn-filter-to').value;
-  let filtered=transactions;
+  // Deduplicate by ID first (transfers show once per account - we only want one row per transaction)
+  const seen=new Set();
+  let filtered=[...transactions].filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;});
   if(type!=='all')filtered=filtered.filter(t=>t.type===type);
   if(cat!=='all')filtered=filtered.filter(t=>t.category===cat);
   if(accFilter!=='all')filtered=filtered.filter(t=>t.account_id===accFilter||t.to_account_id===accFilter);
