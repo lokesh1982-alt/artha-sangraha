@@ -156,8 +156,9 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 
 /* BOTTOM NAV (mobile) */
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);padding:6px 0 max(6px,env(safe-area-inset-bottom));box-shadow:0 -1px 4px rgba(0,0,0,0.06);}
-.bottom-nav-inner{display:flex;}
-.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px;cursor:pointer;border:none;background:none;color:var(--text3);font-family:inherit;transition:all 0.2s;}
+.bottom-nav-inner{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 4px;}
+.bottom-nav-inner::-webkit-scrollbar{display:none;}
+.bnav-item{flex-shrink:0;min-width:56px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 4px;cursor:pointer;border:none;background:none;color:var(--text3);font-family:inherit;transition:all 0.2s;}
 .bnav-item span:first-child{font-size:1.1rem;}
 .bnav-item span:last-child{font-size:0.58rem;font-weight:500;}
 .bnav-item.active{color:var(--accent);}
@@ -315,19 +316,17 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
         <div id="nw-banner-wrap"></div>
         <div class="card-grid card-grid-4" id="dash-stats"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;" id="dash-grid">
-          <div class="card">
-            <div class="sec-header"><div class="sec-title">Recent Transactions</div><button class="btn-outline" onclick="switchSection('transactions',document.querySelector('.nav-item:nth-child(3)'))">View all</button></div>
-            <div id="dash-recent-txns"></div>
-          </div>
-          <div class="card">
-            <div class="sec-header"><div class="sec-title">Accounts Overview</div></div>
-            <div id="dash-accounts"></div>
-          </div>
+        <div style="margin-bottom:20px">
+          <div class="sec-header"><div class="section-title" style="font-size:1rem;font-weight:600">Recent Transactions</div><button class="btn-outline" onclick="switchSection('transactions',null)">View all</button></div>
+          <div class="card"><div id="dash-recent-txns"></div></div>
         </div>
-        <div class="card">
-          <div class="sec-header"><div class="sec-title">Monthly Income vs Expenses</div></div>
-          <div id="dash-chart"></div>
+        <div style="margin-bottom:20px">
+          <div class="sec-header"><div class="section-title" style="font-size:1rem;font-weight:600">Accounts Overview</div></div>
+          <div class="card"><div id="dash-accounts"></div></div>
+        </div>
+        <div>
+          <div class="sec-header"><div class="section-title" style="font-size:1rem;font-weight:600">Monthly Income vs Expenses</div></div>
+          <div class="card"><div id="dash-chart"></div></div>
         </div>
       </div>
 
@@ -487,10 +486,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="bnav-item" onclick="switchSection('accounts',this)"><span>🏦</span><span>Accounts</span></button>
       <button class="bnav-item" onclick="switchSection('chart-of-accounts',this)"><span>📋</span><span>COA</span></button>
       <button class="bnav-item" onclick="switchSection('transactions',this)"><span>💳</span><span>Txns</span></button>
-      <button class="bnav-item" onclick="switchSection('balance-sheet',this)"><span>📊</span><span>Balance</span></button>
+      <button class="bnav-item" onclick="switchSection('balance-sheet',this)"><span>📊</span><span>B/S</span></button>
       <button class="bnav-item" onclick="switchSection('pnl',this)"><span>📈</span><span>P&L</span></button>
       <button class="bnav-item" onclick="switchSection('trading',this)"><span>📓</span><span>Trades</span></button>
       <button class="bnav-item" onclick="switchSection('loans',this)"><span>🏛️</span><span>Loans</span></button>
+      <button class="bnav-item" onclick="switchSection('reports',this)"><span>📉</span><span>Reports</span></button>
     </div>
   </div>
 </div>
@@ -1019,12 +1019,15 @@ async function updateTxn(){
     description:document.getElementById('txn-desc').value.trim(),
     type:selectedTxnType
   };
-  const{error}=await sb.from('transactions').update(updates).eq('id',editingTxnId);
+  const{error}=await sb.from('transactions').update(updates).eq('id',editingTxnId).eq('user_id',currentUser.id);
   if(error){showToast('Error: '+error.message);return;}
   closeModal('add-txn-modal');
   editingTxnId=null;
+  document.querySelector('#add-txn-modal .modal-title').textContent='Add Transaction';
   showToast('Transaction updated! ✅');
-  await loadAllData();renderTransactions();renderDashboard();
+  await loadAllData();
+  renderTransactions();
+  renderDashboard();
 }
 
 async function updateTrade(){
@@ -1130,7 +1133,7 @@ async function loadAllData(){
   const uid=currentUser.id;
   const[a,t,tr,l,b]=await Promise.all([
     sb.from('accounts').select('*').eq('user_id',uid).order('created_at'),
-    sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:false}),
+    sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:true}),
     sb.from('trades').select('*').eq('user_id',uid).order('date',{ascending:false}),
     sb.from('loans').select('*').eq('user_id',uid).order('created_at'),
     sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false})
@@ -1234,7 +1237,7 @@ function renderDashboard(){
     <div class="stat-card"><div class="stat-label">Total accounts</div><div class="stat-val">${accounts.length}</div></div>`;
 
   // Recent transactions
-  const recent=transactions.slice(0,6);
+  const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
   document.getElementById('dash-recent-txns').innerHTML=recent.length
     ?`<table class="data-table">${recent.map(t=>`<tr>
       <td><div style="font-size:0.82rem;font-weight:500">${t.description||t.category}</div><div style="font-size:0.7rem;color:var(--text3)">${t.category} · ${formatDate(t.date)}</div></td>
@@ -1347,25 +1350,49 @@ function renderChartOfAccounts(){
 }
 
 function renderAccounts(){
-  const grouped={};
-  accounts.forEach(a=>{if(!grouped[a.type])grouped[a.type]=[];grouped[a.type].push(a);});
-  const typeLabels={cash:'Cash',bank:'Bank Accounts','indian-stock':'Indian Stocks & MF','us-stock':'US Stocks',property:'Properties',fd:'Fixed Deposits',pf:'PF / PPF',gold:'Gold',crypto:'Crypto',other:'Other'};
-  let html='';
-  Object.entries(grouped).forEach(([type,accs])=>{
-    html+=`<div style="margin-bottom:20px"><div style="font-size:0.75rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">${typeLabels[type]||type}</div>
-    <div class="card-grid card-grid-2">
-    ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
-      <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
-      <div class="account-info"><div class="account-name">${a.name}</div><div class="account-type">${a.notes||capitalize(a.type)} · As of ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div></div>
-      <div class="account-bal"><div class="account-bal-val">${fmt(calcBalance(a),a.currency)}</div><div class="account-bal-curr">${a.currency} · Current</div></div>
-      <div style="display:flex;gap:4px">
-        <button class="btn-outline" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
-        <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
-      </div>
-    </div>`).join('')}
-    </div></div>`;
+  // Group by classification for better organization
+  const classGroups={
+    asset:{label:'🏦 Assets',color:'var(--green)',accs:[]},
+    liability:{label:'💳 Liabilities',color:'var(--red)',accs:[]},
+    equity:{label:'🏛️ Equity',color:'var(--purple)',accs:[]},
+    income:{label:'💰 Income Accounts',color:'var(--accent)',accs:[]},
+    expense:{label:'💸 Expense Accounts',color:'var(--yellow)',accs:[]}
+  };
+  accounts.forEach(a=>{
+    const cls=a.classification||'asset';
+    if(classGroups[cls])classGroups[cls].accs.push(a);
+    else classGroups.asset.accs.push(a);
   });
-  document.getElementById('accounts-list').innerHTML=html||`<div class="empty-state"><div class="empty-icon">🏦</div><div class="empty-text">No accounts yet. Add your first account!</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button></div>`;
+  let html='';
+  Object.entries(classGroups).forEach(([cls,{label,color,accs}])=>{
+    if(!accs.length)return;
+    const total=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+    html+=`<div style="margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</div>
+        <div style="font-size:0.85rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
+      </div>
+      <div class="card-grid card-grid-2">
+      ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
+        <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
+        <div class="account-info">
+          <div class="account-name">${a.name}</div>
+          <div class="account-type" style="font-size:0.7rem;color:var(--text3)">${a.notes&&a.notes!=='Auto-created'?a.notes:capitalize(a.type)} · ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div>
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:2px">Opening: ${fmt(a.opening_balance,a.currency)}</div>
+        </div>
+        <div class="account-bal">
+          <div class="account-bal-val" style="color:${color}">${fmt(calcBalance(a),a.currency)}</div>
+          <div class="account-bal-curr">${a.currency} · Current</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn-outline" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
+          <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+        </div>
+      </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('accounts-list').innerHTML=html||`<div class="empty-state"><div class="empty-icon">🏦</div><div class="empty-text">No accounts yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button></div>`;
 }
 
 // ═══════════════════════════════
@@ -1402,25 +1429,29 @@ function renderTransactions(){
         <span style="color:var(--red)">Expenses: <b>${fmt(totalExp,'INR')}</b></span>
         <span style="color:${net>=0?'var(--green)':'var(--red)'}">Net: <b>${fmt(Math.abs(net),'INR')}</b></span>
       </div>
-    <table class="data-table">
-      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th>Type</th><th>Amount</th><th></th></tr></thead>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="data-table" style="min-width:700px">
+      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Debit Account</th><th>Credit Account</th><th style="text-align:right">Amount</th><th></th></tr></thead>
       <tbody>${filtered.map(t=>{
         const acc=accounts.find(a=>a.id===t.account_id);
         const toAcc=t.to_account_id?accounts.find(a=>a.id===t.to_account_id):null;
+        const debitAcc=t.debit_account_id?accounts.find(a=>a.id===t.debit_account_id):acc;
+        const creditAcc=t.credit_account_id?accounts.find(a=>a.id===t.credit_account_id):toAcc;
         return `<tr>
           <td style="white-space:nowrap">${formatDate(t.date)}</td>
-          <td>${t.description||'—'}${toAcc?`<div style="font-size:0.72rem;color:var(--text3)">→ ${toAcc.name}</div>`:''}</td>
-          <td><span class="badge badge-blue">${t.category||'—'}</span></td>
-          <td style="font-size:0.78rem;color:var(--text2)">${acc?.name||'—'}</td>
-          <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':'badge-yellow'}">${capitalize(t.type)}</span></td>
-          <td style="font-weight:600;color:${t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--text2)'};white-space:nowrap">${t.type==='income'?'+':t.type==='expense'?'-':''}${fmt(t.amount,t.currency)}</td>
+          <td style="max-width:180px">${t.description||'—'}</td>
+          <td><span class="badge badge-blue" style="white-space:nowrap">${t.category||'—'}</span></td>
+          <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}">${capitalize(t.type)}</span></td>
+          <td style="font-size:0.78rem;color:var(--green-text,var(--green));white-space:nowrap">${debitAcc?.name||'—'}</td>
+          <td style="font-size:0.78rem;color:var(--red);white-space:nowrap">${creditAcc?.name||'—'}</td>
+          <td style="font-weight:600;text-align:right;white-space:nowrap">${fmt(t.amount,t.currency)}</td>
           <td style="white-space:nowrap">
             <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem;margin-right:4px" onclick="editTxn('${t.id}')">✏️</button>
             <button class="btn-danger" onclick="deleteTxn('${t.id}')">🗑</button>
           </td>
         </tr>`;
       }).join('')}</tbody>
-    </table>`
+    </table></div>`
     :`<div class="empty-state"><div class="empty-icon">💳</div><div class="empty-text">No transactions found.</div></div>`;
 }
 
@@ -1507,8 +1538,21 @@ function renderPnL(){
     if(to&&t.date>to)return false;
     return true;
   });
+  // Get income transactions - both simple and double entry
   const incTxns=monthTxns.filter(t=>t.type==='income');
   const expTxns=monthTxns.filter(t=>t.type==='expense');
+  // Also include journal entries that affect income/expense accounts
+  const journalTxns=monthTxns.filter(t=>t.type==='journal'&&t.category!=='Opening Balance');
+  journalTxns.forEach(t=>{
+    const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+    const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+    if(creditAcc?.classification==='income'){
+      incTxns.push({...t,category:creditAcc.name.replace(' Income','')});
+    }
+    if(debitAcc?.classification==='expense'){
+      expTxns.push({...t,category:debitAcc.name.replace(' Expense','')});
+    }
+  });
   const totalInc=incTxns.reduce((s,t)=>s+parseFloat(t.amount),0);
   const totalExp=expTxns.reduce((s,t)=>s+parseFloat(t.amount),0);
   const net=totalInc-totalExp;
