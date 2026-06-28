@@ -488,7 +488,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="txn-date"/></div>
-      <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="txn-amount" placeholder="0.00"/></div>
+      <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="txn-amount" placeholder="0.00" step="0.01"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Currency</label>
@@ -536,7 +536,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </select>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Opening Balance *</label><input class="form-input" type="number" id="acc-balance" placeholder="0"/></div>
+      <div class="form-group"><label class="form-label">Opening Balance *</label><input class="form-input" type="number" id="acc-balance" placeholder="0.00" step="0.01"/></div>
       <div class="form-group"><label class="form-label">Currency</label>
         <select class="form-select" id="acc-currency">
           <option value="INR">₹ INR</option>
@@ -887,7 +887,7 @@ function renderDashboard(){
   // Accounts overview
   document.getElementById('dash-accounts').innerHTML=accounts.length
     ?accounts.slice(0,5).map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:1rem">${accIcon(a.type)}</span><div><div style="font-size:0.82rem;font-weight:500">${a.name}</div><div style="font-size:0.7rem;color:var(--text3)">${capitalize(a.type)}</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:1rem">${accIcon(a.type)}</span><div><div style="font-size:0.82rem;font-weight:600;color:var(--text)">${a.name}</div><div style="font-size:0.7rem;color:var(--text3)">${capitalize(a.type)} · ${fmt(a.opening_balance,a.currency)}</div></div></div>
       <div style="font-weight:600;font-size:0.85rem">${fmt(a.opening_balance,a.currency)}</div>
     </div>`).join('')
     :`<div class="empty-state"><div class="empty-text">No accounts yet.</div></div>`;
@@ -1370,7 +1370,14 @@ function openModal(id){
     sel.innerHTML=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
   }
   if(id==='add-trade-modal'){document.getElementById('trade-date').value=todayISO();}
-  if(id==='add-account-modal'){document.getElementById('acc-opening-date').value=todayISO();}
+  if(id==='add-account-modal'){
+    document.getElementById('acc-name').value='';
+    document.getElementById('acc-balance').value='';
+    document.getElementById('acc-notes').value='';
+    document.getElementById('acc-opening-date').value=todayISO();
+    document.getElementById('acc-type').value='cash';
+    document.getElementById('acc-currency').value='INR';
+  }
   if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
   if(id==='add-loan-modal'){document.getElementById('loan-start').value=todayISO();}
   document.getElementById(id).classList.add('open');
@@ -1385,7 +1392,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 function todayISO(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function toMonthISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
 function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}
-function fmt(val,currency='INR'){const n=parseFloat(val)||0;const sym=currency==='USD'?'$':'₹';return sym+n.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function fmt(val,currency='INR',decimals=2){const n=parseFloat(val)||0;const sym=currency==='USD'?'$':'₹';return sym+n.toLocaleString('en-IN',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});}
 function capitalize(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 function monthsBetween(d1,d2){return(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());}
 function accIcon(type){return{cash:'💵',bank:'🏦','indian-stock':'📈','us-stock':'🌐',property:'🏠',fd:'🔒',pf:'🏛️',gold:'🥇',crypto:'₿',other:'✨'}[type]||'💼';}
