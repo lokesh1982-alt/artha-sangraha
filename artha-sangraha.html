@@ -631,6 +631,19 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 </div>
 
+<!-- LOGOUT CONFIRMATION MODAL -->
+<div class="modal-overlay" id="logout-modal">
+  <div class="modal" style="max-width:320px;text-align:center">
+    <div style="font-size:2rem;margin-bottom:12px">🚪</div>
+    <div class="modal-title" style="margin-bottom:8px">Sign out?</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:24px">You will be returned to the sign in screen.</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-outline" style="flex:1" onclick="closeModal('logout-modal')">Cancel</button>
+      <button class="btn-primary" style="flex:1" onclick="confirmLogout()">Sign Out</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ═══════════════════════════════
@@ -684,6 +697,10 @@ async function doSignup(){
 }
 
 async function doLogout(){
+  openModal('logout-modal');
+}
+async function confirmLogout(){
+  closeModal('logout-modal');
   localStorage.removeItem('as-user-name');
   currentUser=null;currentProfile=null;
   accounts=[];transactions=[];trades=[];loans=[];budgets=[];
