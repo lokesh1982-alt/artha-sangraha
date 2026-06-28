@@ -282,6 +282,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="sidebar-label">Main</div>
         <button class="nav-item active" onclick="switchSection('dashboard',this)"><span class="nav-icon">🏠</span>Dashboard</button>
         <button class="nav-item" onclick="switchSection('accounts',this)"><span class="nav-icon">🏦</span>Accounts</button>
+        <button class="nav-item" onclick="switchSection('chart-of-accounts',this)"><span class="nav-icon">📋</span>Chart of Accounts</button>
         <button class="nav-item" onclick="switchSection('transactions',this)"><span class="nav-icon">💳</span>Transactions</button>
       </div>
       <div class="sidebar-section">
@@ -328,6 +329,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <div class="sec-header"><div class="sec-title">Monthly Income vs Expenses</div></div>
           <div id="dash-chart"></div>
         </div>
+      </div>
+
+      <!-- CHART OF ACCOUNTS -->
+      <div class="section" id="sec-chart-of-accounts">
+        <div class="page-header">
+          <div><div class="page-title">Chart of Accounts</div><div class="page-sub">All accounts with current balances</div></div>
+          <button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button>
+        </div>
+        <div id="coa-content"></div>
       </div>
 
       <!-- ACCOUNTS -->
@@ -475,12 +485,12 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <div class="bottom-nav-inner">
       <button class="bnav-item active" onclick="switchSection('dashboard',this)"><span>🏠</span><span>Home</span></button>
       <button class="bnav-item" onclick="switchSection('accounts',this)"><span>🏦</span><span>Accounts</span></button>
+      <button class="bnav-item" onclick="switchSection('chart-of-accounts',this)"><span>📋</span><span>COA</span></button>
       <button class="bnav-item" onclick="switchSection('transactions',this)"><span>💳</span><span>Txns</span></button>
       <button class="bnav-item" onclick="switchSection('balance-sheet',this)"><span>📊</span><span>Balance</span></button>
       <button class="bnav-item" onclick="switchSection('pnl',this)"><span>📈</span><span>P&L</span></button>
       <button class="bnav-item" onclick="switchSection('trading',this)"><span>📓</span><span>Trades</span></button>
       <button class="bnav-item" onclick="switchSection('loans',this)"><span>🏛️</span><span>Loans</span></button>
-      <button class="bnav-item" onclick="switchSection('reports',this)"><span>📉</span><span>Reports</span></button>
     </div>
   </div>
 </div>
@@ -494,7 +504,18 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="modal-title" id="txn-modal-title">Add Transaction</div>
       <button class="btn-close" onclick="closeModal('add-txn-modal')">✕</button>
     </div>
+    <!-- Entry Mode Toggle -->
     <div class="form-group">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label class="form-label" style="margin-bottom:0">Entry Mode</label>
+        <div style="display:flex;gap:4px;background:var(--bg2);border-radius:var(--radius-sm);padding:3px">
+          <button class="tab-btn active" id="mode-simple-btn" onclick="setEntryMode('simple')" style="padding:5px 12px;font-size:0.75rem">Simple</button>
+          <button class="tab-btn" id="mode-double-btn" onclick="setEntryMode('double')" style="padding:5px 12px;font-size:0.75rem">Double Entry</button>
+        </div>
+      </div>
+    </div>
+    <!-- Type (simple mode) -->
+    <div class="form-group" id="txn-type-wrap">
       <label class="form-label">Type</label>
       <div class="tabs" style="margin-bottom:0">
         <button class="tab-btn active" onclick="selectTxnType('income',this)">Income</button>
@@ -513,20 +534,34 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <option value="USD">$ USD</option>
         </select>
       </div>
+      <div class="form-group" id="txn-category-wrap"><label class="form-label">Category</label>
+        <select class="form-select" id="txn-category">
+          <option>Salary</option><option>Rental</option><option>Dividends</option><option>Business</option>
+          <option>Household</option><option>EMI</option><option>Utilities</option><option>Investment</option>
+          <option>Healthcare</option><option>Education</option><option>Travel</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <!-- Simple mode fields -->
+    <div id="simple-mode-fields">
       <div class="form-group"><label class="form-label" id="txn-account-label">Account *</label>
         <select class="form-select" id="txn-account"></select>
       </div>
+      <div class="form-group" id="txn-to-account-wrap" style="display:none">
+        <label class="form-label">Transfer To Account *</label>
+        <select class="form-select" id="txn-to-account"></select>
+      </div>
     </div>
-    <div class="form-group" id="txn-to-account-wrap" style="display:none">
-      <label class="form-label">Transfer To Account *</label>
-      <select class="form-select" id="txn-to-account"></select>
-    </div>
-    <div class="form-group"><label class="form-label">Category</label>
-      <select class="form-select" id="txn-category">
-        <option>Salary</option><option>Rental</option><option>Dividends</option><option>Business</option>
-        <option>Household</option><option>EMI</option><option>Utilities</option><option>Investment</option>
-        <option>Healthcare</option><option>Education</option><option>Travel</option><option>Other</option>
-      </select>
+    <!-- Double entry fields -->
+    <div id="double-entry-fields" style="display:none">
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px;font-weight:600">📘 DEBIT (increases asset/expense)</div>
+        <select class="form-select" id="txn-debit-account"></select>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px;font-weight:600">📗 CREDIT (increases income/liability)</div>
+        <select class="form-select" id="txn-credit-account"></select>
+      </div>
     </div>
     <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="txn-desc" placeholder="What was this for?"/></div>
     <button class="btn-primary" onclick="saveTxn()">Save Transaction</button>
@@ -884,8 +919,59 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 });
 
 // ═══════════════════════════════
-//  DATA LOADING
+//  BALANCE CALCULATION
 // ═══════════════════════════════
+function calcBalance(acc, asOfDate=null){
+  let bal=parseFloat(acc.opening_balance||0);
+  const accTxns=transactions.filter(t=>{
+    if(asOfDate&&t.date>asOfDate)return false;
+    return t.debit_account_id===acc.id||t.credit_account_id===acc.id||t.account_id===acc.id||t.to_account_id===acc.id;
+  });
+  accTxns.forEach(t=>{
+    const amt=parseFloat(t.amount||0);
+    const cls=acc.classification||'asset';
+    if(t.debit_account_id===acc.id){
+      // Debit increases assets/expenses, decreases liabilities/income/equity
+      if(['asset','expense'].includes(cls))bal+=amt;
+      else bal-=amt;
+    } else if(t.credit_account_id===acc.id){
+      // Credit increases liabilities/income/equity, decreases assets/expenses
+      if(['asset','expense'].includes(cls))bal-=amt;
+      else bal+=amt;
+    } else {
+      // Legacy simple transactions
+      if(t.account_id===acc.id){
+        if(t.type==='income')bal+=amt;
+        else if(t.type==='expense')bal-=amt;
+        else if(t.type==='transfer')bal-=amt;
+      } else if(t.to_account_id===acc.id&&t.type==='transfer'){
+        bal+=amt;
+      }
+    }
+  });
+  return bal;
+}
+
+// Auto-create income/expense accounts for a category
+async function ensureCategoryAccount(category, type){
+  const classification=type==='income'?'income':'expense';
+  const existing=accounts.find(a=>a.category_account===category&&a.classification===classification);
+  if(existing)return existing;
+  const acc={
+    user_id:currentUser.id,
+    name:category+(type==='income'?' Income':' Expense'),
+    type:type==='income'?'custom-income':'custom-expense',
+    classification,
+    opening_balance:0,
+    currency:'INR',
+    opening_date:todayISO(),
+    category_account:category,
+    notes:'Auto-created'
+  };
+  const{data,error}=await sb.from('accounts').insert(acc).select().single();
+  if(!error&&data){accounts.push(data);return data;}
+  return null;
+}
 async function loadAllData(){
   const uid=currentUser.id;
   console.log('Loading data for user:', uid);
@@ -915,6 +1001,7 @@ function switchSection(name,btn){
   document.getElementById('sec-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
   if(name==='dashboard')renderDashboard();
+  if(name==='chart-of-accounts')renderChartOfAccounts();
   if(name==='accounts')renderAccounts();
   if(name==='transactions'){
     // Populate account filter
@@ -947,8 +1034,8 @@ function switchSection(name,btn){
 //  DASHBOARD
 // ═══════════════════════════════
 function renderDashboard(){
-  const totalAssets=accounts.reduce((s,a)=>s+(a.currency==='INR'?parseFloat(a.opening_balance||0):0),0);
-  const totalLiabilities=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
+  const totalAssets=accounts.filter(a=>['asset','cash','bank','indian-stock','us-stock','property','fd','pf','gold','crypto','custom-asset','other'].includes(a.type||a.classification==='asset')?true:a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  const totalLiabilities=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const netWorth=totalAssets-totalLiabilities;
   const now=new Date();const monthStr=toMonthISO(now);
   const monthTxns=transactions.filter(t=>t.date.startsWith(monthStr));
@@ -983,8 +1070,8 @@ function renderDashboard(){
   // Accounts overview
   document.getElementById('dash-accounts').innerHTML=accounts.length
     ?accounts.slice(0,5).map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:1rem">${accIcon(a.type)}</span><div><div style="font-size:0.82rem;font-weight:600;color:var(--text)">${a.name}</div><div style="font-size:0.7rem;color:var(--text3)">${capitalize(a.type)} · ${fmt(a.opening_balance,a.currency)}</div></div></div>
-      <div style="font-weight:600;font-size:0.85rem">${fmt(a.opening_balance,a.currency)}</div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:1rem">${accIcon(a.type)}</span><div><div style="font-size:0.82rem;font-weight:600;color:var(--text)">${a.name}</div><div style="font-size:0.7rem;color:var(--text3)">${capitalize(a.type)} · ${a.currency}</div></div></div>
+      <div style="font-weight:600;font-size:0.85rem;color:var(--accent)">${fmt(calcBalance(a),a.currency)}</div>
     </div>`).join('')
     :`<div class="empty-state"><div class="empty-text">No accounts yet.</div></div>`;
 
@@ -1019,6 +1106,71 @@ function renderDashChart(){
 // ═══════════════════════════════
 //  ACCOUNTS
 // ═══════════════════════════════
+// ═══════════════════════════════
+//  CHART OF ACCOUNTS
+// ═══════════════════════════════
+let entryMode='simple';
+
+function setEntryMode(mode){
+  entryMode=mode;
+  document.getElementById('mode-simple-btn').classList.toggle('active',mode==='simple');
+  document.getElementById('mode-double-btn').classList.toggle('active',mode==='double');
+  document.getElementById('simple-mode-fields').style.display=mode==='simple'?'block':'none';
+  document.getElementById('double-entry-fields').style.display=mode==='double'?'block':'none';
+  document.getElementById('txn-type-wrap').style.display=mode==='simple'?'block':'none';
+  document.getElementById('txn-category-wrap').style.display=mode==='simple'?'flex':'none';
+}
+
+function renderChartOfAccounts(){
+  const groups={
+    'Assets':{cls:'asset',color:'var(--green)',icon:'📈'},
+    'Liabilities':{cls:'liability',color:'var(--red)',icon:'💳'},
+    'Equity':{cls:'equity',color:'var(--purple)',icon:'🏛️'},
+    'Income':{cls:'income',color:'var(--accent)',icon:'💰'},
+    'Expenses':{cls:'expense',color:'var(--yellow)',icon:'💸'},
+  };
+  let totalDebits=0,totalCredits=0;
+  let html='';
+  Object.entries(groups).forEach(([groupName,{cls,color,icon}])=>{
+    const groupAccs=accounts.filter(a=>(a.classification||'asset')===cls);
+    if(!groupAccs.length)return;
+    let groupTotal=0;
+    const rows=groupAccs.map(a=>{
+      const bal=calcBalance(a);
+      groupTotal+=a.currency==='INR'?bal:0;
+      if(['asset','expense'].includes(cls))totalDebits+=a.currency==='INR'?bal:0;
+      else totalCredits+=a.currency==='INR'?bal:0;
+      return `<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
+        <td style="padding-left:24px">${accIcon(a.type)} ${a.name}</td>
+        <td style="font-size:0.75rem;color:var(--text2)">${a.notes||capitalize(a.type)}</td>
+        <td style="text-align:right">${fmt(parseFloat(a.opening_balance||0),a.currency)}</td>
+        <td style="text-align:right;font-weight:600;color:${color}">${fmt(bal,a.currency)}</td>
+        <td><button class="btn-danger" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button></td>
+      </tr>`;
+    }).join('');
+    html+=`<div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:0.95rem;font-weight:700">${icon} ${groupName}</div>
+        <div style="font-weight:700;color:${color}">${fmt(groupTotal,'INR')}</div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Account</th><th>Notes</th><th style="text-align:right">Opening</th><th style="text-align:right">Current Balance</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  });
+  // Trial Balance summary
+  html+=`<div class="card" style="background:var(--bg2)">
+    <div class="sec-title" style="margin-bottom:12px">⚖️ Trial Balance</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Debits (Assets + Expenses)</div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">${fmt(totalDebits,'INR')}</div></div>
+      <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Credits (Liabilities + Income + Equity)</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${fmt(totalCredits,'INR')}</div></div>
+    </div>
+    ${Math.abs(totalDebits-totalCredits)<1?'<div style="margin-top:10px;color:var(--green);font-size:0.85rem;font-weight:600">✅ Books are balanced!</div>':'<div style="margin-top:10px;color:var(--red);font-size:0.85rem">⚠️ Difference: '+fmt(Math.abs(totalDebits-totalCredits),'INR')+'</div>'}
+  </div>`;
+  document.getElementById('coa-content').innerHTML=html||'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No accounts yet.</div></div>';
+}
+
 function renderAccounts(){
   const grouped={};
   accounts.forEach(a=>{if(!grouped[a.type])grouped[a.type]=[];grouped[a.type].push(a);});
@@ -1030,7 +1182,7 @@ function renderAccounts(){
     ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
       <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
       <div class="account-info"><div class="account-name">${a.name}</div><div class="account-type">${a.notes||capitalize(a.type)} · As of ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div></div>
-      <div class="account-bal"><div class="account-bal-val">${fmt(a.opening_balance,a.currency)}</div><div class="account-bal-curr">${a.currency}</div></div>
+      <div class="account-bal"><div class="account-bal-val">${fmt(calcBalance(a),a.currency)}</div><div class="account-bal-curr">${a.currency} · Current</div></div>
       <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
     </div>`).join('')}
     </div></div>`;
@@ -1456,16 +1608,46 @@ async function saveTxn(){
   if(!currentUser){showToast('Not logged in.');return;}
   const amount=parseFloat(document.getElementById('txn-amount').value);
   const date=document.getElementById('txn-date').value;
-  const account_id=document.getElementById('txn-account').value;
-  if(!amount||!date||!account_id){showToast('Please fill required fields.');return;}
-  // For transfer, check to account
-  const to_account_id=selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null;
-  if(selectedTxnType==='transfer'&&!to_account_id){showToast('Please select destination account.');return;}
-  if(selectedTxnType==='transfer'&&to_account_id===account_id){showToast('Source and destination cannot be same.');return;}
-  const txn={user_id:currentUser.id,type:selectedTxnType,date,amount,currency:document.getElementById('txn-currency').value,account_id,to_account_id:to_account_id||null,category:document.getElementById('txn-category').value,description:document.getElementById('txn-desc').value.trim()};
-  const{data,error}=await sb.from('transactions').insert(txn).select().single();
-  if(error){showToast('Error: '+error.message);return;}
-  transactions.unshift(data);
+  if(!amount||!date){showToast('Please fill date and amount.');return;}
+
+  if(entryMode==='double'){
+    // Double entry mode
+    const debitAccId=document.getElementById('txn-debit-account').value;
+    const creditAccId=document.getElementById('txn-credit-account').value;
+    if(!debitAccId||!creditAccId){showToast('Please select both debit and credit accounts.');return;}
+    if(debitAccId===creditAccId){showToast('Debit and credit accounts must be different.');return;}
+    const txn={user_id:currentUser.id,type:'journal',date,amount,currency:document.getElementById('txn-currency').value,
+      account_id:debitAccId,debit_account_id:debitAccId,credit_account_id:creditAccId,
+      category:document.getElementById('txn-category').value,description:document.getElementById('txn-desc').value.trim()};
+    const{data,error}=await sb.from('transactions').insert(txn).select().single();
+    if(error){showToast('Error: '+error.message);return;}
+    transactions.unshift(data);
+  } else {
+    // Simple mode
+    const account_id=document.getElementById('txn-account').value;
+    if(!account_id){showToast('Please select an account.');return;}
+    const to_account_id=selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null;
+    if(selectedTxnType==='transfer'&&!to_account_id){showToast('Please select destination account.');return;}
+    if(selectedTxnType==='transfer'&&to_account_id===account_id){showToast('Source and destination cannot be same.');return;}
+    const category=document.getElementById('txn-category').value;
+    // Auto-create income/expense category account
+    let debit_acc=null,credit_acc=null;
+    if(selectedTxnType==='income'){
+      const incAcc=await ensureCategoryAccount(category,'income');
+      debit_acc=account_id;credit_acc=incAcc?.id||null;
+    } else if(selectedTxnType==='expense'){
+      const expAcc=await ensureCategoryAccount(category,'expense');
+      credit_acc=account_id;debit_acc=expAcc?.id||null;
+    } else {
+      debit_acc=to_account_id;credit_acc=account_id;
+    }
+    const txn={user_id:currentUser.id,type:selectedTxnType,date,amount,currency:document.getElementById('txn-currency').value,
+      account_id,to_account_id:to_account_id||null,debit_account_id:debit_acc,credit_account_id:credit_acc,
+      category,description:document.getElementById('txn-desc').value.trim()};
+    const{data,error}=await sb.from('transactions').insert(txn).select().single();
+    if(error){showToast('Error: '+error.message);return;}
+    transactions.unshift(data);
+  }
   closeModal('add-txn-modal');
   showToast('Transaction saved! ✅');
   await loadAllData();
@@ -1605,11 +1787,21 @@ function openModal(id){
     document.getElementById('txn-desc').value='';
     const wrap=document.getElementById('txn-to-account-wrap');
     if(wrap)wrap.style.display='none';
-    const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    const opts=accounts.map(a=>`<option value="${a.id}">${a.name} (${capitalize(a.classification||'asset')})</option>`).join('');
     document.getElementById('txn-account').innerHTML=opts;
     document.getElementById('txn-to-account').innerHTML=opts;
+    document.getElementById('txn-debit-account').innerHTML=opts;
+    document.getElementById('txn-credit-account').innerHTML=opts;
     selectedTxnType='income';
-    document.querySelectorAll('#add-txn-modal .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+    entryMode='simple';
+    setEntryMode('simple');
+    document.querySelectorAll('#add-txn-modal .tab-btn').forEach((b,i)=>{
+      if(b.id==='mode-simple-btn'||b.id==='mode-double-btn')return;
+      b.classList.toggle('active',i===2);// income tab
+    });
+    // Reset income tab
+    const typeBtns=document.querySelectorAll('#txn-type-wrap .tab-btn');
+    typeBtns.forEach((b,i)=>b.classList.toggle('active',i===0));
   }
   if(id==='add-trade-modal'){
     document.getElementById('trade-date').value=todayISO();
