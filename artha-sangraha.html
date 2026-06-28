@@ -666,7 +666,14 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 // ═══════════════════════════════
 const SUPABASE_URL='https://wzjcjhazigooukzauibx.supabase.co';
 const SUPABASE_KEY='sb_publishable__QKP7bJDRXM71LamNvZmaA_mag1PBLC';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+  auth:{
+    persistSession:true,
+    autoRefreshToken:true,
+    detectSessionInUrl:false,
+    storageKey:'as-session'
+  }
+});
 
 // ═══════════════════════════════
 //  STATE
@@ -732,18 +739,36 @@ document.addEventListener('click',e=>{
 async function confirmLogout(){
   closeModal('logout-modal');
   closeUserMenu();
-  // Clear absolutely everything
+  // Clear all storage
   localStorage.clear();
   sessionStorage.clear();
-  // Sign out
+  // Sign out globally
   try{ await sb.auth.signOut({scope:'global'}); }catch(e){}
-  // Hard redirect with cache bust
-  window.location.href=window.location.pathname+'?logout='+Date.now();
+  // Clear cookies if any
+  document.cookie.split(';').forEach(c=>{
+    document.cookie=c.trim().split('=')[0]+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+  });
+  // Show login screen directly without reload
+  currentUser=null; currentProfile=null;
+  accounts=[];transactions=[];trades=[];loans=[];budgets=[];
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('auth-msg').textContent='';
+  switchAuthTab('login');
 }
 
 sb.auth.onAuthStateChange(async(event,session)=>{
-  // If this is a logout redirect, don't auto-login
+  // Ignore logout redirect
   if(window.location.search.includes('logout=')) return;
+  // Only react to explicit sign in/out events and initial session
+  if(event==='SIGNED_OUT'){
+    currentUser=null;currentProfile=null;
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    return;
+  }
   if(session?.user){
     currentUser=session.user;
     document.getElementById('auth-screen').style.display='none';
