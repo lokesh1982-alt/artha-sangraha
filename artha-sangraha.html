@@ -730,38 +730,20 @@ document.addEventListener('click',e=>{
   }
 });
 async function confirmLogout(){
-  try{
-    closeModal('logout-modal');
-    closeUserMenu();
-    // Clear cached name
-    localStorage.removeItem('as-user-name');
-    // Clear ALL Supabase session keys from localStorage
-    Object.keys(localStorage).forEach(key=>{
-      if(key.startsWith('sb-')||key.includes('supabase')){
-        localStorage.removeItem(key);
-      }
-    });
-    // Sign out from Supabase
-    await sb.auth.signOut({scope:'local'});
-    // Clear state
-    currentUser=null;
-    currentProfile=null;
-    accounts=[];transactions=[];trades=[];loans=[];budgets=[];
-    // Show login screen
-    document.getElementById('auth-screen').style.display='flex';
-    document.getElementById('app').style.display='none';
-    document.getElementById('login-email').value='';
-    document.getElementById('login-pass').value='';
-    document.getElementById('auth-msg').textContent='';
-    switchAuthTab('login');
-  }catch(e){
-    // Force show login even on error
-    document.getElementById('auth-screen').style.display='flex';
-    document.getElementById('app').style.display='none';
-  }
+  closeModal('logout-modal');
+  closeUserMenu();
+  // Clear absolutely everything
+  localStorage.clear();
+  sessionStorage.clear();
+  // Sign out
+  try{ await sb.auth.signOut({scope:'global'}); }catch(e){}
+  // Hard redirect with cache bust
+  window.location.href=window.location.pathname+'?logout='+Date.now();
 }
 
 sb.auth.onAuthStateChange(async(event,session)=>{
+  // If this is a logout redirect, don't auto-login
+  if(window.location.search.includes('logout=')) return;
   if(session?.user){
     currentUser=session.user;
     document.getElementById('auth-screen').style.display='none';
@@ -1377,6 +1359,12 @@ function accIcon(type){return{cash:'💵',bank:'🏦','indian-stock':'📈','us-
 function accBg(type){return{cash:'#D1FAE5',bank:'#DBEAFE','indian-stock':'#FEF3C7','us-stock':'#EDE9FE',property:'#FEE2E2',fd:'#E0E7FF',pf:'#F0FDF4',gold:'#FEF9C3',crypto:'#FEE2E2',other:'#F1F5F9'}[type]||'#F1F5F9';}
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./as-sw.js').catch(()=>{});
+
+// If redirected after logout, show login screen immediately
+if(window.location.search.includes('logout=')){
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
 </script>
 </body>
 </html>
