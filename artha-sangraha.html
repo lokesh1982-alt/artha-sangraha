@@ -732,13 +732,8 @@ document.addEventListener('click',e=>{
 async function confirmLogout(){
   closeModal('logout-modal');
   localStorage.removeItem('as-user-name');
-  currentUser=null;currentProfile=null;
-  accounts=[];transactions=[];trades=[];loans=[];budgets=[];
   await sb.auth.signOut();
-  document.getElementById('auth-screen').style.display='flex';
-  document.getElementById('app').style.display='none';
-  document.getElementById('user-name-top').textContent='User';
-  document.getElementById('user-avatar').textContent='U';
+  window.location.reload();
 }
 
 sb.auth.onAuthStateChange(async(event,session)=>{
