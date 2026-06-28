@@ -703,8 +703,14 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     // Try to get name from profiles, fallback to email
     const{data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     currentProfile=data;
+    // If profile doesn't exist yet, create it
+    if(!data){
+      const emailName=currentUser.email.split('@')[0];
+      await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:emailName,role:'owner'});
+    }
     let name='';
     if(data?.name) name=data.name;
+    else if(currentUser.user_metadata?.name) name=currentUser.user_metadata.name;
     else if(currentUser.email) name=currentUser.email.split('@')[0];
     else name='User';
     // Capitalize first letter
