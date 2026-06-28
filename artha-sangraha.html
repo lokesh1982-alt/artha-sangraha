@@ -1453,6 +1453,7 @@ async function saveTxn(){
   transactions.unshift(data);
   closeModal('add-txn-modal');
   showToast('Transaction saved! ✅');
+  await loadAllData();
   renderDashboard();
 }
 
@@ -1472,7 +1473,9 @@ async function saveAccount(){
   accounts.push(data);
   closeModal('add-account-modal');
   showToast('Account saved! ✅');
+  await loadAllData();
   renderAccounts();
+  renderDashboard();
 }
 
 async function saveTrade(){
@@ -1504,6 +1507,7 @@ async function saveTrade(){
   trades.unshift(data);
   closeModal('add-trade-modal');
   showToast('Trade saved! ✅');
+  await loadAllData();
   renderTrading();
 }
 
@@ -1517,11 +1521,12 @@ async function saveLoan(){
   const start=document.getElementById('loan-start').value;
   if(!name||!principal||!rate||!tenure||!emi||!start){showToast('Please fill all fields.');return;}
   const loan={user_id:currentUser.id,name,principal,interest_rate:rate,tenure_months:tenure,start_date:start,emi,currency:document.getElementById('loan-currency').value};
-  const{data,error}=await sb.from('loans').insert(loan).select().single();
-  if(error){showToast('Error: '+error.message);return;}
-  loans.push(data);
+  const{data:ldata,error:lerror}=await sb.from('loans').insert(loan).select().single();
+  if(lerror){showToast('Error: '+lerror.message);return;}
+  loans.push(ldata);
   closeModal('add-loan-modal');
   showToast('Loan added! ✅');
+  await loadAllData();
   renderLoans();
 }
 
@@ -1532,11 +1537,12 @@ async function saveBudget(){
   const limit=parseFloat(document.getElementById('budget-limit').value);
   if(!cat||!month||!limit){showToast('Please fill all fields.');return;}
   const budget={user_id:currentUser.id,category:cat,month,limit_amount:limit,currency:document.getElementById('budget-currency').value};
-  const{data,error}=await sb.from('budgets').insert(budget).select().single();
-  if(error){showToast('Error: '+error.message);return;}
-  budgets.unshift(data);
+  const{data:bdata,error:berror}=await sb.from('budgets').insert(budget).select().single();
+  if(berror){showToast('Error: '+berror.message);return;}
+  budgets.unshift(bdata);
   closeModal('add-budget-modal');
   showToast('Budget set! ✅');
+  await loadAllData();
   renderBudget();
 }
 
@@ -1546,31 +1552,31 @@ async function saveBudget(){
 async function deleteTxn(id){
   if(!confirm('Delete this transaction?'))return;
   await sb.from('transactions').delete().eq('id',id);
-  transactions=transactions.filter(t=>t.id!==id);
-  renderTransactions();showToast('Deleted.');
+  await loadAllData();
+  renderTransactions();renderDashboard();showToast('Deleted.');
 }
 async function deleteTrade(id){
   if(!confirm('Delete this trade?'))return;
   await sb.from('trades').delete().eq('id',id);
-  trades=trades.filter(t=>t.id!==id);
+  await loadAllData();
   renderTrading();showToast('Deleted.');
 }
 async function deleteLoan(id){
   if(!confirm('Delete this loan?'))return;
   await sb.from('loans').delete().eq('id',id);
-  loans=loans.filter(l=>l.id!==id);
+  await loadAllData();
   renderLoans();showToast('Deleted.');
 }
 async function deleteBudget(id){
   if(!confirm('Remove this budget?'))return;
   await sb.from('budgets').delete().eq('id',id);
-  budgets=budgets.filter(b=>b.id!==id);
+  await loadAllData();
   renderBudget();showToast('Removed.');
 }
 async function deleteAccountPrompt(id){
   if(!confirm('Delete this account?'))return;
   await sb.from('accounts').delete().eq('id',id);
-  accounts=accounts.filter(a=>a.id!==id);
+  await loadAllData();
   renderAccounts();showToast('Account deleted.');
 }
 
