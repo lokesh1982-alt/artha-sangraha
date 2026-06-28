@@ -1088,8 +1088,6 @@ async function updateLoan(){
   await loadAllData();renderLoans();
 }
 function calcBalance(acc, asOfDate=null){
-  // Start from 0 — opening balance is now captured as a journal entry
-  // But for accounts that have no opening balance journal entry, use opening_balance
   const hasOpeningJournal=transactions.some(t=>
     t.category==='Opening Balance'&&
     (t.debit_account_id===acc.id||t.credit_account_id===acc.id)&&
@@ -1099,24 +1097,28 @@ function calcBalance(acc, asOfDate=null){
 
   const accTxns=transactions.filter(t=>{
     if(asOfDate&&t.date>asOfDate)return false;
-    return t.debit_account_id===acc.id||t.credit_account_id===acc.id||
-           (!t.debit_account_id&&!t.credit_account_id&&(t.account_id===acc.id||t.to_account_id===acc.id));
+    if(t.debit_account_id||t.credit_account_id){
+      return t.debit_account_id===acc.id||t.credit_account_id===acc.id;
+    }
+    return t.account_id===acc.id||t.to_account_id===acc.id;
   });
 
   accTxns.forEach(t=>{
     const amt=parseFloat(t.amount||0);
     const cls=acc.classification||'asset';
-    if(t.debit_account_id===acc.id){
-      if(['asset','expense'].includes(cls))bal+=amt;else bal-=amt;
-    } else if(t.credit_account_id===acc.id){
-      if(['asset','expense'].includes(cls))bal-=amt;else bal+=amt;
+    if(t.debit_account_id||t.credit_account_id){
+      if(t.debit_account_id===acc.id){
+        if(['asset','expense'].includes(cls))bal+=amt;else bal-=amt;
+      } else if(t.credit_account_id===acc.id){
+        if(['asset','expense'].includes(cls))bal-=amt;else bal+=amt;
+      }
     } else {
-      // Legacy simple transactions without debit/credit accounts
+      // Legacy fallback
       if(t.account_id===acc.id){
         if(t.type==='income')bal+=amt;
         else if(t.type==='expense')bal-=amt;
         else if(t.type==='transfer')bal-=amt;
-      } else if(t.to_account_id===acc.id&&t.type==='transfer'){
+      } else if(t.to_account_id===acc.id){
         bal+=amt;
       }
     }
