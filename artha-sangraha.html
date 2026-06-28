@@ -865,8 +865,15 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('user-name-top').textContent=name;
     document.getElementById('user-avatar').textContent=name[0].toUpperCase();
     document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    document.getElementById('pnl-month').value=toMonthISO(new Date());
-    document.getElementById('txn-filter-month').value=toMonthISO(new Date());
+    // Set default date ranges
+    const now=new Date();
+    const firstDay=new Date(now.getFullYear(),now.getMonth(),1);
+    const pnlFrom=document.getElementById('pnl-from');
+    const pnlTo=document.getElementById('pnl-to');
+    const bsDate=document.getElementById('bs-as-of-date');
+    if(pnlFrom)pnlFrom.value=toLocalISO(firstDay);
+    if(pnlTo)pnlTo.value=todayISO();
+    if(bsDate)bsDate.value=todayISO();
     await loadAllData();
     renderDashboard();
   } else {
