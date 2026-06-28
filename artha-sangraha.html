@@ -922,24 +922,28 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 //  BALANCE CALCULATION
 // ═══════════════════════════════
 function calcBalance(acc, asOfDate=null){
-  let bal=parseFloat(acc.opening_balance||0);
+  // Start from 0 — opening balance is now captured as a journal entry
+  // But for accounts that have no opening balance journal entry, use opening_balance
+  const hasOpeningJournal=transactions.some(t=>
+    t.category==='Opening Balance'&&(t.debit_account_id===acc.id||t.credit_account_id===acc.id)
+  );
+  let bal=hasOpeningJournal?0:parseFloat(acc.opening_balance||0);
+
   const accTxns=transactions.filter(t=>{
     if(asOfDate&&t.date>asOfDate)return false;
-    return t.debit_account_id===acc.id||t.credit_account_id===acc.id||t.account_id===acc.id||t.to_account_id===acc.id;
+    return t.debit_account_id===acc.id||t.credit_account_id===acc.id||
+           (!t.debit_account_id&&!t.credit_account_id&&(t.account_id===acc.id||t.to_account_id===acc.id));
   });
+
   accTxns.forEach(t=>{
     const amt=parseFloat(t.amount||0);
     const cls=acc.classification||'asset';
     if(t.debit_account_id===acc.id){
-      // Debit increases assets/expenses, decreases liabilities/income/equity
-      if(['asset','expense'].includes(cls))bal+=amt;
-      else bal-=amt;
+      if(['asset','expense'].includes(cls))bal+=amt;else bal-=amt;
     } else if(t.credit_account_id===acc.id){
-      // Credit increases liabilities/income/equity, decreases assets/expenses
-      if(['asset','expense'].includes(cls))bal-=amt;
-      else bal+=amt;
+      if(['asset','expense'].includes(cls))bal-=amt;else bal+=amt;
     } else {
-      // Legacy simple transactions
+      // Legacy simple transactions without debit/credit accounts
       if(t.account_id===acc.id){
         if(t.type==='income')bal+=amt;
         else if(t.type==='expense')bal-=amt;
@@ -1584,7 +1588,11 @@ function openAccountLedger(accId, fromDate='', toDate=''){
     return true;
   }).sort((a,b)=>a.date.localeCompare(b.date));
 
-  let balance=parseFloat(acc.opening_balance||0);
+  const hasOpeningJournal=transactions.some(t=>
+    t.category==='Opening Balance'&&(t.debit_account_id===acc.id||t.credit_account_id===acc.id)
+  );
+  let balance=hasOpeningJournal?0:parseFloat(acc.opening_balance||0);
+
   const rows=[];
   rows.push(`<tr style="background:var(--bg2)">
     <td>${formatDate(acc.opening_date||acc.created_at?.split('T')[0])}</td>
