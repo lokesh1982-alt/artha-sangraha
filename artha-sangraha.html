@@ -733,7 +733,7 @@ async function confirmLogout(){
   closeModal('logout-modal');
   localStorage.removeItem('as-user-name');
   await sb.auth.signOut();
-  window.location.reload();
+  window.location.replace(window.location.pathname+'?t='+Date.now());
 }
 
 sb.auth.onAuthStateChange(async(event,session)=>{
