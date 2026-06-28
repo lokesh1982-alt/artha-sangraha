@@ -923,8 +923,9 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 // ═══════════════════════════════
 function editAccount(id){
   const a=accounts.find(x=>x.id===id);if(!a)return;
-  editingAccId=id;
   openModal('add-account-modal');
+  editingAccId=id;
+  document.querySelector('#add-account-modal .modal-title').textContent='Edit Account';
   document.getElementById('acc-name').value=a.name||'';
   document.getElementById('acc-balance').value=a.opening_balance||0;
   document.getElementById('acc-notes').value=a.notes||'';
@@ -932,13 +933,13 @@ function editAccount(id){
   document.getElementById('acc-type').value=a.type||'bank';
   document.getElementById('acc-currency').value=a.currency||'INR';
   document.getElementById('acc-classification').value=a.classification||'asset';
-  document.querySelector('#add-account-modal .modal-title').textContent='Edit Account';
 }
 
 function editTxn(id){
   const t=transactions.find(x=>x.id===id);if(!t)return;
-  editingTxnId=id;
-  openModal('add-txn-modal');
+  openModal('add-txn-modal'); // this resets editingTxnId to null first
+  editingTxnId=id; // then set it after
+  document.querySelector('#add-txn-modal .modal-title').textContent='Edit Transaction';
   document.getElementById('txn-date').value=t.date||todayISO();
   document.getElementById('txn-amount').value=t.amount||'';
   document.getElementById('txn-currency').value=t.currency||'INR';
@@ -961,8 +962,9 @@ function editTxn(id){
 
 function editTrade(id){
   const t=trades.find(x=>x.id===id);if(!t)return;
-  editingTradeId=id;
   openModal('add-trade-modal');
+  editingTradeId=id;
+  document.querySelector('#add-trade-modal .modal-title').textContent='Edit Trade';
   document.getElementById('trade-date').value=t.date||todayISO();
   document.getElementById('trade-stock').value=t.stock||'';
   document.getElementById('trade-exchange').value=t.exchange||'NSE';
@@ -972,13 +974,13 @@ function editTrade(id){
   document.getElementById('trade-exit').value=t.exit_price||'';
   document.getElementById('trade-currency').value=t.currency||'INR';
   document.getElementById('trade-notes').value=t.notes||'';
-  document.querySelector('#add-trade-modal .modal-title').textContent='Edit Trade';
 }
 
 function editLoan(id){
   const l=loans.find(x=>x.id===id);if(!l)return;
-  editingLoanId=id;
   openModal('add-loan-modal');
+  editingLoanId=id;
+  document.querySelector('#add-loan-modal .modal-title').textContent='Edit Loan';
   document.getElementById('loan-name').value=l.name||'';
   document.getElementById('loan-principal').value=l.principal||'';
   document.getElementById('loan-rate').value=l.interest_rate||'';
@@ -986,7 +988,6 @@ function editLoan(id){
   document.getElementById('loan-emi').value=l.emi||'';
   document.getElementById('loan-start').value=l.start_date||todayISO();
   document.getElementById('loan-currency').value=l.currency||'INR';
-  document.querySelector('#add-loan-modal .modal-title').textContent='Edit Loan';
 }
 
 async function updateAccount(){
