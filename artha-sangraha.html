@@ -685,6 +685,7 @@ async function doSignup(){
 
 async function doLogout(){
   if(confirm('Sign out of Artha-Sangraha?')){
+    localStorage.removeItem('as-user-name');
     await sb.auth.signOut();
     currentUser=null;currentProfile=null;
     accounts=[];transactions=[];trades=[];loans=[];budgets=[];
@@ -700,6 +701,11 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     currentUser=session.user;
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app').style.display='flex';
+    // Show cached name instantly while profile loads
+    const cachedName=localStorage.getItem('as-user-name')||currentUser.email?.split('@')[0]||'User';
+    const displayName=cachedName.charAt(0).toUpperCase()+cachedName.slice(1);
+    document.getElementById('user-name-top').textContent=displayName;
+    document.getElementById('user-avatar').textContent=displayName[0].toUpperCase();
     // Try to get name from profiles, fallback to email
     const{data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     currentProfile=data;
@@ -715,6 +721,8 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     else name='User';
     // Capitalize first letter
     name=name.charAt(0).toUpperCase()+name.slice(1);
+    // Cache name so it shows instantly on next reload
+    localStorage.setItem('as-user-name', name);
     document.getElementById('user-name-top').textContent=name;
     document.getElementById('user-avatar').textContent=name[0].toUpperCase();
     document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
