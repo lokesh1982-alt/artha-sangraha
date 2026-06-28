@@ -1012,12 +1012,26 @@ async function updateAccount(){
 }
 
 async function updateTxn(){
+  const account_id=document.getElementById('txn-account').value;
+  const to_account_id=selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null;
+  // Set debit/credit correctly based on type
+  let debit_account_id=null,credit_account_id=null;
+  if(selectedTxnType==='transfer'){
+    debit_account_id=to_account_id;  // destination is debited
+    credit_account_id=account_id;    // source is credited
+  } else if(selectedTxnType==='income'){
+    debit_account_id=account_id;     // bank account debited
+  } else if(selectedTxnType==='expense'){
+    credit_account_id=account_id;    // bank account credited
+  }
   const updates={
     date:document.getElementById('txn-date').value,
     amount:parseFloat(document.getElementById('txn-amount').value),
     currency:document.getElementById('txn-currency').value,
-    account_id:document.getElementById('txn-account').value,
-    to_account_id:selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null,
+    account_id,
+    to_account_id,
+    debit_account_id,
+    credit_account_id,
     category:document.getElementById('txn-category').value,
     description:document.getElementById('txn-desc').value.trim(),
     type:selectedTxnType
@@ -1030,6 +1044,7 @@ async function updateTxn(){
   showToast('Transaction updated! ✅');
   await loadAllData();
   renderTransactions();
+  renderDashboard();
   renderDashboard();
 }
 
