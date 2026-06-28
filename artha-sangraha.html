@@ -1728,15 +1728,58 @@ async function saveAccount(){
   const name=document.getElementById('acc-name').value.trim();
   const opening_balance=parseFloat(document.getElementById('acc-balance').value)||0;
   if(!name){showToast('Please enter account name.');return;}
-  // Ensure profile exists before saving account
+  // Ensure profile exists
   const{data:profile}=await sb.from('profiles').select('id').eq('id',currentUser.id).single();
   if(!profile){
     await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:currentUser.email.split('@')[0],role:'owner'});
   }
-  const acc={user_id:currentUser.id,name,type:document.getElementById('acc-type').value,opening_balance,currency:document.getElementById('acc-currency').value,notes:(document.getElementById('acc-custom-name').value.trim()||document.getElementById('acc-notes').value.trim()),opening_date:document.getElementById('acc-opening-date').value||todayISO(),classification:document.getElementById('acc-classification').value||'asset'};
+  const classification=document.getElementById('acc-classification').value||'asset';
+  const acc={
+    user_id:currentUser.id,name,
+    type:document.getElementById('acc-type').value,
+    opening_balance,
+    currency:document.getElementById('acc-currency').value,
+    notes:(document.getElementById('acc-custom-name').value.trim()||document.getElementById('acc-notes').value.trim()),
+    opening_date:document.getElementById('acc-opening-date').value||todayISO(),
+    classification
+  };
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
   accounts.push(data);
+
+  // If opening balance > 0, create double entry against Capital Account
+  if(opening_balance!==0){
+    // Ensure Capital Account exists
+    let capitalAcc=accounts.find(a=>a.classification==='equity'&&a.category_account==='capital');
+    if(!capitalAcc){
+      const capData={
+        user_id:currentUser.id,name:'Capital Account',type:'custom-equity',
+        classification:'equity',opening_balance:0,currency:data.currency,
+        opening_date:data.opening_date,category_account:'capital',notes:'Owner\'s equity / Net Worth'
+      };
+      const{data:cd}=await sb.from('accounts').insert(capData).select().single();
+      if(cd){accounts.push(cd);capitalAcc=cd;}
+    }
+    // Create opening balance journal entry
+    if(capitalAcc){
+      let debit_id,credit_id;
+      if(['asset','expense'].includes(classification)){
+        // Debit asset, Credit capital
+        debit_id=data.id;credit_id=capitalAcc.id;
+      } else {
+        // Debit capital, Credit liability/income
+        debit_id=capitalAcc.id;credit_id=data.id;
+      }
+      await sb.from('transactions').insert({
+        user_id:currentUser.id,type:'journal',
+        date:data.opening_date,amount:Math.abs(opening_balance),
+        currency:data.currency,account_id:data.id,
+        debit_account_id:debit_id,credit_account_id:credit_id,
+        category:'Opening Balance',description:'Opening balance — '+name
+      });
+    }
+  }
+
   closeModal('add-account-modal');
   showToast('Account saved! ✅');
   await loadAllData();
