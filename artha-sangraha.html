@@ -730,10 +730,31 @@ document.addEventListener('click',e=>{
   }
 });
 async function confirmLogout(){
-  closeModal('logout-modal');
-  localStorage.removeItem('as-user-name');
-  await sb.auth.signOut();
-  window.location.replace(window.location.pathname+'?t='+Date.now());
+  try{
+    closeModal('logout-modal');
+    closeUserMenu();
+    localStorage.removeItem('as-user-name');
+    // Clear state first
+    currentUser=null;
+    currentProfile=null;
+    accounts=[];transactions=[];trades=[];loans=[];budgets=[];
+    // Sign out from Supabase
+    await sb.auth.signOut({scope:'local'});
+    // Force show login screen
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('auth-screen').style.visibility='visible';
+    document.getElementById('auth-screen').style.opacity='1';
+    document.getElementById('app').style.display='none';
+    // Reset form
+    document.getElementById('login-email').value='';
+    document.getElementById('login-pass').value='';
+    document.getElementById('auth-msg').textContent='';
+    switchAuthTab('login');
+  }catch(e){
+    // Even if signOut fails, force show login screen
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
 }
 
 sb.auth.onAuthStateChange(async(event,session)=>{
