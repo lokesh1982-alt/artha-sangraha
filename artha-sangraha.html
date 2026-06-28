@@ -449,7 +449,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="bnav-item" onclick="switchSection('pnl',this)"><span>📈</span><span>P&L</span></button>
       <button class="bnav-item" onclick="switchSection('trading',this)"><span>📓</span><span>Trades</span></button>
       <button class="bnav-item" onclick="switchSection('loans',this)"><span>🏛️</span><span>Loans</span></button>
-      <button class="bnav-item" onclick="switchSection('reports',this)"><span>📉</span><span>Reports</span></button>
+      <button class="bnav-item" onclick="doLogout()"><span>🚪</span><span>Logout</span></button>
     </div>
   </div>
 </div>
@@ -522,6 +522,9 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Opening Balance *</label><input class="form-input" type="number" id="acc-balance" placeholder="0"/></div>
+      </div>
+      <div class="form-row">
+      <div class="form-group"><label class="form-label">Opening Balance Date *</label><input class="form-input" type="date" id="acc-opening-date"/></div>
       <div class="form-group"><label class="form-label">Currency</label>
         <select class="form-select" id="acc-currency">
           <option value="INR">₹ INR</option>
@@ -681,7 +684,15 @@ async function doSignup(){
 }
 
 async function doLogout(){
-  if(confirm('Sign out?')){await sb.auth.signOut();}
+  if(confirm('Sign out of Artha-Sangraha?')){
+    await sb.auth.signOut();
+    currentUser=null;currentProfile=null;
+    accounts=[];transactions=[];trades=[];loans=[];budgets=[];
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    document.getElementById('user-name-top').textContent='User';
+    document.getElementById('user-avatar').textContent='U';
+  }
 }
 
 sb.auth.onAuthStateChange(async(event,session)=>{
@@ -689,9 +700,15 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     currentUser=session.user;
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+    // Try to get name from profiles, fallback to email
+    const{data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     currentProfile=data;
-    const name=data?.name||currentUser.email.split('@')[0];
+    let name='';
+    if(data?.name) name=data.name;
+    else if(currentUser.email) name=currentUser.email.split('@')[0];
+    else name='User';
+    // Capitalize first letter
+    name=name.charAt(0).toUpperCase()+name.slice(1);
     document.getElementById('user-name-top').textContent=name;
     document.getElementById('user-avatar').textContent=name[0].toUpperCase();
     document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -828,7 +845,7 @@ function renderAccounts(){
     <div class="card-grid card-grid-2">
     ${accs.map(a=>`<div class="account-card" onclick="deleteAccountPrompt('${a.id}')">
       <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
-      <div class="account-info"><div class="account-name">${a.name}</div><div class="account-type">${a.notes||capitalize(a.type)}</div></div>
+      <div class="account-info"><div class="account-name">${a.name}</div><div class="account-type">${a.notes||capitalize(a.type)} · As of ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div></div>
       <div class="account-bal"><div class="account-bal-val">${fmt(a.opening_balance,a.currency)}</div><div class="account-bal-curr">${a.currency}</div></div>
     </div>`).join('')}
     </div></div>`;
@@ -884,7 +901,7 @@ function renderBalanceSheet(){
     totalAssets+=subtotal;
     assetRows+=`<tr class="group-row"><td colspan="3">${typeLabels[type]}</td></tr>`;
     accs.forEach(a=>{
-      assetRows+=`<tr><td style="padding-left:24px">${a.name}</td><td>${a.notes||''}</td><td style="text-align:right;font-weight:500">${fmt(a.opening_balance,a.currency)}</td></tr>`;
+      assetRows+=`<tr><td style="padding-left:24px">${a.name}</td><td>${a.notes||''} ${a.opening_date?'· As of '+formatDate(a.opening_date):''}</td><td style="text-align:right;font-weight:500">${fmt(a.opening_balance,a.currency)}</td></tr>`;
     });
     assetRows+=`<tr><td colspan="2" style="font-weight:500;padding-left:16px">Subtotal — ${typeLabels[type]}</td><td style="text-align:right;font-weight:600">${fmt(subtotal,'INR')}</td></tr>`;
   });
@@ -1154,7 +1171,7 @@ async function saveAccount(){
   const name=document.getElementById('acc-name').value.trim();
   const opening_balance=parseFloat(document.getElementById('acc-balance').value)||0;
   if(!name){showToast('Please enter account name.');return;}
-  const acc={user_id:currentUser.id,name,type:document.getElementById('acc-type').value,opening_balance,currency:document.getElementById('acc-currency').value,notes:document.getElementById('acc-notes').value.trim()};
+  const acc={user_id:currentUser.id,name,type:document.getElementById('acc-type').value,opening_balance,currency:document.getElementById('acc-currency').value,notes:document.getElementById('acc-notes').value.trim(),opening_date:document.getElementById('acc-opening-date').value||todayISO()};
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
   accounts.push(data);
@@ -1255,6 +1272,7 @@ function openModal(id){
     sel.innerHTML=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
   }
   if(id==='add-trade-modal'){document.getElementById('trade-date').value=todayISO();}
+  if(id==='add-account-modal'){document.getElementById('acc-opening-date').value=todayISO();}
   if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
   if(id==='add-loan-modal'){document.getElementById('loan-start').value=todayISO();}
   document.getElementById(id).classList.add('open');
