@@ -925,7 +925,9 @@ function calcBalance(acc, asOfDate=null){
   // Start from 0 — opening balance is now captured as a journal entry
   // But for accounts that have no opening balance journal entry, use opening_balance
   const hasOpeningJournal=transactions.some(t=>
-    t.category==='Opening Balance'&&(t.debit_account_id===acc.id||t.credit_account_id===acc.id)
+    t.category==='Opening Balance'&&
+    (t.debit_account_id===acc.id||t.credit_account_id===acc.id)&&
+    (!asOfDate||t.date<=asOfDate)
   );
   let bal=hasOpeningJournal?0:parseFloat(acc.opening_balance||0);
 
@@ -1589,19 +1591,13 @@ function openAccountLedger(accId, fromDate='', toDate=''){
   }).sort((a,b)=>a.date.localeCompare(b.date));
 
   const hasOpeningJournal=transactions.some(t=>
-    t.category==='Opening Balance'&&(t.debit_account_id===acc.id||t.credit_account_id===acc.id)
+    t.category==='Opening Balance'&&
+    (t.debit_account_id===acc.id||t.credit_account_id===acc.id)&&
+    (!effectiveTo||t.date<=effectiveTo)
   );
   let balance=hasOpeningJournal?0:parseFloat(acc.opening_balance||0);
 
   const rows=[];
-  // Only show static opening balance row if no journal entry exists
-  if(!hasOpeningJournal){
-    rows.push(`<tr style="background:var(--bg2)">
-      <td>${formatDate(acc.opening_date||acc.created_at?.split('T')[0])}</td>
-      <td><b>Opening Balance</b></td><td></td><td></td>
-      <td style="text-align:right;font-weight:700">${fmt(balance,acc.currency)}</td>
-    </tr>`);
-  }
 
   accTxns.forEach(t=>{
     let debit=0,credit=0;
