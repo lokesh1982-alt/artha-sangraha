@@ -780,7 +780,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 // ═══════════════════════════════
 let currentUser=null,currentProfile=null;
 let accounts=[],transactions=[],trades=[],loans=[],budgets=[];
-let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null;
+let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null,currentLedgerAccId=null;
 let currentReportTab='monthly';
 
 // ═══════════════════════════════
@@ -1045,7 +1045,8 @@ async function updateTxn(){
   await loadAllData();
   renderTransactions();
   renderDashboard();
-  renderDashboard();
+  // If ledger is currently open, refresh it
+  if(currentLedgerAccId) openAccountLedger(currentLedgerAccId);
 }
 
 async function updateTrade(){
@@ -1849,6 +1850,7 @@ function toggleFnoFields(){
 }
 
 function openAccountLedger(accId, fromDate='', toDate=''){
+  currentLedgerAccId=accId;
   const acc=accounts.find(a=>a.id===accId);if(!acc)return;
   const today=todayISO();
   const effectiveFrom=fromDate||'';
@@ -1905,7 +1907,7 @@ function openAccountLedger(accId, fromDate='', toDate=''){
   });
 
   const ledgerHTML=`
-    <button class="back-btn" onclick="renderAccounts()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:inherit;margin-bottom:16px;padding:0">← Back to Accounts</button>
+    <button class="back-btn" onclick="currentLedgerAccId=null;renderAccounts()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:inherit;margin-bottom:16px;padding:0">← Back to Accounts</button>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div>
         <div style="font-size:1.2rem;font-weight:700">${accIcon(acc.type)} ${acc.name}</div>
@@ -2142,7 +2144,9 @@ async function deleteTxn(id){
   if(!confirm('Delete this transaction?'))return;
   await sb.from('transactions').delete().eq('id',id);
   await loadAllData();
-  renderTransactions();renderDashboard();showToast('Deleted.');
+  renderTransactions();renderDashboard();
+  if(currentLedgerAccId)openAccountLedger(currentLedgerAccId);
+  showToast('Deleted.');
 }
 async function deleteTrade(id){
   if(!confirm('Delete this trade?'))return;
