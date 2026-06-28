@@ -464,7 +464,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="bnav-item" onclick="switchSection('pnl',this)"><span>📈</span><span>P&L</span></button>
       <button class="bnav-item" onclick="switchSection('trading',this)"><span>📓</span><span>Trades</span></button>
       <button class="bnav-item" onclick="switchSection('loans',this)"><span>🏛️</span><span>Loans</span></button>
-      <button class="bnav-item" onclick="doLogout()"><span>🚪</span><span>Logout</span></button>
+      <button class="bnav-item" onclick="switchSection('reports',this)"><span>📉</span><span>Reports</span></button>
     </div>
   </div>
 </div>
@@ -537,9 +537,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Opening Balance *</label><input class="form-input" type="number" id="acc-balance" placeholder="0"/></div>
-      </div>
-      <div class="form-row">
-      <div class="form-group"><label class="form-label">Opening Balance Date *</label><input class="form-input" type="date" id="acc-opening-date"/></div>
       <div class="form-group"><label class="form-label">Currency</label>
         <select class="form-select" id="acc-currency">
           <option value="INR">₹ INR</option>
@@ -547,6 +544,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </select>
       </div>
     </div>
+    <div class="form-group"><label class="form-label">Opening Balance Date *</label><input class="form-input" type="date" id="acc-opening-date"/></div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="acc-notes" placeholder="Bank name, account number, etc."/></div>
     <button class="btn-primary" onclick="saveAccount()">Save Account</button>
   </div>
@@ -1244,6 +1242,7 @@ function selectTxnType(type,btn){
 }
 
 async function saveTxn(){
+  if(!currentUser){showToast('Not logged in.');return;}
   const amount=parseFloat(document.getElementById('txn-amount').value);
   const date=document.getElementById('txn-date').value;
   const account_id=document.getElementById('txn-account').value;
@@ -1258,9 +1257,15 @@ async function saveTxn(){
 }
 
 async function saveAccount(){
+  if(!currentUser){showToast('Not logged in.');return;}
   const name=document.getElementById('acc-name').value.trim();
   const opening_balance=parseFloat(document.getElementById('acc-balance').value)||0;
   if(!name){showToast('Please enter account name.');return;}
+  // Ensure profile exists before saving account
+  const{data:profile}=await sb.from('profiles').select('id').eq('id',currentUser.id).single();
+  if(!profile){
+    await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:currentUser.email.split('@')[0],role:'owner'});
+  }
   const acc={user_id:currentUser.id,name,type:document.getElementById('acc-type').value,opening_balance,currency:document.getElementById('acc-currency').value,notes:document.getElementById('acc-notes').value.trim(),opening_date:document.getElementById('acc-opening-date').value||todayISO()};
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
@@ -1271,6 +1276,7 @@ async function saveAccount(){
 }
 
 async function saveTrade(){
+  if(!currentUser){showToast('Not logged in.');return;}
   const stock=document.getElementById('trade-stock').value.trim();
   const qty=parseFloat(document.getElementById('trade-qty').value);
   const entry=parseFloat(document.getElementById('trade-entry').value);
@@ -1286,6 +1292,7 @@ async function saveTrade(){
 }
 
 async function saveLoan(){
+  if(!currentUser){showToast('Not logged in.');return;}
   const name=document.getElementById('loan-name').value.trim();
   const principal=parseFloat(document.getElementById('loan-principal').value);
   const rate=parseFloat(document.getElementById('loan-rate').value);
@@ -1303,6 +1310,7 @@ async function saveLoan(){
 }
 
 async function saveBudget(){
+  if(!currentUser){showToast('Not logged in.');return;}
   const cat=document.getElementById('budget-cat').value;
   const month=document.getElementById('budget-month').value;
   const limit=parseFloat(document.getElementById('budget-limit').value);
