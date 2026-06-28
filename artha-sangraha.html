@@ -256,9 +256,21 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="topbar-right">
       <button class="btn-icon" onclick="openModal('add-txn-modal')">+ Transaction</button>
-      <div class="user-pill" onclick="doLogout()">
-        <div class="user-avatar" id="user-avatar">U</div>
-        <span id="user-name-top">User</span>
+      <div style="position:relative">
+        <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn">
+          <div class="user-avatar" id="user-avatar">U</div>
+          <span id="user-name-top">User</span>
+          <span style="font-size:0.7rem;margin-left:2px">▾</span>
+        </div>
+        <div id="user-dropdown" style="display:none;position:absolute;right:0;top:44px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);min-width:160px;z-index:300;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
+            <div style="font-size:0.78rem;font-weight:600;color:var(--text)" id="dropdown-name">User</div>
+            <div style="font-size:0.72rem;color:var(--text2)" id="dropdown-email"></div>
+          </div>
+          <button onclick="closeUserMenu();openModal('logout-modal')" style="width:100%;padding:11px 16px;background:none;border:none;text-align:left;font-size:0.85rem;color:var(--red);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;">
+            🚪 Sign Out
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -702,6 +714,21 @@ async function doSignup(){
 async function doLogout(){
   openModal('logout-modal');
 }
+function toggleUserMenu(){
+  const dd=document.getElementById('user-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+}
+function closeUserMenu(){
+  document.getElementById('user-dropdown').style.display='none';
+}
+// Close dropdown when clicking outside
+document.addEventListener('click',e=>{
+  const btn=document.getElementById('user-menu-btn');
+  const dd=document.getElementById('user-dropdown');
+  if(dd&&btn&&!btn.contains(e.target)&&!dd.contains(e.target)){
+    dd.style.display='none';
+  }
+});
 async function confirmLogout(){
   closeModal('logout-modal');
   localStorage.removeItem('as-user-name');
@@ -724,6 +751,10 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     const displayName=cachedName.charAt(0).toUpperCase()+cachedName.slice(1);
     document.getElementById('user-name-top').textContent=displayName;
     document.getElementById('user-avatar').textContent=displayName[0].toUpperCase();
+    const ddName=document.getElementById('dropdown-name');
+    const ddEmail=document.getElementById('dropdown-email');
+    if(ddName)ddName.textContent=displayName;
+    if(ddEmail)ddEmail.textContent=currentUser.email||'';
     // Try to get name from profiles, fallback to email
     const{data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     currentProfile=data;
