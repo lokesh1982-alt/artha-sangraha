@@ -364,7 +364,16 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
               <option value="Investment">Investment</option>
               <option value="Other">Other</option>
             </select>
-            <input class="form-input" type="month" id="txn-filter-month" style="flex:1;min-width:140px" onchange="renderTransactions()"/>
+            <select class="form-select" style="flex:1;min-width:120px" id="txn-filter-account" onchange="renderTransactions()">
+              <option value="all">All accounts</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center">
+            <div style="font-size:0.8rem;color:var(--text2);flex-shrink:0">From:</div>
+            <input class="form-input" type="date" id="txn-filter-from" style="flex:1;min-width:130px" onchange="renderTransactions()"/>
+            <div style="font-size:0.8rem;color:var(--text2);flex-shrink:0">To:</div>
+            <input class="form-input" type="date" id="txn-filter-to" style="flex:1;min-width:130px" onchange="renderTransactions()"/>
+            <button class="btn-outline" onclick="clearTxnFilters()">Clear</button>
           </div>
         </div>
         <div class="card">
@@ -376,7 +385,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="section" id="sec-balance-sheet">
         <div class="page-header">
           <div><div class="page-title">Balance Sheet</div><div class="page-sub" id="bs-date"></div></div>
-          <button class="btn-outline" onclick="printSection('sec-balance-sheet')">🖨 Print</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="font-size:0.8rem;color:var(--text2)">As of:</div>
+            <input class="form-input" type="date" id="bs-as-of-date" style="width:150px" onchange="renderBalanceSheet()"/>
+            <button class="btn-outline" onclick="printSection('sec-balance-sheet')">🖨 Print</button>
+          </div>
         </div>
         <div id="bs-content"></div>
       </div>
@@ -385,8 +398,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="section" id="sec-pnl">
         <div class="page-header">
           <div><div class="page-title">Profit & Loss</div></div>
-          <div style="display:flex;gap:8px">
-            <input class="form-input" type="month" id="pnl-month" style="width:160px" onchange="renderPnL()"/>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div style="font-size:0.8rem;color:var(--text2)">From:</div>
+            <input class="form-input" type="date" id="pnl-from" style="width:145px" onchange="renderPnL()"/>
+            <div style="font-size:0.8rem;color:var(--text2)">To:</div>
+            <input class="form-input" type="date" id="pnl-to" style="width:145px" onchange="renderPnL()"/>
             <button class="btn-outline" onclick="printSection('sec-pnl')">🖨 Print</button>
           </div>
         </div>
@@ -497,9 +513,13 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <option value="USD">$ USD</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Account *</label>
+      <div class="form-group"><label class="form-label" id="txn-account-label">Account *</label>
         <select class="form-select" id="txn-account"></select>
       </div>
+    </div>
+    <div class="form-group" id="txn-to-account-wrap" style="display:none">
+      <label class="form-label">Transfer To Account *</label>
+      <select class="form-select" id="txn-to-account"></select>
     </div>
     <div class="form-group"><label class="form-label">Category</label>
       <select class="form-select" id="txn-category">
@@ -521,19 +541,38 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="btn-close" onclick="closeModal('add-account-modal')">✕</button>
     </div>
     <div class="form-group"><label class="form-label">Account Name *</label><input class="form-input" id="acc-name" placeholder="e.g. HDFC Savings, Nifty50 ETF"/></div>
-    <div class="form-group"><label class="form-label">Type *</label>
-      <select class="form-select" id="acc-type">
-        <option value="cash">💵 Cash</option>
-        <option value="bank">🏦 Bank Account</option>
-        <option value="indian-stock">📈 Indian Stocks / MF</option>
-        <option value="us-stock">🌐 US Stocks</option>
-        <option value="property">🏠 Property</option>
-        <option value="fd">🔒 Fixed Deposit</option>
-        <option value="pf">🏛️ PF / PPF</option>
-        <option value="gold">🥇 Gold</option>
-        <option value="crypto">₿ Crypto</option>
-        <option value="other">✨ Other</option>
-      </select>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Type *</label>
+        <select class="form-select" id="acc-type" onchange="updateAccClassification()">
+          <option value="cash">💵 Cash</option>
+          <option value="bank">🏦 Bank Account</option>
+          <option value="indian-stock">📈 Indian Stocks / MF</option>
+          <option value="us-stock">🌐 US Stocks</option>
+          <option value="property">🏠 Property</option>
+          <option value="fd">🔒 Fixed Deposit</option>
+          <option value="pf">🏛️ PF / PPF</option>
+          <option value="gold">🥇 Gold</option>
+          <option value="crypto">₿ Crypto</option>
+          <option value="custom-asset">📂 Custom (Asset)</option>
+          <option value="custom-liability">📂 Custom (Liability)</option>
+          <option value="custom-equity">📂 Custom (Equity)</option>
+          <option value="custom-income">📂 Custom (Income)</option>
+          <option value="custom-expense">📂 Custom (Expense)</option>
+          <option value="other">✨ Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Classification</label>
+        <select class="form-select" id="acc-classification">
+          <option value="asset">Asset (Balance Sheet)</option>
+          <option value="liability">Liability (Balance Sheet)</option>
+          <option value="equity">Equity (Balance Sheet)</option>
+          <option value="income">Income (P&L)</option>
+          <option value="expense">Expense (P&L)</option>
+        </select>
+      </div>
+    </div>
+    <div id="acc-custom-name-wrap" style="display:none">
+      <div class="form-group"><label class="form-label">Custom Type Name</label><input class="form-input" id="acc-custom-name" placeholder="e.g. Provident Fund, Advance Tax"/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Opening Balance *</label><input class="form-input" type="number" id="acc-balance" placeholder="0.00" step="0.01"/></div>
@@ -559,33 +598,59 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="trade-date"/></div>
-      <div class="form-group"><label class="form-label">Type</label>
-        <select class="form-select" id="trade-type">
-          <option value="buy">BUY</option><option value="sell">SELL</option>
+      <div class="form-group"><label class="form-label">Instrument Type</label>
+        <select class="form-select" id="trade-instrument" onchange="toggleFnoFields()">
+          <option value="equity">Equity</option>
+          <option value="futures">Futures (F&O)</option>
+          <option value="call">Call Option</option>
+          <option value="put">Put Option</option>
+          <option value="etf">ETF / MF</option>
+          <option value="crypto">Crypto</option>
+          <option value="us-stock">US Stock</option>
         </select>
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Stock / Symbol *</label><input class="form-input" id="trade-stock" placeholder="e.g. RELIANCE, AAPL"/></div>
+      <div class="form-group"><label class="form-label">Stock / Symbol *</label><input class="form-input" id="trade-stock" placeholder="e.g. RELIANCE, NIFTY, AAPL"/></div>
       <div class="form-group"><label class="form-label">Exchange</label>
         <select class="form-select" id="trade-exchange">
-          <option>NSE</option><option>BSE</option><option>NASDAQ</option><option>NYSE</option><option>OTHER</option>
+          <option>NSE</option><option>BSE</option><option>NFO</option><option>MCX</option><option>NASDAQ</option><option>NYSE</option><option>OTHER</option>
         </select>
       </div>
     </div>
+    <!-- F&O specific fields -->
+    <div id="fno-fields" style="display:none">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Strike Price</label><input class="form-input" type="number" id="trade-strike" placeholder="e.g. 22000" step="0.01"/></div>
+        <div class="form-group"><label class="form-label">Expiry Date</label><input class="form-input" type="date" id="trade-expiry"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Lot Size</label><input class="form-input" type="number" id="trade-lot-size" placeholder="e.g. 50"/></div>
+        <div class="form-group"><label class="form-label">No. of Lots</label><input class="form-input" type="number" id="trade-lots" placeholder="e.g. 2"/></div>
+      </div>
+    </div>
     <div class="form-row">
+      <div class="form-group"><label class="form-label">Action</label>
+        <select class="form-select" id="trade-type">
+          <option value="buy">BUY</option>
+          <option value="sell">SELL</option>
+        </select>
+      </div>
       <div class="form-group"><label class="form-label">Quantity *</label><input class="form-input" type="number" id="trade-qty" placeholder="0"/></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Currency</label>
         <select class="form-select" id="trade-currency">
           <option value="INR">₹ INR</option><option value="USD">$ USD</option>
         </select>
       </div>
+      <div class="form-group"><label class="form-label">Brokerage</label><input class="form-input" type="number" id="trade-brokerage" placeholder="0.00" step="0.01"/></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Entry Price *</label><input class="form-input" type="number" id="trade-entry" placeholder="0.00"/></div>
-      <div class="form-group"><label class="form-label">Exit Price (if closed)</label><input class="form-input" type="number" id="trade-exit" placeholder="Leave blank if holding"/></div>
+      <div class="form-group"><label class="form-label">Entry Price *</label><input class="form-input" type="number" id="trade-entry" placeholder="0.00" step="0.01"/></div>
+      <div class="form-group"><label class="form-label">Exit Price (if closed)</label><input class="form-input" type="number" id="trade-exit" placeholder="Leave blank if holding" step="0.01"/></div>
     </div>
-    <div class="form-group"><label class="form-label">Notes / Strategy</label><textarea class="form-textarea" id="trade-notes" placeholder="Why did you take this trade?"></textarea></div>
+    <div class="form-group"><label class="form-label">Notes / Strategy</label><textarea class="form-textarea" id="trade-notes" placeholder="Why did you take this trade? What was your strategy?"></textarea></div>
     <button class="btn-primary" onclick="saveTrade()">Save Trade</button>
   </div>
 </div>
@@ -836,9 +901,25 @@ function switchSection(name,btn){
   if(btn)btn.classList.add('active');
   if(name==='dashboard')renderDashboard();
   if(name==='accounts')renderAccounts();
-  if(name==='transactions')renderTransactions();
-  if(name==='balance-sheet')renderBalanceSheet();
-  if(name==='pnl')renderPnL();
+  if(name==='transactions'){
+    // Populate account filter
+    const af=document.getElementById('txn-filter-account');
+    if(af)af.innerHTML='<option value="all">All accounts</option>'+accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    renderTransactions();
+  }
+  if(name==='balance-sheet'){
+    if(!document.getElementById('bs-as-of-date').value)document.getElementById('bs-as-of-date').value=todayISO();
+    renderBalanceSheet();
+  }
+  if(name==='pnl'){
+    if(!document.getElementById('pnl-to').value){
+      const now=new Date();
+      const firstDay=new Date(now.getFullYear(),now.getMonth(),1);
+      document.getElementById('pnl-from').value=toLocalISO(firstDay);
+      document.getElementById('pnl-to').value=todayISO();
+    }
+    renderPnL();
+  }
   if(name==='budget')renderBudget();
   if(name==='portfolio')renderPortfolio();
   if(name==='trading')renderTrading();
@@ -931,10 +1012,11 @@ function renderAccounts(){
   Object.entries(grouped).forEach(([type,accs])=>{
     html+=`<div style="margin-bottom:20px"><div style="font-size:0.75rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">${typeLabels[type]||type}</div>
     <div class="card-grid card-grid-2">
-    ${accs.map(a=>`<div class="account-card" onclick="deleteAccountPrompt('${a.id}')">
+    ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
       <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
       <div class="account-info"><div class="account-name">${a.name}</div><div class="account-type">${a.notes||capitalize(a.type)} · As of ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div></div>
       <div class="account-bal"><div class="account-bal-val">${fmt(a.opening_balance,a.currency)}</div><div class="account-bal-curr">${a.currency}</div></div>
+      <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
     </div>`).join('')}
     </div></div>`;
   });
@@ -944,28 +1026,49 @@ function renderAccounts(){
 // ═══════════════════════════════
 //  TRANSACTIONS
 // ═══════════════════════════════
+function clearTxnFilters(){
+  document.getElementById('txn-filter-type').value='all';
+  document.getElementById('txn-filter-cat').value='all';
+  document.getElementById('txn-filter-account').value='all';
+  document.getElementById('txn-filter-from').value='';
+  document.getElementById('txn-filter-to').value='';
+  renderTransactions();
+}
+
 function renderTransactions(){
   const type=document.getElementById('txn-filter-type').value;
   const cat=document.getElementById('txn-filter-cat').value;
-  const month=document.getElementById('txn-filter-month').value;
+  const accFilter=document.getElementById('txn-filter-account')?.value||'all';
+  const from=document.getElementById('txn-filter-from').value;
+  const to=document.getElementById('txn-filter-to').value;
   let filtered=transactions;
   if(type!=='all')filtered=filtered.filter(t=>t.type===type);
   if(cat!=='all')filtered=filtered.filter(t=>t.category===cat);
-  if(month)filtered=filtered.filter(t=>t.date.startsWith(month));
-  const total=filtered.reduce((s,t)=>s+(t.type==='income'?1:-1)*parseFloat(t.amount),0);
+  if(accFilter!=='all')filtered=filtered.filter(t=>t.account_id===accFilter||t.to_account_id===accFilter);
+  if(from)filtered=filtered.filter(t=>t.date>=from);
+  if(to)filtered=filtered.filter(t=>t.date<=to);
+  const totalInc=filtered.filter(t=>t.type==='income').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const totalExp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+parseFloat(t.amount),0);
+  const net=totalInc-totalExp;
   document.getElementById('txn-table-wrap').innerHTML=filtered.length
-    ?`<div style="margin-bottom:12px;font-size:0.82rem;color:var(--text2)">Showing ${filtered.length} transactions · Net: <span style="font-weight:600;color:${total>=0?'var(--green)':'var(--red)'}">${fmt(Math.abs(total),'INR')}</span></div>
+    ?`<div style="display:flex;gap:16px;margin-bottom:12px;font-size:0.82rem;flex-wrap:wrap">
+        <span>Showing <b>${filtered.length}</b> transactions</span>
+        <span style="color:var(--green)">Income: <b>${fmt(totalInc,'INR')}</b></span>
+        <span style="color:var(--red)">Expenses: <b>${fmt(totalExp,'INR')}</b></span>
+        <span style="color:${net>=0?'var(--green)':'var(--red)'}">Net: <b>${fmt(Math.abs(net),'INR')}</b></span>
+      </div>
     <table class="data-table">
       <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th>Type</th><th>Amount</th><th></th></tr></thead>
       <tbody>${filtered.map(t=>{
         const acc=accounts.find(a=>a.id===t.account_id);
+        const toAcc=t.to_account_id?accounts.find(a=>a.id===t.to_account_id):null;
         return `<tr>
           <td style="white-space:nowrap">${formatDate(t.date)}</td>
-          <td>${t.description||'—'}</td>
+          <td>${t.description||'—'}${toAcc?`<div style="font-size:0.72rem;color:var(--text3)">→ ${toAcc.name}</div>`:''}</td>
           <td><span class="badge badge-blue">${t.category||'—'}</span></td>
           <td style="font-size:0.78rem;color:var(--text2)">${acc?.name||'—'}</td>
           <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':'badge-yellow'}">${capitalize(t.type)}</span></td>
-          <td style="font-weight:600;color:${t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--text2)'};white-space:nowrap">${t.type==='income'?'+':'-'}${fmt(t.amount,t.currency)}</td>
+          <td style="font-weight:600;color:${t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':'var(--text2)'};white-space:nowrap">${t.type==='income'?'+':t.type==='expense'?'-':''}${fmt(t.amount,t.currency)}</td>
           <td><button class="btn-danger" onclick="deleteTxn('${t.id}')">🗑</button></td>
         </tr>`;
       }).join('')}</tbody>
@@ -977,34 +1080,55 @@ function renderTransactions(){
 //  BALANCE SHEET
 // ═══════════════════════════════
 function renderBalanceSheet(){
-  document.getElementById('bs-date').textContent='As of '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-  const assetTypes=['cash','bank','indian-stock','us-stock','property','fd','pf','gold','crypto','other'];
-  const typeLabels={cash:'Cash',bank:'Bank Accounts','indian-stock':'Indian Stocks & MF','us-stock':'US Stocks',property:'Properties',fd:'Fixed Deposits',pf:'PF / PPF',gold:'Gold',crypto:'Crypto',other:'Other'};
-  let totalAssets=0;
-  let assetRows='';
+  const asOf=document.getElementById('bs-as-of-date').value||todayISO();
+  document.getElementById('bs-date').textContent='As of '+formatDate(asOf);
+  const assetTypes=['cash','bank','indian-stock','us-stock','property','fd','pf','gold','crypto','custom-asset','other'];
+  const liabTypes=['custom-liability'];
+  const equityTypes=['custom-equity'];
+  const typeLabels={cash:'Cash',bank:'Bank Accounts','indian-stock':'Indian Stocks & MF','us-stock':'US Stocks',property:'Properties',fd:'Fixed Deposits',pf:'PF / PPF',gold:'Gold',crypto:'Crypto','custom-asset':'Custom Assets','custom-liability':'Custom Liabilities','custom-equity':'Equity',other:'Other'};
+  let totalAssets=0,assetRows='';
   assetTypes.forEach(type=>{
-    const accs=accounts.filter(a=>a.type===type);
+    const accs=accounts.filter(a=>a.type===type&&(!a.opening_date||a.opening_date<=asOf));
     if(!accs.length)return;
-    const subtotal=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+parseFloat(a.opening_balance||0),0);
+    const subtotal=accs.filter(a=>a.currency==='INR').reduce((s,a)=>{
+      // Add income txns, subtract expense txns for this account up to asOf
+      const accTxns=transactions.filter(t=>(t.account_id===a.id||t.to_account_id===a.id)&&t.date<=asOf);
+      let bal=parseFloat(a.opening_balance||0);
+      accTxns.forEach(t=>{
+        if(t.account_id===a.id){
+          if(t.type==='income')bal+=parseFloat(t.amount);
+          else if(t.type==='expense')bal-=parseFloat(t.amount);
+          else if(t.type==='transfer')bal-=parseFloat(t.amount);
+        } else if(t.to_account_id===a.id&&t.type==='transfer'){
+          bal+=parseFloat(t.amount);
+        }
+      });
+      return s+bal;
+    },0);
     totalAssets+=subtotal;
-    assetRows+=`<tr class="group-row"><td colspan="3">${typeLabels[type]}</td></tr>`;
+    assetRows+=`<tr class="group-row"><td colspan="3">${typeLabels[type]||type}</td></tr>`;
     accs.forEach(a=>{
-      assetRows+=`<tr><td style="padding-left:24px">${a.name}</td><td>${a.notes||''} ${a.opening_date?'· As of '+formatDate(a.opening_date):''}</td><td style="text-align:right;font-weight:500">${fmt(a.opening_balance,a.currency)}</td></tr>`;
+      const accTxns=transactions.filter(t=>(t.account_id===a.id||t.to_account_id===a.id)&&t.date<=asOf);
+      let bal=parseFloat(a.opening_balance||0);
+      accTxns.forEach(t=>{
+        if(t.account_id===a.id){if(t.type==='income')bal+=parseFloat(t.amount);else if(t.type==='expense')bal-=parseFloat(t.amount);else if(t.type==='transfer')bal-=parseFloat(t.amount);}
+        else if(t.to_account_id===a.id&&t.type==='transfer')bal+=parseFloat(t.amount);
+      });
+      assetRows+=`<tr><td style="padding-left:24px">${a.name}</td><td style="font-size:0.78rem;color:var(--text2)">${a.notes||''}</td><td style="text-align:right;font-weight:500">${fmt(bal,a.currency)}</td></tr>`;
     });
-    assetRows+=`<tr><td colspan="2" style="font-weight:500;padding-left:16px">Subtotal — ${typeLabels[type]}</td><td style="text-align:right;font-weight:600">${fmt(subtotal,'INR')}</td></tr>`;
+    assetRows+=`<tr><td colspan="2" style="font-weight:500;padding-left:16px">Subtotal — ${typeLabels[type]||type}</td><td style="text-align:right;font-weight:600">${fmt(subtotal,'INR')}</td></tr>`;
   });
+  // Liabilities from loans
   const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
   const netWorth=totalAssets-totalLiab;
   document.getElementById('bs-content').innerHTML=`
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-grid card-grid-3" style="margin-bottom:0">
-      <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
-      <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
-    </div>
+  <div class="card-grid card-grid-3" style="margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
   </div>
   <div class="card">
-    <div class="sec-title" style="margin-bottom:14px">Assets</div>
+    <div class="sec-title" style="margin-bottom:14px">Assets (as of ${formatDate(asOf)})</div>
     <table class="data-table">
       <thead><tr><th>Account</th><th>Notes</th><th style="text-align:right">Balance</th></tr></thead>
       <tbody>${assetRows}
@@ -1028,8 +1152,13 @@ function renderBalanceSheet(){
 //  P&L
 // ═══════════════════════════════
 function renderPnL(){
-  const month=document.getElementById('pnl-month').value||toMonthISO(new Date());
-  const monthTxns=transactions.filter(t=>t.date.startsWith(month));
+  const from=document.getElementById('pnl-from').value;
+  const to=document.getElementById('pnl-to').value||todayISO();
+  const monthTxns=transactions.filter(t=>{
+    if(from&&t.date<from)return false;
+    if(to&&t.date>to)return false;
+    return true;
+  });
   const incTxns=monthTxns.filter(t=>t.type==='income');
   const expTxns=monthTxns.filter(t=>t.type==='expense');
   const totalInc=incTxns.reduce((s,t)=>s+parseFloat(t.amount),0);
@@ -1037,7 +1166,7 @@ function renderPnL(){
   const net=totalInc-totalExp;
   const incByCat={};incTxns.forEach(t=>incByCat[t.category]=(incByCat[t.category]||0)+parseFloat(t.amount));
   const expByCat={};expTxns.forEach(t=>expByCat[t.category]=(expByCat[t.category]||0)+parseFloat(t.amount));
-  const d=new Date(month+'-01');const mLabel=d.toLocaleString('default',{month:'long',year:'numeric'});
+  const periodLabel=from?`${formatDate(from)} to ${formatDate(to)}`:`Up to ${formatDate(to)}`;
   document.getElementById('pnl-content').innerHTML=`
   <div class="card-grid card-grid-3" style="margin-bottom:16px">
     <div class="stat-card"><div class="stat-label">Total Income</div><div class="stat-val" style="color:var(--green)">${fmt(totalInc,'INR')}</div></div>
@@ -1045,7 +1174,8 @@ function renderPnL(){
     <div class="stat-card"><div class="stat-label">Net ${net>=0?'Surplus':'Deficit'}</div><div class="stat-val" style="color:${net>=0?'var(--green)':'var(--red)'}">${fmt(Math.abs(net),'INR')}</div></div>
   </div>
   <div class="card">
-    <div class="sec-title" style="margin-bottom:14px">P&L Statement — ${mLabel}</div>
+    <div class="sec-title" style="margin-bottom:4px">P&L Statement</div>
+    <div style="font-size:0.78rem;color:var(--text2);margin-bottom:14px">Period: ${periodLabel}</div>
     <table class="data-table">
       <thead><tr><th>Particulars</th><th style="text-align:right">Amount</th></tr></thead>
       <tbody>
@@ -1235,10 +1365,76 @@ async function renderFamily(){
 // ═══════════════════════════════
 //  SAVE FUNCTIONS
 // ═══════════════════════════════
+function updateAccClassification(){
+  const type=document.getElementById('acc-type').value;
+  const classMap={cash:'asset',bank:'asset','indian-stock':'asset','us-stock':'asset',property:'asset',fd:'asset',pf:'asset',gold:'asset',crypto:'asset','custom-asset':'asset','custom-liability':'liability','custom-equity':'equity','custom-income':'income','custom-expense':'expense',other:'asset'};
+  document.getElementById('acc-classification').value=classMap[type]||'asset';
+  const isCustom=type.startsWith('custom-');
+  document.getElementById('acc-custom-name-wrap').style.display=isCustom?'block':'none';
+}
+
+function toggleFnoFields(){
+  const inst=document.getElementById('trade-instrument').value;
+  const isFno=['futures','call','put'].includes(inst);
+  document.getElementById('fno-fields').style.display=isFno?'block':'none';
+}
+
+function openAccountLedger(accId){
+  const acc=accounts.find(a=>a.id===accId);
+  if(!acc)return;
+  const accTxns=transactions.filter(t=>t.account_id===accId||t.to_account_id===accId).sort((a,b)=>a.date.localeCompare(b.date));
+  let balance=parseFloat(acc.opening_balance||0);
+  const rows=[];
+  // Opening balance row
+  rows.push(`<tr style="background:var(--bg2)"><td>${formatDate(acc.opening_date||acc.created_at?.split('T')[0])}</td><td><b>Opening Balance</b></td><td></td><td></td><td style="text-align:right;font-weight:700">${fmt(balance,acc.currency)}</td></tr>`);
+  accTxns.forEach(t=>{
+    let debit=0,credit=0;
+    if(t.account_id===accId){
+      if(t.type==='income'){credit=parseFloat(t.amount);balance+=credit;}
+      else if(t.type==='expense'){debit=parseFloat(t.amount);balance-=debit;}
+      else if(t.type==='transfer'){debit=parseFloat(t.amount);balance-=debit;}
+    } else if(t.to_account_id===accId&&t.type==='transfer'){
+      credit=parseFloat(t.amount);balance+=credit;
+    }
+    const toAcc=t.to_account_id?accounts.find(a=>a.id===t.to_account_id):null;
+    rows.push(`<tr>
+      <td style="white-space:nowrap">${formatDate(t.date)}</td>
+      <td>${t.description||t.category||'—'}${toAcc&&t.account_id===accId?`<div style="font-size:0.72rem;color:var(--text3)">→ ${toAcc.name}</div>`:''}</td>
+      <td style="text-align:right;color:var(--red)">${debit>0?fmt(debit,acc.currency):''}</td>
+      <td style="text-align:right;color:var(--green)">${credit>0?fmt(credit,acc.currency):''}</td>
+      <td style="text-align:right;font-weight:600;color:${balance>=0?'var(--text)':'var(--red)'}">${fmt(balance,acc.currency)}</td>
+    </tr>`);
+  });
+  const ledgerHTML=`
+    <button class="back-btn" onclick="renderAccounts()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:inherit;margin-bottom:16px;padding:0">← Back to Accounts</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:1.2rem;font-weight:700">${accIcon(acc.type)} ${acc.name}</div>
+        <div style="font-size:0.78rem;color:var(--text2)">${capitalize(acc.type)} · ${acc.currency} · Opening: ${fmt(acc.opening_balance,acc.currency)}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:0.75rem;color:var(--text2)">Current Balance</div>
+        <div style="font-size:1.5rem;font-weight:700;color:${balance>=0?'var(--accent)':'var(--red)'}">${fmt(balance,acc.currency)}</div>
+      </div>
+    </div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th style="text-align:right">Balance</th></tr></thead>
+        <tbody>${rows.join('')}
+        <tr class="total-row"><td colspan="2"><b>Closing Balance</b></td><td></td><td></td><td style="text-align:right;color:${balance>=0?'var(--accent)':'var(--red)'}"><b>${fmt(balance,acc.currency)}</b></td></tr>
+        </tbody>
+      </table>
+    </div>`;
+  document.getElementById('accounts-list').innerHTML=ledgerHTML;
+}
+
 function selectTxnType(type,btn){
   selectedTxnType=type;
   document.querySelectorAll('#add-txn-modal .tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
+  // Show/hide transfer to account
+  const wrap=document.getElementById('txn-to-account-wrap');
+  if(wrap)wrap.style.display=type==='transfer'?'block':'none';
 }
 
 async function saveTxn(){
@@ -1247,7 +1443,11 @@ async function saveTxn(){
   const date=document.getElementById('txn-date').value;
   const account_id=document.getElementById('txn-account').value;
   if(!amount||!date||!account_id){showToast('Please fill required fields.');return;}
-  const txn={user_id:currentUser.id,type:selectedTxnType,date,amount,currency:document.getElementById('txn-currency').value,account_id,category:document.getElementById('txn-category').value,description:document.getElementById('txn-desc').value.trim()};
+  // For transfer, check to account
+  const to_account_id=selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null;
+  if(selectedTxnType==='transfer'&&!to_account_id){showToast('Please select destination account.');return;}
+  if(selectedTxnType==='transfer'&&to_account_id===account_id){showToast('Source and destination cannot be same.');return;}
+  const txn={user_id:currentUser.id,type:selectedTxnType,date,amount,currency:document.getElementById('txn-currency').value,account_id,to_account_id:to_account_id||null,category:document.getElementById('txn-category').value,description:document.getElementById('txn-desc').value.trim()};
   const{data,error}=await sb.from('transactions').insert(txn).select().single();
   if(error){showToast('Error: '+error.message);return;}
   transactions.unshift(data);
@@ -1266,7 +1466,7 @@ async function saveAccount(){
   if(!profile){
     await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:currentUser.email.split('@')[0],role:'owner'});
   }
-  const acc={user_id:currentUser.id,name,type:document.getElementById('acc-type').value,opening_balance,currency:document.getElementById('acc-currency').value,notes:document.getElementById('acc-notes').value.trim(),opening_date:document.getElementById('acc-opening-date').value||todayISO()};
+  const acc={user_id:currentUser.id,name,type:document.getElementById('acc-type').value,opening_balance,currency:document.getElementById('acc-currency').value,notes:(document.getElementById('acc-custom-name').value.trim()||document.getElementById('acc-notes').value.trim()),opening_date:document.getElementById('acc-opening-date').value||todayISO(),classification:document.getElementById('acc-classification').value||'asset'};
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
   accounts.push(data);
@@ -1281,8 +1481,24 @@ async function saveTrade(){
   const qty=parseFloat(document.getElementById('trade-qty').value);
   const entry=parseFloat(document.getElementById('trade-entry').value);
   const exit=document.getElementById('trade-exit').value?parseFloat(document.getElementById('trade-exit').value):null;
+  const instrument=document.getElementById('trade-instrument').value;
   if(!stock||!qty||!entry){showToast('Please fill required fields.');return;}
-  const trade={user_id:currentUser.id,date:document.getElementById('trade-date').value,stock:stock.toUpperCase(),exchange:document.getElementById('trade-exchange').value,trade_type:document.getElementById('trade-type').value,quantity:qty,entry_price:entry,exit_price:exit,currency:document.getElementById('trade-currency').value,status:exit?'closed':'open',notes:document.getElementById('trade-notes').value.trim()};
+  const isFno=['futures','call','put'].includes(instrument);
+  const trade={
+    user_id:currentUser.id,
+    date:document.getElementById('trade-date').value,
+    stock:stock.toUpperCase(),
+    exchange:document.getElementById('trade-exchange').value,
+    trade_type:document.getElementById('trade-type').value,
+    quantity:qty,
+    entry_price:entry,
+    exit_price:exit,
+    currency:document.getElementById('trade-currency').value,
+    status:exit?'closed':'open',
+    notes:(document.getElementById('trade-notes').value.trim()+
+      (isFno?` | ${instrument.toUpperCase()} | Strike: ${document.getElementById('trade-strike').value||'N/A'} | Expiry: ${document.getElementById('trade-expiry').value||'N/A'} | Lots: ${document.getElementById('trade-lots').value||'N/A'} x ${document.getElementById('trade-lot-size').value||'N/A'}`:'')
+    ).trim()
+  };
   const{data,error}=await sb.from('trades').insert(trade).select().single();
   if(error){showToast('Error: '+error.message);return;}
   trades.unshift(data);
@@ -1366,10 +1582,23 @@ function openModal(id){
     document.getElementById('txn-date').value=todayISO();
     document.getElementById('txn-amount').value='';
     document.getElementById('txn-desc').value='';
-    const sel=document.getElementById('txn-account');
-    sel.innerHTML=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    const wrap=document.getElementById('txn-to-account-wrap');
+    if(wrap)wrap.style.display='none';
+    const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    document.getElementById('txn-account').innerHTML=opts;
+    document.getElementById('txn-to-account').innerHTML=opts;
+    selectedTxnType='income';
+    document.querySelectorAll('#add-txn-modal .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   }
-  if(id==='add-trade-modal'){document.getElementById('trade-date').value=todayISO();}
+  if(id==='add-trade-modal'){
+    document.getElementById('trade-date').value=todayISO();
+    document.getElementById('trade-stock').value='';
+    document.getElementById('trade-entry').value='';
+    document.getElementById('trade-exit').value='';
+    document.getElementById('trade-qty').value='';
+    document.getElementById('fno-fields').style.display='none';
+    document.getElementById('trade-instrument').value='equity';
+  }
   if(id==='add-account-modal'){
     document.getElementById('acc-name').value='';
     document.getElementById('acc-balance').value='';
@@ -1377,6 +1606,9 @@ function openModal(id){
     document.getElementById('acc-opening-date').value=todayISO();
     document.getElementById('acc-type').value='cash';
     document.getElementById('acc-currency').value='INR';
+    document.getElementById('acc-classification').value='asset';
+    const cw=document.getElementById('acc-custom-name-wrap');
+    if(cw)cw.style.display='none';
   }
   if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
   if(id==='add-loan-modal'){document.getElementById('loan-start').value=todayISO();}
@@ -1390,6 +1622,7 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 // ═══════════════════════════════
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function todayISO(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function toLocalISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function toMonthISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
 function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}
 function fmt(val,currency='INR',decimals=2){const n=parseFloat(val)||0;const sym=currency==='USD'?'$':'₹';return sym+n.toLocaleString('en-IN',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});}
