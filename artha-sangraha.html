@@ -1106,19 +1106,21 @@ function calcBalance(acc, asOfDate=null){
 async function ensureCategoryAccount(category, type){
   const classification=type==='income'?'income':'expense';
   const accountName=category+(type==='income'?' Income':' Expense');
-  // Check by category_account field or by name
-  const existing=accounts.find(a=>(a.category_account===category&&a.classification===classification)||a.name===accountName);
+  // Check in memory first
+  const existing=accounts.find(a=>a.name===accountName&&a.classification===classification);
   if(existing)return existing;
+  // Check in DB to avoid duplicates
+  const{data:dbCheck}=await sb.from('accounts').select('*').eq('user_id',currentUser.id).eq('name',accountName).eq('classification',classification);
+  if(dbCheck&&dbCheck.length>0){
+    if(!accounts.find(a=>a.id===dbCheck[0].id))accounts.push(dbCheck[0]);
+    return dbCheck[0];
+  }
+  // Create new
   const acc={
-    user_id:currentUser.id,
-    name:accountName,
+    user_id:currentUser.id,name:accountName,
     type:type==='income'?'custom-income':'custom-expense',
-    classification,
-    opening_balance:0,
-    currency:'INR',
-    opening_date:todayISO(),
-    category_account:category,
-    notes:'Auto-created'
+    classification,opening_balance:0,currency:'INR',
+    opening_date:todayISO(),category_account:category,notes:'Auto-created'
   };
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(!error&&data){accounts.push(data);return data;}
@@ -1140,27 +1142,26 @@ async function loadAllData(){
   budgets=b.data||[];
 
   // Auto-create income/expense accounts for existing transactions that don't have them
-  const needsProcessing=transactions.filter(t=>!t.debit_account_id&&!t.credit_account_id&&t.type!=='transfer');
-  for(const txn of needsProcessing){
-    const cat=txn.category||'Other';
-    if(txn.type==='income'){
-      const incAcc=await ensureCategoryAccount(cat,'income');
-      if(incAcc){
-        await sb.from('transactions').update({debit_account_id:txn.account_id,credit_account_id:incAcc.id}).eq('id',txn.id);
-        txn.debit_account_id=txn.account_id;
-        txn.credit_account_id=incAcc.id;
-      }
-    } else if(txn.type==='expense'){
-      const expAcc=await ensureCategoryAccount(cat,'expense');
-      if(expAcc){
-        await sb.from('transactions').update({debit_account_id:expAcc.id,credit_account_id:txn.account_id}).eq('id',txn.id);
-        txn.debit_account_id=expAcc.id;
-        txn.credit_account_id=txn.account_id;
+  // Only run if there are unprocessed transactions
+  const needsProcessing=transactions.filter(t=>!t.debit_account_id&&!t.credit_account_id&&t.type!=='transfer'&&t.type!=='journal');
+  if(needsProcessing.length>0){
+    for(const txn of needsProcessing){
+      const cat=txn.category||'Other';
+      if(txn.type==='income'){
+        const incAcc=await ensureCategoryAccount(cat,'income');
+        if(incAcc){
+          await sb.from('transactions').update({debit_account_id:txn.account_id,credit_account_id:incAcc.id}).eq('id',txn.id);
+          txn.debit_account_id=txn.account_id;txn.credit_account_id=incAcc.id;
+        }
+      } else if(txn.type==='expense'){
+        const expAcc=await ensureCategoryAccount(cat,'expense');
+        if(expAcc){
+          await sb.from('transactions').update({debit_account_id:expAcc.id,credit_account_id:txn.account_id}).eq('id',txn.id);
+          txn.debit_account_id=expAcc.id;txn.credit_account_id=txn.account_id;
+        }
       }
     }
-  }
-  // Reload accounts to include newly created ones
-  if(needsProcessing.length>0){
+    // Reload accounts to include newly created ones
     const fresh=await sb.from('accounts').select('*').eq('user_id',uid).order('created_at');
     accounts=fresh.data||[];
   }
