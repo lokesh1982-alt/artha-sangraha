@@ -1271,8 +1271,14 @@ function renderDashboard(){
   const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;}).slice(0,8);
   document.getElementById('dash-recent-txns').innerHTML=recent.length
     ?`<div style="overflow-x:auto"><table class="data-table" style="min-width:500px">${recent.map(t=>{
-        const debitAcc=t.debit_account_id?accounts.find(a=>a.id===t.debit_account_id):(t.type==='transfer'?accounts.find(a=>a.id===t.to_account_id):accounts.find(a=>a.id===t.account_id));
-        const creditAcc=t.credit_account_id?accounts.find(a=>a.id===t.credit_account_id):(t.type==='transfer'?accounts.find(a=>a.id===t.account_id):null);
+        let debitAcc,creditAcc;
+        if(t.type==='transfer'){
+          debitAcc=accounts.find(a=>a.id===t.to_account_id);
+          creditAcc=accounts.find(a=>a.id===t.account_id);
+        } else {
+          debitAcc=t.debit_account_id?accounts.find(a=>a.id===t.debit_account_id):accounts.find(a=>a.id===t.account_id);
+          creditAcc=t.credit_account_id?accounts.find(a=>a.id===t.credit_account_id):null;
+        }
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--text2)';
         return `<tr>
           <td style="white-space:nowrap;font-size:0.78rem">${formatDate(t.date)}</td>
@@ -1474,8 +1480,19 @@ function renderTransactions(){
       <tbody>${filtered.map(t=>{
         const acc=accounts.find(a=>a.id===t.account_id);
         const toAcc=t.to_account_id?accounts.find(a=>a.id===t.to_account_id):null;
-        const debitAcc=t.debit_account_id?accounts.find(a=>a.id===t.debit_account_id):(t.type==='transfer'?toAcc:t.type==='income'?acc:null);
-        const creditAcc=t.credit_account_id?accounts.find(a=>a.id===t.credit_account_id):(t.type==='transfer'?acc:t.type==='expense'?acc:null);
+        // For transfers: debit=destination(to), credit=source(from)
+        // For income: debit=bank account, credit=income account
+        // For expense: debit=expense account, credit=bank account
+        let debitAcc,creditAcc;
+        if(t.type==='transfer'){
+          debitAcc=toAcc;creditAcc=acc;
+        } else if(t.debit_account_id||t.credit_account_id){
+          debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+          creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+        } else {
+          debitAcc=t.type==='income'?acc:null;
+          creditAcc=t.type==='expense'?acc:null;
+        }
         return `<tr>
           <td style="white-space:nowrap;font-size:0.8rem">${formatDate(t.date)}</td>
           <td style="max-width:160px;font-size:0.83rem">${t.description||'—'}</td>
