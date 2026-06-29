@@ -845,8 +845,13 @@ async function doLogin(){
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-pass').value;
   if(!email||!pass){setAuthMsg('Please fill all fields.');return;}
-  const{error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(error)setAuthMsg(error.message);
+  setAuthMsg('Signing in...','');
+  const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){setAuthMsg(error.message);return;}
+  if(data?.user){
+    appLoading=false; // reset to allow fresh load
+    await initApp(data.user);
+  }
 }
 
 async function doSignup(){
@@ -886,24 +891,25 @@ document.addEventListener('click',e=>{
 async function confirmLogout(){
   closeModal('logout-modal');
   closeUserMenu();
+  appLoading=false;
   // Show login immediately
   showLoginScreen();
-  // Clear storage and sign out in background
+  // Clear all storage
   localStorage.clear();
   sessionStorage.clear();
   document.cookie.split(';').forEach(c=>{
     document.cookie=c.trim().split('=')[0]+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
   });
+  // Sign out from Supabase (background)
   try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
 }
 
-let appInitialized=false;
 let appLoading=false;
 
 function showLoginScreen(){
   currentUser=null;currentProfile=null;
   accounts=[];transactions=[];trades=[];loans=[];budgets=[];
-  appInitialized=false;appLoading=false;
+  appLoading=false;
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('login-email').value='';
@@ -912,18 +918,12 @@ function showLoginScreen(){
   switchAuthTab('login');
 }
 
-sb.auth.onAuthStateChange(async(event,session)=>{
-  // Handle sign out events
-  if(event==='SIGNED_OUT'){showLoginScreen();return;}
-  // Skip if no user
-  if(!session?.user)return;
-  // Skip token refreshes if already initialized with data loaded
-  if(event==='TOKEN_REFRESHED'&&appInitialized&&accounts.length>0)return;
-  // Prevent concurrent loads
+async function initApp(user){
   if(appLoading)return;
   appLoading=true;
-  currentUser=session.user;
-  appInitialized=true;
+  currentUser=user;
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
   // Show app immediately
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -960,6 +960,21 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     appLoading=false;
     renderDashboard();
   }
+}
+
+sb.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_OUT'){
+    showLoginScreen();
+    return;
+  }
+  if(event==='SIGNED_IN'||event==='INITIAL_SESSION'){
+    if(session?.user){
+      initApp(session.user);
+    } else {
+      showLoginScreen();
+    }
+  }
+  // Ignore TOKEN_REFRESHED and other events
 });
 
 // ═══════════════════════════════
