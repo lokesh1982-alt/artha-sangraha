@@ -1788,7 +1788,7 @@ function renderDashboard(){
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
         const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
         const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
-        return`<div data-txnid="${t.id}" class="txn-row" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s">
+        return`<div onclick="window.showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent">
           <div style="width:30px;height:30px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
@@ -2069,7 +2069,7 @@ function renderTransactions(){
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
         const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
         const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
-        return`<div data-txnid="${t.id}" class="txn-row" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s">
+        return`<div onclick="window.showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent">
           <div style="width:32px;height:32px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
@@ -2084,7 +2084,7 @@ function renderTransactions(){
     :`<div class="empty-state" style="padding:30px"><div class="empty-icon">💳</div><div class="empty-text">No transactions found.</div></div>`;
 }
 
-function showTxnDetail(id){
+window.showTxnDetail=function(id){
   const t=transactions.find(x=>x.id===id);
   if(!t){showToast('Transaction not found.');return;}
   let debitAcc,creditAcc;
@@ -2134,7 +2134,7 @@ function showTxnDetail(id){
     <button class="btn-danger" style="flex:1" onclick="closeModal('txn-detail-modal');deleteTxn('${t.id}')">🗑 Delete</button>`;
   // Show modal directly (bypass openModal to avoid field resets)
   document.getElementById('txn-detail-modal').classList.add('open');
-}
+};
 
 // ═══════════════════════════════
 //  BALANCE SHEET
@@ -3072,86 +3072,74 @@ async function deleteAccountPrompt(id){
 //  MODAL HELPERS
 // ═══════════════════════════════
 function openModal(id){
-  try{
+  // Reset fields based on modal type
   if(id==='add-txn-modal'){
     editingTxnId=null;
-    document.querySelector('#add-txn-modal .modal-title').textContent='Add Transaction';
-    document.getElementById('txn-date').value=todayISO();
-    document.getElementById('txn-amount').value='';
-    document.getElementById('txn-desc').value='';
-    const wrap=document.getElementById('txn-to-account-wrap');
-    if(wrap)wrap.style.display='none';
-    const opts=accounts.map(a=>`<option value="${a.id}">${a.name} (${capitalize(a.classification||'asset')})</option>`).join('');
-    document.getElementById('txn-account').innerHTML=opts;
-    document.getElementById('txn-to-account').innerHTML=opts;
-    document.getElementById('txn-debit-account').innerHTML=opts;
-    document.getElementById('txn-credit-account').innerHTML=opts;
-    selectedTxnType='income';
-    entryMode='simple';
-    setEntryMode('simple');
-    document.querySelectorAll('#add-txn-modal .tab-btn').forEach((b,i)=>{
-      if(b.id==='mode-simple-btn'||b.id==='mode-double-btn')return;
-      b.classList.toggle('active',i===2);// income tab
-    });
-    // Reset income tab
-    const typeBtns=document.querySelectorAll('#txn-type-wrap .tab-btn');
-    typeBtns.forEach((b,i)=>b.classList.toggle('active',i===0));
+    const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(el=>{const e=document.getElementById(el);if(e)e.innerHTML=opts;});
+    ['txn-amount','txn-desc'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const td=document.getElementById('txn-date');if(td)td.value=todayISO();
+    const tw=document.getElementById('txn-to-account-wrap');if(tw)tw.style.display='none';
+    const tm=document.querySelector('#add-txn-modal .modal-title');if(tm)tm.textContent='Add Transaction';
+    selectedTxnType='income';entryMode='simple';
+    const sm=document.getElementById('simple-mode-fields');if(sm)sm.style.display='block';
+    const dm=document.getElementById('double-entry-fields');if(dm)dm.style.display='none';
+    const tw2=document.getElementById('txn-type-wrap');if(tw2)tw2.style.display='block';
+    const cw=document.getElementById('txn-category-wrap');if(cw)cw.style.display='flex';
+    const smb=document.getElementById('mode-simple-btn');if(smb)smb.classList.add('active');
+    const dmb=document.getElementById('mode-double-btn');if(dmb)dmb.classList.remove('active');
+    document.querySelectorAll('#txn-type-wrap .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   }
-  if(id==='add-trade-modal'){
-    editingTradeId=null;
-    const ttitle=document.querySelector('#add-trade-modal .modal-title');
-    if(ttitle)ttitle.textContent='Add Trade';
-    const td=document.getElementById('trade-date');if(td)td.value=todayISO();
-    const ts=document.getElementById('trade-stock');if(ts)ts.value='';
-    const te=document.getElementById('trade-entry');if(te)te.value='';
-    const tn=document.getElementById('trade-notes');if(tn)tn.value='';
-    const ff=document.getElementById('fno-fields');if(ff)ff.style.display='none';
-    const ti=document.getElementById('trade-instrument');if(ti)ti.value='equity';
-  }
-  if(id==='add-account-modal'){
+  else if(id==='add-account-modal'){
     editingAccId=null;
-    document.querySelector('#add-account-modal .modal-title').textContent='Add Account / Asset';
-    document.getElementById('acc-name').value='';
-    document.getElementById('acc-balance').value='';
-    document.getElementById('acc-notes').value='';
-    document.getElementById('acc-opening-date').value=todayISO();
-    document.getElementById('acc-type').value='cash';
-    document.getElementById('acc-currency').value='INR';
-    document.getElementById('acc-classification').value='asset';
-    const cw=document.getElementById('acc-custom-name-wrap');
-    if(cw)cw.style.display='none';
-    // Populate groups dropdown
-    const grpSel=document.getElementById('acc-group');
-    if(grpSel)grpSel.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
+    ['acc-name','acc-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const ab=document.getElementById('acc-balance');if(ab)ab.value='';
+    const ao=document.getElementById('acc-opening-date');if(ao)ao.value=todayISO();
+    const at=document.getElementById('acc-type');if(at)at.value='cash';
+    const ac=document.getElementById('acc-currency');if(ac)ac.value='INR';
+    const acl=document.getElementById('acc-classification');if(acl)acl.value='asset';
+    const cw=document.getElementById('acc-custom-name-wrap');if(cw)cw.style.display='none';
+    const gs=document.getElementById('acc-group');
+    if(gs)gs.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
+    const tm=document.querySelector('#add-account-modal .modal-title');if(tm)tm.textContent='Add Account / Asset';
   }
-  if(id==='add-group-modal'){
+  else if(id==='add-group-modal'){
     editingGroupId=null;
     const gn=document.getElementById('grp-name');if(gn)gn.value='';
     const gi=document.getElementById('grp-icon');if(gi)gi.value='';
     const gc=document.getElementById('grp-classification');if(gc)gc.value='asset';
-    const gt=document.querySelector('#add-group-modal .modal-title');if(gt)gt.textContent='Create Account Group';
+    const tm=document.querySelector('#add-group-modal .modal-title');if(tm)tm.textContent='Create Account Group';
   }
-  if(id==='add-category-modal'){
+  else if(id==='add-category-modal'){
     editingCatId=null;
     const cn=document.getElementById('cat-name');if(cn)cn.value='';
     const ct=document.getElementById('cat-type');if(ct)ct.value='expense';
     const ci=document.getElementById('cat-icon');if(ci)ci.value='';
-    const ctitle=document.querySelector('#add-category-modal .modal-title');if(ctitle)ctitle.textContent='Add Category';
+    const tm=document.querySelector('#add-category-modal .modal-title');if(tm)tm.textContent='Add Category';
   }
-  if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
-  if(id==='add-loan-modal'){
+  else if(id==='add-trade-modal'){
+    editingTradeId=null;
+    ['trade-stock','trade-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const te=document.getElementById('trade-entry');if(te)te.value='';
+    const td=document.getElementById('trade-date');if(td)td.value=todayISO();
+    const ti=document.getElementById('trade-instrument');if(ti)ti.value='equity';
+    const ff=document.getElementById('fno-fields');if(ff)ff.style.display='none';
+    const tm=document.querySelector('#add-trade-modal .modal-title');if(tm)tm.textContent='Add Trade';
+  }
+  else if(id==='add-loan-modal'){
     editingLoanId=null;
-    document.querySelector('#add-loan-modal .modal-title').textContent='Add Loan / EMI';
-    document.getElementById('loan-start').value=todayISO();}
-  const el=document.getElementById(id);
-  if(el)el.classList.add('open');
-  else console.error('Modal not found:',id);
-  }catch(e){
-    console.error('openModal error:',e);
-    const el=document.getElementById(id);
-    if(el)el.classList.add('open');
+    const ls=document.getElementById('loan-start');if(ls)ls.value=todayISO();
+    const tm=document.querySelector('#add-loan-modal .modal-title');if(tm)tm.textContent='Add Loan / EMI';
   }
+  else if(id==='add-budget-modal'){
+    const bm=document.getElementById('budget-month');if(bm)bm.value=toMonthISO(new Date());
+  }
+  // Show the modal
+  const modal=document.getElementById(id);
+  if(modal)modal.classList.add('open');
+  else console.warn('Modal not found:',id);
 }
+
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 
