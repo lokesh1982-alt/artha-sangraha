@@ -983,10 +983,7 @@ async function doLogin(){
   setAuthMsg('Signing in...','');
   const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error){setAuthMsg(error.message);return;}
-  if(data?.user){
-    appLoading=false; // reset to allow fresh load
-    await initApp(data.user);
-  }
+  // SIGNED_IN event will call initApp automatically
 }
 
 async function doSignup(){
@@ -1026,93 +1023,81 @@ document.addEventListener('click',e=>{
 async function confirmLogout(){
   closeModal('logout-modal');
   closeUserMenu();
-  appLoading=false;
   // Show login immediately
   showLoginScreen();
-  // Clear all storage
+  // Clear storage
   localStorage.clear();
   sessionStorage.clear();
-  document.cookie.split(';').forEach(c=>{
-    document.cookie=c.trim().split('=')[0]+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-  });
-  // Sign out from Supabase (background)
-  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
+  // Sign out from Supabase — SIGNED_OUT event will also call showLoginScreen (harmless)
+  try{ await sb.auth.signOut(); }catch(e){}
 }
 
-let appLoading=false;
+// ── AUTH STATE ──────────────────────────────────────────────
+let appReady=false;
 
 function showLoginScreen(){
+  appReady=false;
   currentUser=null;currentProfile=null;
-  accounts=[];transactions=[];trades=[];loans=[];budgets=[];
-  appLoading=false;
+  accounts=[];transactions=[];trades=[];loans=[];budgets=[];groups=[];categories=[];
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('app').style.display='none';
-  document.getElementById('login-email').value='';
-  document.getElementById('login-pass').value='';
-  document.getElementById('auth-msg').textContent='';
+  const le=document.getElementById('login-email');if(le)le.value='';
+  const lp=document.getElementById('login-pass');if(lp)lp.value='';
+  const am=document.getElementById('auth-msg');if(am)am.textContent='';
   switchAuthTab('login');
 }
 
 async function initApp(user){
-  if(appLoading)return;
-  appLoading=true;
+  if(appReady&&currentUser?.id===user.id)return; // already loaded for this user
+  appReady=true;
   currentUser=user;
+  // Show app
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  // Show app immediately
-  document.getElementById('auth-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  // Show cached name instantly
-  const cachedName=localStorage.getItem('as-user-name')||currentUser.email?.split('@')[0]||'User';
-  const displayName=cachedName.charAt(0).toUpperCase()+cachedName.slice(1);
-  document.getElementById('user-name-top').textContent=displayName;
-  document.getElementById('user-avatar').textContent=displayName[0].toUpperCase();
-  const ddName=document.getElementById('dropdown-name');
-  const ddEmail=document.getElementById('dropdown-email');
-  if(ddName)ddName.textContent=displayName;
-  if(ddEmail)ddEmail.textContent=currentUser.email||'';
-  document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  // Load profile and data
+  // Show name from cache instantly
+  const cached=localStorage.getItem('as-user-name')||user.email?.split('@')[0]||'User';
+  const dname=cached.charAt(0).toUpperCase()+cached.slice(1);
+  const unt=document.getElementById('user-name-top');if(unt)unt.textContent=dname;
+  const uav=document.getElementById('user-avatar');if(uav)uav.textContent=dname[0];
+  const ddn=document.getElementById('dropdown-name');if(ddn)ddn.textContent=dname;
+  const dde=document.getElementById('dropdown-email');if(dde)dde.textContent=user.email||'';
+  const dd=document.getElementById('dash-date');
+  if(dd)dd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  // Load data
   try{
-    const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
-    currentProfile=data;
-    if(!data){
-      const emailName=currentUser.email.split('@')[0];
-      await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:emailName,role:'owner'});
-    }
-    let name=data?.name||currentUser.user_metadata?.name||currentUser.email?.split('@')[0]||'User';
+    const{data:prof}=await sb.from('profiles').select('*').eq('id',user.id).single();
+    currentProfile=prof;
+    if(!prof)await sb.from('profiles').insert({id:user.id,email:user.email,name:user.email.split('@')[0],role:'owner'});
+    let name=prof?.name||user.user_metadata?.name||user.email?.split('@')[0]||'User';
     name=name.charAt(0).toUpperCase()+name.slice(1);
     localStorage.setItem('as-user-name',name);
-    document.getElementById('user-name-top').textContent=name;
-    document.getElementById('user-avatar').textContent=name[0].toUpperCase();
-    if(ddName)ddName.textContent=name;
-    await loadAllData();
-    appLoading=false;
-    updateCategoryDropdowns();
-    renderDashboard();
-  }catch(e){
-    console.warn('Profile load error:',e);
-    await loadAllData();
-    appLoading=false;
-    updateCategoryDropdowns();
-    renderDashboard();
-  }
+    if(unt)unt.textContent=name;if(uav)uav.textContent=name[0];if(ddn)ddn.textContent=name;
+  }catch(e){console.warn('Profile error:',e);}
+  await loadAllData();
+  updateCategoryDropdowns();
+  renderDashboard();
 }
 
+// Single auth listener — only react to explicit sign in/out
 sb.auth.onAuthStateChange((event,session)=>{
-  if(event==='SIGNED_OUT'){
+  console.log('Auth event:',event);
+  if(event==='SIGNED_IN'){
+    if(session?.user)initApp(session.user);
+  } else if(event==='SIGNED_OUT'){
     showLoginScreen();
-    return;
   }
-  if(event==='SIGNED_IN'||event==='INITIAL_SESSION'){
-    if(session?.user){
-      initApp(session.user);
-    } else {
-      showLoginScreen();
-    }
-  }
-  // Ignore TOKEN_REFRESHED and other events
+  // INITIAL_SESSION, TOKEN_REFRESHED etc → ignore
 });
+
+// On page load: check if already logged in
+(async()=>{
+  const{data:{session}}=await sb.auth.getSession();
+  if(session?.user){
+    initApp(session.user);
+  } else {
+    showLoginScreen();
+  }
+})();
 
 // ═══════════════════════════════
 //  SETTINGS
@@ -3165,16 +3150,12 @@ document.addEventListener('click',e=>{
   }
 });
 
-// Force clear old service worker caches and unregister old SWs
+// Unregister ALL service workers to prevent caching issues
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(reg=>{
-      // Unregister if it's an old version
-      reg.active?.scriptURL && !reg.active.scriptURL.includes('as-sw.js') && reg.unregister();
-    });
+    regs.forEach(reg=>reg.unregister());
   });
-  // Register new SW
-  navigator.serviceWorker.register('./as-sw.js?v=10').then(reg=>reg.update()).catch(()=>{});
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
 }
 
 // If redirected after logout, show login screen immediately
