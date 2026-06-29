@@ -1425,16 +1425,13 @@ function editTrade(id){
   const t=trades.find(x=>x.id===id);if(!t)return;
   openModal('add-trade-modal');
   editingTradeId=id;
-  document.querySelector('#add-trade-modal .modal-title').textContent='Edit Trade';
-  document.getElementById('trade-date').value=t.date||todayISO();
-  document.getElementById('trade-stock').value=t.stock||'';
-  document.getElementById('trade-exchange').value=t.exchange||'NSE';
-  document.getElementById('trade-type').value=t.trade_type||'buy';
-  document.getElementById('trade-qty').value=t.quantity||'';
-  document.getElementById('trade-entry').value=t.entry_price||'';
-  document.getElementById('trade-exit').value=t.exit_price||'';
-  document.getElementById('trade-currency').value=t.currency||'INR';
-  document.getElementById('trade-notes').value=t.notes||'';
+  const ttitle=document.querySelector('#add-trade-modal .modal-title');if(ttitle)ttitle.textContent='Edit Trade';
+  const td=document.getElementById('trade-date');if(td)td.value=t.date||todayISO();
+  const ts=document.getElementById('trade-stock');if(ts)ts.value=t.stock||'';
+  const tex=document.getElementById('trade-exchange');if(tex)tex.value=t.exchange||'NSE';
+  const te=document.getElementById('trade-entry');if(te)te.value=t.entry_price||'';
+  const tcur=document.getElementById('trade-currency');if(tcur)tcur.value=t.currency||'INR';
+  const tn=document.getElementById('trade-notes');if(tn)tn.value=t.notes||'';
 }
 
 function editLoan(id){
@@ -1511,16 +1508,14 @@ async function updateTxn(){
 
 async function updateTrade(){
   const updates={
-    date:document.getElementById('trade-date').value,
-    stock:document.getElementById('trade-stock').value.toUpperCase(),
-    exchange:document.getElementById('trade-exchange').value,
-    trade_type:document.getElementById('trade-type').value,
-    quantity:parseFloat(document.getElementById('trade-qty').value),
-    entry_price:parseFloat(document.getElementById('trade-entry').value),
-    exit_price:document.getElementById('trade-exit').value?parseFloat(document.getElementById('trade-exit').value):null,
-    currency:document.getElementById('trade-currency').value,
-    notes:document.getElementById('trade-notes').value.trim(),
-    status:document.getElementById('trade-exit').value?'closed':'open'
+    date:document.getElementById('trade-date')?.value,
+    stock:document.getElementById('trade-stock')?.value.toUpperCase(),
+    exchange:document.getElementById('trade-exchange')?.value,
+    trade_type:'buy',
+    quantity:1,
+    entry_price:parseFloat(document.getElementById('trade-entry')?.value||0),
+    currency:document.getElementById('trade-currency')?.value||'INR',
+    notes:document.getElementById('trade-notes')?.value.trim()||''
   };
   const{error}=await sb.from('trades').update(updates).eq('id',editingTradeId);
   if(error){showToast('Error: '+error.message);return;}
@@ -3117,14 +3112,14 @@ function openModal(id){
   }
   if(id==='add-trade-modal'){
     editingTradeId=null;
-    document.querySelector('#add-trade-modal .modal-title').textContent='Add Trade';
-    document.getElementById('trade-date').value=todayISO();
-    document.getElementById('trade-stock').value='';
-    document.getElementById('trade-entry').value='';
-    document.getElementById('trade-exit').value='';
-    document.getElementById('trade-qty').value='';
-    document.getElementById('fno-fields').style.display='none';
-    document.getElementById('trade-instrument').value='equity';
+    const ttitle=document.querySelector('#add-trade-modal .modal-title');
+    if(ttitle)ttitle.textContent='Add Trade';
+    const td=document.getElementById('trade-date');if(td)td.value=todayISO();
+    const ts=document.getElementById('trade-stock');if(ts)ts.value='';
+    const te=document.getElementById('trade-entry');if(te)te.value='';
+    const tn=document.getElementById('trade-notes');if(tn)tn.value='';
+    const ff=document.getElementById('fno-fields');if(ff)ff.style.display='none';
+    const ti=document.getElementById('trade-instrument');if(ti)ti.value='equity';
   }
   if(id==='add-account-modal'){
     editingAccId=null;
