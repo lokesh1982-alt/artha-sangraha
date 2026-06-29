@@ -346,9 +346,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="sidebar-section">
         <div class="sidebar-label">Other</div>
         <button class="nav-item" onclick="switchSection('loans',this)"><span class="nav-icon">🏛️</span>Loans & EMI</button>
-        <button class="nav-item" onclick="switchSection('family',this)"><span class="nav-icon">👥</span>Family</button>
-        <button class="nav-item" onclick="switchSection('categories',this)"><span class="nav-icon">🏷️</span>Categories</button>
-        <button class="nav-item" onclick="switchSection('profile',this)"><span class="nav-icon">👤</span>My Profile</button>
+        <button class="nav-item" onclick="switchSection('settings',this)"><span class="nav-icon">⚙️</span>Settings</button>
       </div>
     </div>
 
@@ -531,6 +529,45 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="card" style="margin-top:16px" id="profile-preview" style="display:none">
           <div class="sec-title" style="margin-bottom:14px">Preview — Report Header</div>
           <div id="profile-preview-content"></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="section" id="sec-settings">
+        <div class="page-header">
+          <div><div class="page-title">Settings</div><div class="page-sub">Manage accounts, categories & more</div></div>
+        </div>
+        <div class="card-grid card-grid-2" style="margin-bottom:20px">
+          <div class="tile-btn" onclick="switchSection('accounts',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+            <div class="tile-icon-wrap" style="margin-bottom:10px">🏦</div>
+            <div style="font-weight:600;font-size:0.88rem">Accounts</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Manage your bank, FD, stocks & other accounts</div>
+          </div>
+          <div class="tile-btn" onclick="openModal('add-group-modal')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+            <div class="tile-icon-wrap" style="margin-bottom:10px">📁</div>
+            <div style="font-weight:600;font-size:0.88rem">Account Groups</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Group FDs, stocks etc. under one folder</div>
+          </div>
+          <div class="tile-btn" onclick="switchSection('categories',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+            <div class="tile-icon-wrap" style="margin-bottom:10px">🏷️</div>
+            <div style="font-weight:600;font-size:0.88rem">Categories</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Add, rename or delete income & expense categories</div>
+          </div>
+          <div class="tile-btn" onclick="switchSection('profile',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+            <div class="tile-icon-wrap" style="margin-bottom:10px">👤</div>
+            <div style="font-weight:600;font-size:0.88rem">My Profile</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Personal details used in reports</div>
+          </div>
+          <div class="tile-btn" onclick="switchSection('family',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+            <div class="tile-icon-wrap" style="margin-bottom:10px">👥</div>
+            <div style="font-weight:600;font-size:0.88rem">Family Members</div>
+            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Manage users who have access</div>
+          </div>
+          <div class="tile-btn" onclick="openModal('logout-modal')" style="background:var(--red-light);border:1px solid var(--red-light);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
+            <div class="tile-icon-wrap" style="margin-bottom:10px;background:var(--red-light)">🚪</div>
+            <div style="font-weight:600;font-size:0.88rem;color:var(--red)">Sign Out</div>
+            <div style="font-size:0.72rem;color:var(--red-text);margin-top:4px">Sign out of Artha-Sangraha</div>
+          </div>
         </div>
       </div>
 
@@ -1568,6 +1605,7 @@ function switchSection(name,btn){
   if(name==='profile')renderProfile();
   if(name==='balance-sheet'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
   if(name==='pnl'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
+  if(name==='settings'){} // static page, no render needed
   if(name==='categories')renderCategories();
   if(name==='family')renderFamily();
   if(name==='profile')renderProfile();
@@ -1629,14 +1667,14 @@ function renderDashboard(){
   const tileMenu=document.getElementById('dash-tile-menu');
   if(tileMenu){
     const tiles=[
-      {icon:'🏦',label:'Accounts',sub:`${accounts.filter(a=>a.classification==='asset').length} accounts`,fn:"switchSection('accounts',null)"},
-      {icon:'💳',label:'Transactions',sub:`${transactions.length} entries`,fn:"switchSection('transactions',null)"},
-      {icon:'📊',label:'Reports',sub:'Balance Sheet, P&L',fn:"switchSection('reports',null)"},
-      {icon:'📓',label:'Trading',sub:`${trades.length} trades`,fn:"switchSection('trading',null)"},
-      {icon:'🏛️',label:'Loans & EMI',sub:`${loans.length} loans`,fn:"switchSection('loans',null)"},
-      {icon:'🎯',label:'Budget',sub:'Monthly limits',fn:"switchSection('budget',null)"},
-      {icon:'💼',label:'Portfolio',sub:'Investments',fn:"switchSection('portfolio',null)"},
-      {icon:'👤',label:'Profile',sub:'Personal details',fn:"switchSection('profile',null)"},
+      {icon:'🏦',label:'Accounts',fn:"switchSection('accounts',null)"},
+      {icon:'💳',label:'Transactions',fn:"switchSection('transactions',null)"},
+      {icon:'📊',label:'Reports',fn:"switchSection('reports',null)"},
+      {icon:'📓',label:'Trading',fn:"switchSection('trading',null)"},
+      {icon:'🏛️',label:'Loans & EMI',fn:"switchSection('loans',null)"},
+      {icon:'🎯',label:'Budget',fn:"switchSection('budget',null)"},
+      {icon:'💼',label:'Portfolio',fn:"switchSection('portfolio',null)"},
+      {icon:'⚙️',label:'Settings',fn:"switchSection('settings',null)"},
     ];
     tileMenu.innerHTML=tiles.map(t=>`<button class="tile-btn" onclick="${t.fn}">
       <div class="tile-icon-wrap">${t.icon}</div>
@@ -1954,28 +1992,54 @@ function renderTransactions(){
 
 function showTxnDetail(id){
   const t=transactions.find(x=>x.id===id);
-  if(!t)return;
+  if(!t){showToast('Transaction not found.');return;}
   let debitAcc,creditAcc;
-  if(t.type==='transfer'){debitAcc=accounts.find(a=>a.id===t.to_account_id);creditAcc=accounts.find(a=>a.id===t.account_id);}
-  else{debitAcc=accounts.find(a=>a.id===t.debit_account_id);creditAcc=accounts.find(a=>a.id===t.credit_account_id);}
+  if(t.type==='transfer'){
+    debitAcc=accounts.find(a=>a.id===t.to_account_id);
+    creditAcc=accounts.find(a=>a.id===t.account_id);
+  } else {
+    debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+    creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+  }
   const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
+  const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
   document.getElementById('txn-detail-content').innerHTML=`
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:1.6rem;font-weight:800;color:${typeColor}">${t.type==='income'?'+':t.type==='expense'?'-':''}${fmt(t.amount,t.currency)}</div>
-      <div style="font-size:0.88rem;color:var(--text2);margin-top:4px">${t.description||t.category||'—'}</div>
+    <div style="text-align:center;padding:16px 0 20px">
+      <div style="font-size:1.8rem;font-weight:800;color:${typeColor}">${amtSign}${fmt(t.amount,t.currency)}</div>
+      <div style="font-size:0.9rem;color:var(--text2);margin-top:6px">${t.description||t.category||'—'}</div>
     </div>
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Date</span><span style="font-size:0.82rem;font-weight:500">${formatDate(t.date)}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Type</span><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.72rem">${capitalize(t.type)}</span></div>
-      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Category</span><span style="font-size:0.82rem;font-weight:500">${t.category||'—'}</span></div>
-      ${debitAcc?`<div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Debit Account</span><span style="font-size:0.82rem;font-weight:500;color:var(--green)">${debitAcc.name}</span></div>`:''}
-      ${creditAcc?`<div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Credit Account</span><span style="font-size:0.82rem;font-weight:500;color:var(--red)">${creditAcc.name}</span></div>`:''}
-      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Currency</span><span style="font-size:0.82rem;font-weight:500">${t.currency||'INR'}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text2)">Date</span>
+        <span style="font-size:0.82rem;font-weight:500">${formatDate(t.date)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text2)">Type</span>
+        <span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.72rem">${capitalize(t.type)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text2)">Category</span>
+        <span style="font-size:0.82rem;font-weight:500">${t.category||'—'}</span>
+      </div>
+      ${debitAcc?`<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text2)">Debit (Dr)</span>
+        <span style="font-size:0.82rem;font-weight:500;color:var(--green)">${debitAcc.name}</span>
+      </div>`:''}
+      ${creditAcc?`<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text2)">Credit (Cr)</span>
+        <span style="font-size:0.82rem;font-weight:500;color:var(--red)">${creditAcc.name}</span>
+      </div>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.78rem;color:var(--text2)">Currency</span>
+        <span style="font-size:0.82rem;font-weight:500">${t.currency||'INR'}</span>
+      </div>
     </div>`;
+  // Store id for edit/delete buttons
   document.getElementById('txn-detail-actions').innerHTML=`
     <button class="btn-outline" style="flex:1" onclick="closeModal('txn-detail-modal');editTxn('${t.id}')">✏️ Edit</button>
     <button class="btn-danger" style="flex:1" onclick="closeModal('txn-detail-modal');deleteTxn('${t.id}')">🗑 Delete</button>`;
-  openModal('txn-detail-modal');
+  // Show modal directly (bypass openModal to avoid field resets)
+  document.getElementById('txn-detail-modal').classList.add('open');
 }
 
 // ═══════════════════════════════
@@ -2910,6 +2974,7 @@ async function deleteAccountPrompt(id){
 //  MODAL HELPERS
 // ═══════════════════════════════
 function openModal(id){
+  try{
   if(id==='add-txn-modal'){
     editingTxnId=null;
     document.querySelector('#add-txn-modal .modal-title').textContent='Add Transaction';
@@ -2963,24 +3028,31 @@ function openModal(id){
   }
   if(id==='add-group-modal'){
     editingGroupId=null;
-    document.getElementById('grp-name').value='';
-    document.getElementById('grp-icon').value='';
-    document.getElementById('grp-classification').value='asset';
-    document.querySelector('#add-group-modal .modal-title').textContent='Create Account Group';
+    const gn=document.getElementById('grp-name');if(gn)gn.value='';
+    const gi=document.getElementById('grp-icon');if(gi)gi.value='';
+    const gc=document.getElementById('grp-classification');if(gc)gc.value='asset';
+    const gt=document.querySelector('#add-group-modal .modal-title');if(gt)gt.textContent='Create Account Group';
   }
   if(id==='add-category-modal'){
     editingCatId=null;
-    document.getElementById('cat-name').value='';
-    document.getElementById('cat-type').value='expense';
-    document.getElementById('cat-icon').value='';
-    document.querySelector('#add-category-modal .modal-title').textContent='Add Category';
+    const cn=document.getElementById('cat-name');if(cn)cn.value='';
+    const ct=document.getElementById('cat-type');if(ct)ct.value='expense';
+    const ci=document.getElementById('cat-icon');if(ci)ci.value='';
+    const ctitle=document.querySelector('#add-category-modal .modal-title');if(ctitle)ctitle.textContent='Add Category';
   }
   if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
   if(id==='add-loan-modal'){
     editingLoanId=null;
     document.querySelector('#add-loan-modal .modal-title').textContent='Add Loan / EMI';
     document.getElementById('loan-start').value=todayISO();}
-  document.getElementById(id).classList.add('open');
+  const el=document.getElementById(id);
+  if(el)el.classList.add('open');
+  else console.error('Modal not found:',id);
+  }catch(e){
+    console.error('openModal error:',e);
+    const el=document.getElementById(id);
+    if(el)el.classList.add('open');
+  }
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
