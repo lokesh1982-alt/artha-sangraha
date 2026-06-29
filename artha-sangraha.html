@@ -1023,13 +1023,14 @@ document.addEventListener('click',e=>{
 async function confirmLogout(){
   closeModal('logout-modal');
   closeUserMenu();
-  // Show login immediately
-  showLoginScreen();
-  // Clear storage
-  localStorage.clear();
+  // Clear Supabase session from storage immediately
+  localStorage.removeItem('as-session');
+  localStorage.removeItem('as-user-name');
   sessionStorage.clear();
-  // Sign out from Supabase — SIGNED_OUT event will also call showLoginScreen (harmless)
-  try{ await sb.auth.signOut(); }catch(e){}
+  // Show login screen right away
+  showLoginScreen();
+  // Sign out from server in background
+  try{ await sb.auth.signOut({scope:'global'}); }catch(e){}
 }
 
 // ── AUTH STATE ──────────────────────────────────────────────
@@ -1048,7 +1049,7 @@ function showLoginScreen(){
 }
 
 async function initApp(user){
-  if(appReady&&currentUser?.id===user.id)return; // already loaded for this user
+  if(appReady&&currentUser?.id===user.id)return;
   appReady=true;
   currentUser=user;
   // Show app
@@ -1078,26 +1079,14 @@ async function initApp(user){
   renderDashboard();
 }
 
-// Single auth listener — only react to explicit sign in/out
+// Auth listener
 sb.auth.onAuthStateChange((event,session)=>{
-  console.log('Auth event:',event);
-  if(event==='SIGNED_IN'){
-    if(session?.user)initApp(session.user);
-  } else if(event==='SIGNED_OUT'){
+  if(event==='SIGNED_OUT'){
     showLoginScreen();
-  }
-  // INITIAL_SESSION, TOKEN_REFRESHED etc → ignore
-});
-
-// On page load: check if already logged in
-(async()=>{
-  const{data:{session}}=await sb.auth.getSession();
-  if(session?.user){
+  } else if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session?.user){
     initApp(session.user);
-  } else {
-    showLoginScreen();
   }
-})();
+});
 
 // ═══════════════════════════════
 //  SETTINGS
