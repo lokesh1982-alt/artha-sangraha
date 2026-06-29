@@ -1695,19 +1695,8 @@ function switchSection(name,btn){
     if(af)af.innerHTML='<option value="all">All accounts</option>'+accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
     renderTransactions();
   }
-  if(name==='balance-sheet'){
-    if(!document.getElementById('bs-as-of-date').value)document.getElementById('bs-as-of-date').value=todayISO();
-    renderBalanceSheet();
-  }
-  if(name==='pnl'){
-    if(!document.getElementById('pnl-to').value){
-      const now=new Date();
-      const firstDay=new Date(now.getFullYear(),now.getMonth(),1);
-      document.getElementById('pnl-from').value=toLocalISO(firstDay);
-      document.getElementById('pnl-to').value=todayISO();
-    }
-    renderPnL();
-  }
+  if(name==='balance-sheet'){currentReportTab='bs';switchSection('reports',null);return;}
+  if(name==='pnl'){currentReportTab='pnl';switchSection('reports',null);return;}
   if(name==='budget')renderBudget();
   if(name==='portfolio')renderPortfolio();
   if(name==='trading')renderTrading();
@@ -1813,13 +1802,7 @@ function renderDashboard(){
       }).join('')
     :`<div class="empty-state"><div class="empty-icon">💳</div><div class="empty-text">No transactions yet.</div></div>`;
 
-  const assetAccs=accounts.filter(a=>a.classification==='asset').slice(0,6);
-  document.getElementById('dash-accounts').innerHTML=assetAccs.length
-    ?assetAccs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:1rem">${accIcon(a.type)}</span><div><div style="font-size:0.82rem;font-weight:600;color:var(--text)">${a.name}</div><div style="font-size:0.7rem;color:var(--text3)">${capitalize(a.type)} · ${a.currency}</div></div></div>
-      <div style="font-weight:600;font-size:0.85rem;color:var(--accent)">${fmt(calcBalance(a),a.currency)}</div>
-    </div>`).join('')
-    :`<div class="empty-state"><div class="empty-text">No accounts yet.</div></div>`;
+
 
   renderDashChart();
 }
@@ -2157,8 +2140,7 @@ function showTxnDetail(id){
 //  BALANCE SHEET
 // ═══════════════════════════════
 function renderBalanceSheet(){
-  const asOf=document.getElementById('bs-as-of-date').value||todayISO();
-  document.getElementById('bs-date').textContent='As of '+formatDate(asOf);
+  const asOf=todayISO();
   const assetTypes=['cash','bank','indian-stock','us-stock','property','fd','pf','gold','crypto','custom-asset','other'];
   const liabTypes=['custom-liability'];
   const equityTypes=['custom-equity'];
@@ -2198,7 +2180,10 @@ function renderBalanceSheet(){
   // Liabilities from loans
   const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
   const netWorth=totalAssets-totalLiab;
-  document.getElementById('bs-content').innerHTML=`
+  // BS content now in Reports - this function is legacy
+  const bsEl=document.getElementById('bs-content');
+  if(!bsEl)return;
+  bsEl.innerHTML=`
   <div class="card-grid card-grid-3" style="margin-bottom:16px">
     <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
@@ -2229,8 +2214,8 @@ function renderBalanceSheet(){
 //  P&L
 // ═══════════════════════════════
 function renderPnL(){
-  const from=document.getElementById('pnl-from').value;
-  const to=document.getElementById('pnl-to').value||todayISO();
+  const from=document.getElementById('pnl-from')?.value||'';
+  const to=document.getElementById('pnl-to')?.value||todayISO();
   const monthTxns=transactions.filter(t=>{
     if(from&&t.date<from)return false;
     if(to&&t.date>to)return false;
@@ -2257,7 +2242,9 @@ function renderPnL(){
   const incByCat={};incTxns.forEach(t=>incByCat[t.category]=(incByCat[t.category]||0)+parseFloat(t.amount));
   const expByCat={};expTxns.forEach(t=>expByCat[t.category]=(expByCat[t.category]||0)+parseFloat(t.amount));
   const periodLabel=from?`${formatDate(from)} to ${formatDate(to)}`:`Up to ${formatDate(to)}`;
-  document.getElementById('pnl-content').innerHTML=`
+  const pnlEl=document.getElementById('pnl-content');
+  if(!pnlEl)return;
+  pnlEl.innerHTML=`
   <div class="card-grid card-grid-3" style="margin-bottom:16px">
     <div class="stat-card"><div class="stat-label">Total Income</div><div class="stat-val" style="color:var(--green)">${fmt(totalInc,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(totalExp,'INR')}</div></div>
