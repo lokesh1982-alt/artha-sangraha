@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <meta name="theme-color" content="#1a56db"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
@@ -202,17 +202,57 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .nw-box-label{font-size:0.72rem;opacity:0.8;margin-bottom:3px;}
 .nw-box-val{font-size:1rem;font-weight:600;}
 
-/* RESPONSIVE */
 @media(max-width:768px){
   .sidebar{display:none;}
-  .bottom-nav{display:block;}
-  .main-content{padding:16px 14px 90px;}
+  .main-content{padding:16px 14px 20px;}
   .form-row{grid-template-columns:1fr;}
   .nw-val{font-size:1.5rem;}
   .card-grid-3,.card-grid-4{grid-template-columns:1fr 1fr;}
 }
+.tile-menu{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0;}
+.tile-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all 0.2s;text-align:center;box-shadow:var(--shadow);}
+.tile-btn:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.tile-btn .tile-icon{font-size:1.8rem;}
+.tile-btn .tile-label{font-size:0.82rem;font-weight:600;color:var(--text2);}
+.tile-btn .tile-count{font-size:0.72rem;color:var(--text3);}
+/* HOME BUTTON */
+.home-btn{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:0.8rem;color:var(--text2);cursor:pointer;font-family:inherit;margin-bottom:16px;transition:all 0.2s;}
+.home-btn:hover{border-color:var(--accent);color:var(--accent);}
+/* PROFILE */
+.profile-field{margin-bottom:16px;}
+.profile-label{font-size:0.75rem;color:var(--text2);font-weight:500;margin-bottom:4px;}
+.profile-value{font-size:0.9rem;color:var(--text);font-weight:500;}
+.hidden-field{display:flex;align-items:center;gap:8px;}
+.hidden-field input{flex:1;}
+.eye-btn{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;cursor:pointer;font-size:0.9rem;}
+/* MOBILE REPORT CARD */
+.report-card-mobile{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all 0.2s;}
+.report-card-mobile:hover{border-color:var(--accent);}
+.report-card-info{flex:1;}
+.report-card-title{font-size:0.88rem;font-weight:600;margin-bottom:2px;}
+.report-card-sub{font-size:0.75rem;color:var(--text2);}
+.report-card-arrow{font-size:1.1rem;color:var(--text3);}
+/* POPUP DETAIL */
+.detail-popup-overlay{position:fixed;inset:0;z-index:400;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+.detail-popup-overlay.open{opacity:1;pointer-events:all;}
+.detail-popup{background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-height:85vh;overflow-y:auto;transform:translateY(20px);transition:transform 0.25s;}
+.detail-popup-overlay.open .detail-popup{transform:translateY(0);}
+/* DESKTOP LIST FORMAT FOR ACCOUNTS */
 @media(min-width:769px){
+  .account-card{border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border);box-shadow:none;padding:12px 16px;}
+  .account-card:hover{transform:none;background:var(--bg2);}
+  .accounts-desktop-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  .accounts-desktop-header{padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;font-size:0.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;}
+  .account-list-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;}
+  .account-list-row:hover{background:var(--bg2);}
+  .account-list-row:last-child{border-bottom:none;}
+  .tile-menu{display:none;}
+  .home-btn{display:none;}
+}
+@media(max-width:768px){
   .bottom-nav{display:none!important;}
+  .accounts-desktop-wrap .accounts-desktop-header{display:none;}
+  .account-list-row{grid-template-columns:1fr auto;}
 }
 </style>
 </head>
@@ -263,12 +303,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <span id="user-name-top">User</span>
           <span style="font-size:0.7rem;margin-left:2px">▾</span>
         </div>
-        <div id="user-dropdown" style="display:none;position:absolute;right:0;top:44px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);min-width:160px;z-index:300;overflow:hidden;">
+        <div id="user-dropdown" style="display:none;position:absolute;right:0;top:44px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);min-width:180px;z-index:300;overflow:hidden;">
           <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
-            <div style="font-size:0.78rem;font-weight:600;color:var(--text)" id="dropdown-name">User</div>
+            <div style="font-size:0.82rem;font-weight:600;color:var(--text)" id="dropdown-name">User</div>
             <div style="font-size:0.72rem;color:var(--text2)" id="dropdown-email"></div>
           </div>
-          <button onclick="closeUserMenu();openModal('logout-modal')" style="width:100%;padding:11px 16px;background:none;border:none;text-align:left;font-size:0.85rem;color:var(--red);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;">
+          <button onclick="closeUserMenu();switchSection('profile',document.querySelector('.nav-item:last-child'))" style="width:100%;padding:10px 16px;background:none;border:none;border-bottom:1px solid var(--border);text-align:left;font-size:0.85rem;color:var(--text);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;">
+            👤 My Profile
+          </button>
+          <button onclick="closeUserMenu();openModal('logout-modal')" style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:0.85rem;color:var(--red);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;">
             🚪 Sign Out
           </button>
         </div>
@@ -288,8 +331,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
       <div class="sidebar-section">
         <div class="sidebar-label">Reports</div>
-        <button class="nav-item" onclick="switchSection('balance-sheet',this)"><span class="nav-icon">📊</span>Balance Sheet</button>
-        <button class="nav-item" onclick="switchSection('pnl',this)"><span class="nav-icon">📈</span>P&L Statement</button>
+        <button class="nav-item" onclick="switchSection('reports',this)"><span class="nav-icon">📊</span>Reports & Charts</button>
         <button class="nav-item" onclick="switchSection('budget',this)"><span class="nav-icon">🎯</span>Budget</button>
       </div>
       <div class="sidebar-section">
@@ -300,8 +342,8 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="sidebar-section">
         <div class="sidebar-label">Other</div>
         <button class="nav-item" onclick="switchSection('loans',this)"><span class="nav-icon">🏛️</span>Loans & EMI</button>
-        <button class="nav-item" onclick="switchSection('reports',this)"><span class="nav-icon">📉</span>Reports</button>
         <button class="nav-item" onclick="switchSection('family',this)"><span class="nav-icon">👥</span>Family</button>
+        <button class="nav-item" onclick="switchSection('profile',this)"><span class="nav-icon">👤</span>My Profile</button>
       </div>
     </div>
 
@@ -316,14 +358,14 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
         <div id="nw-banner-wrap"></div>
         <div class="card-grid card-grid-4" id="dash-stats"></div>
+        <!-- Tile Navigation Menu (mobile only) -->
+        <div class="tile-menu" id="dash-tile-menu"></div>
+        <!-- Recent Transactions -->
         <div style="margin-bottom:20px">
           <div class="sec-header"><div class="section-title" style="font-size:1rem;font-weight:600">Recent Transactions</div><button class="btn-outline" onclick="switchSection('transactions',null)">View all</button></div>
           <div class="card"><div id="dash-recent-txns"></div></div>
         </div>
-        <div style="margin-bottom:20px">
-          <div class="sec-header"><div class="section-title" style="font-size:1rem;font-weight:600">Accounts Overview</div></div>
-          <div class="card"><div id="dash-accounts"></div></div>
-        </div>
+        <!-- Monthly Chart -->
         <div>
           <div class="sec-header"><div class="section-title" style="font-size:1rem;font-weight:600">Monthly Income vs Expenses</div></div>
           <div class="card"><div id="dash-chart"></div></div>
@@ -459,15 +501,60 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div id="loans-content"></div>
       </div>
 
-      <!-- REPORTS -->
+      <!-- REPORTS (consolidated) -->
       <div class="section" id="sec-reports">
-        <div class="page-header"><div class="page-title">Reports & Charts</div></div>
-        <div class="tabs">
-          <button class="tab-btn active" onclick="switchReportTab('monthly',this)">Monthly</button>
+        <div class="page-header">
+          <div><div class="page-title">Reports & Charts</div></div>
+        </div>
+        <div class="tabs" style="flex-wrap:wrap;gap:4px">
+          <button class="tab-btn active" onclick="switchReportTab('bs',this)">Balance Sheet</button>
+          <button class="tab-btn" onclick="switchReportTab('pnl',this)">P&L</button>
+          <button class="tab-btn" onclick="switchReportTab('trial',this)">Trial Balance</button>
+          <button class="tab-btn" onclick="switchReportTab('monthly',this)">Monthly</button>
           <button class="tab-btn" onclick="switchReportTab('category',this)">By Category</button>
           <button class="tab-btn" onclick="switchReportTab('networth',this)">Net Worth</button>
         </div>
         <div id="reports-content"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="section" id="sec-profile">
+        <div class="page-header">
+          <div><div class="page-title">My Profile</div><div class="page-sub">Personal details for reports</div></div>
+          <button class="btn-sm" id="profile-save-btn" onclick="saveProfile()">Save</button>
+        </div>
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="prof-name" placeholder="Your full name"/></div>
+            <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="prof-email" placeholder="your@email.com"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Address</label><textarea class="form-textarea" id="prof-address" placeholder="Your full address" style="min-height:70px"></textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="prof-phone" placeholder="+91 98765 43210"/></div>
+            <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-input" type="date" id="prof-dob"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Aadhar Number</label>
+              <div class="hidden-field">
+                <input class="form-input" type="password" id="prof-aadhar" placeholder="XXXX XXXX XXXX"/>
+                <button class="eye-btn" onclick="toggleFieldVisibility('prof-aadhar',this)">👁</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PAN Number</label>
+              <div class="hidden-field">
+                <input class="form-input" type="password" id="prof-pan" placeholder="ABCDE1234F"/>
+                <button class="eye-btn" onclick="toggleFieldVisibility('prof-pan',this)">👁</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Profile Preview Card (for reports) -->
+        <div class="card" style="margin-top:16px" id="profile-preview" style="display:none">
+          <div class="sec-title" style="margin-bottom:14px">Preview — Report Header</div>
+          <div id="profile-preview-content"></div>
+        </div>
       </div>
 
       <!-- FAMILY -->
@@ -482,19 +569,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 
   <!-- BOTTOM NAV (mobile) -->
-  <div class="bottom-nav">
-    <div class="bottom-nav-inner">
-      <button class="bnav-item active" onclick="switchSection('dashboard',this)"><span>🏠</span><span>Home</span></button>
-      <button class="bnav-item" onclick="switchSection('accounts',this)"><span>🏦</span><span>Accounts</span></button>
-      <button class="bnav-item" onclick="switchSection('chart-of-accounts',this)"><span>📋</span><span>COA</span></button>
-      <button class="bnav-item" onclick="switchSection('transactions',this)"><span>💳</span><span>Txns</span></button>
-      <button class="bnav-item" onclick="switchSection('balance-sheet',this)"><span>📊</span><span>B/S</span></button>
-      <button class="bnav-item" onclick="switchSection('pnl',this)"><span>📈</span><span>P&L</span></button>
-      <button class="bnav-item" onclick="switchSection('trading',this)"><span>📓</span><span>Trades</span></button>
-      <button class="bnav-item" onclick="switchSection('loans',this)"><span>🏛️</span><span>Loans</span></button>
-      <button class="bnav-item" onclick="switchSection('reports',this)"><span>📉</span><span>Reports</span></button>
-    </div>
-  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -837,19 +912,10 @@ document.addEventListener('click',e=>{
   }
 });
 async function confirmLogout(){
+  // Immediately show login screen - don't wait for signOut
   closeModal('logout-modal');
   closeUserMenu();
-  // Clear all storage
-  localStorage.clear();
-  sessionStorage.clear();
-  // Sign out globally
-  try{ await sb.auth.signOut({scope:'global'}); }catch(e){}
-  // Clear cookies if any
-  document.cookie.split(';').forEach(c=>{
-    document.cookie=c.trim().split('=')[0]+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-  });
-  // Show login screen directly without reload
-  currentUser=null; currentProfile=null;
+  currentUser=null;currentProfile=null;
   accounts=[];transactions=[];trades=[];loans=[];budgets=[];
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -857,66 +923,68 @@ async function confirmLogout(){
   document.getElementById('login-pass').value='';
   document.getElementById('auth-msg').textContent='';
   switchAuthTab('login');
+  // Clear storage and sign out in background
+  localStorage.clear();
+  sessionStorage.clear();
+  document.cookie.split(';').forEach(c=>{
+    document.cookie=c.trim().split('=')[0]+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+  });
+  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
 }
 
+let appInitialized=false;
+
 sb.auth.onAuthStateChange(async(event,session)=>{
-  // Ignore logout redirect
-  if(window.location.search.includes('logout=')) return;
-  // Only react to explicit sign in/out events and initial session
-  if(event==='SIGNED_OUT'){
-    currentUser=null;currentProfile=null;
-    document.getElementById('auth-screen').style.display='flex';
-    document.getElementById('app').style.display='none';
+  // Handle sign out
+  if(event==='SIGNED_OUT'||(!session&&event!=='INITIAL_SESSION')){
+    if(currentUser){// Only if we were logged in
+      currentUser=null;currentProfile=null;
+      accounts=[];transactions=[];trades=[];loans=[];budgets=[];
+      document.getElementById('auth-screen').style.display='flex';
+      document.getElementById('app').style.display='none';
+      appInitialized=false;
+    }
     return;
   }
-  if(session?.user){
-    currentUser=session.user;
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('app').style.display='flex';
-    // Show cached name instantly while profile loads
-    const cachedName=localStorage.getItem('as-user-name')||currentUser.email?.split('@')[0]||'User';
-    const displayName=cachedName.charAt(0).toUpperCase()+cachedName.slice(1);
-    document.getElementById('user-name-top').textContent=displayName;
-    document.getElementById('user-avatar').textContent=displayName[0].toUpperCase();
-    const ddName=document.getElementById('dropdown-name');
-    const ddEmail=document.getElementById('dropdown-email');
-    if(ddName)ddName.textContent=displayName;
-    if(ddEmail)ddEmail.textContent=currentUser.email||'';
-    // Try to get name from profiles, fallback to email
-    const{data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  // Only initialize app once per session to avoid race conditions
+  if(!session?.user)return;
+  if(appInitialized&&event==='TOKEN_REFRESHED')return;// Skip token refreshes
+  currentUser=session.user;
+  appInitialized=true;
+  // Show app immediately
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  // Show cached name instantly
+  const cachedName=localStorage.getItem('as-user-name')||currentUser.email?.split('@')[0]||'User';
+  const displayName=cachedName.charAt(0).toUpperCase()+cachedName.slice(1);
+  document.getElementById('user-name-top').textContent=displayName;
+  document.getElementById('user-avatar').textContent=displayName[0].toUpperCase();
+  const ddName=document.getElementById('dropdown-name');
+  const ddEmail=document.getElementById('dropdown-email');
+  if(ddName)ddName.textContent=displayName;
+  if(ddEmail)ddEmail.textContent=currentUser.email||'';
+  document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  // Load profile and data
+  try{
+    const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     currentProfile=data;
-    // If profile doesn't exist yet, create it
     if(!data){
       const emailName=currentUser.email.split('@')[0];
       await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:emailName,role:'owner'});
     }
-    let name='';
-    if(data?.name) name=data.name;
-    else if(currentUser.user_metadata?.name) name=currentUser.user_metadata.name;
-    else if(currentUser.email) name=currentUser.email.split('@')[0];
-    else name='User';
-    // Capitalize first letter
+    let name=data?.name||currentUser.user_metadata?.name||currentUser.email?.split('@')[0]||'User';
     name=name.charAt(0).toUpperCase()+name.slice(1);
-    // Cache name so it shows instantly on next reload
-    localStorage.setItem('as-user-name', name);
+    localStorage.setItem('as-user-name',name);
     document.getElementById('user-name-top').textContent=name;
     document.getElementById('user-avatar').textContent=name[0].toUpperCase();
-    document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    // Set default date ranges
-    const now=new Date();
-    const firstDay=new Date(now.getFullYear(),now.getMonth(),1);
-    const pnlFrom=document.getElementById('pnl-from');
-    const pnlTo=document.getElementById('pnl-to');
-    const bsDate=document.getElementById('bs-as-of-date');
-    if(pnlFrom)pnlFrom.value=toLocalISO(firstDay);
-    if(pnlTo)pnlTo.value=todayISO();
-    if(bsDate)bsDate.value=todayISO();
+    if(ddName)ddName.textContent=name;
     await loadAllData();
     renderDashboard();
-  } else {
-    currentUser=null;currentProfile=null;
-    document.getElementById('auth-screen').style.display='flex';
-    document.getElementById('app').style.display='none';
+  }catch(e){
+    // Even if profile load fails, still load data
+    console.warn('Profile load error:',e);
+    await loadAllData();
+    renderDashboard();
   }
 });
 
@@ -1229,8 +1297,12 @@ function switchSection(name,btn){
   if(name==='portfolio')renderPortfolio();
   if(name==='trading')renderTrading();
   if(name==='loans')renderLoans();
-  if(name==='reports')renderReports();
+  if(name==='reports'){currentReportTab='bs';renderReports();}
+  if(name==='profile')renderProfile();
+  if(name==='balance-sheet'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
+  if(name==='pnl'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
   if(name==='family')renderFamily();
+  if(name==='profile')renderProfile();
 }
 
 // ═══════════════════════════════
@@ -1285,7 +1357,25 @@ function renderDashboard(){
     <div class="stat-card"><div class="stat-label">This Month Income</div><div class="stat-val" style="color:var(--green)">${fmt(mIncome,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">This Month Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(mExp,'INR')}</div></div>`;
 
-  const seen=new Set();
+  // Tile menu
+  const tileMenu=document.getElementById('dash-tile-menu');
+  if(tileMenu){
+    const tiles=[
+      {icon:'🏦',label:'Accounts',sub:`${accounts.filter(a=>a.classification==='asset').length} accounts`,fn:"switchSection('accounts',null)"},
+      {icon:'💳',label:'Transactions',sub:`${transactions.length} entries`,fn:"switchSection('transactions',null)"},
+      {icon:'📊',label:'Reports',sub:'Balance Sheet, P&L',fn:"switchSection('reports',null)"},
+      {icon:'📓',label:'Trading',sub:`${trades.length} trades`,fn:"switchSection('trading',null)"},
+      {icon:'🏛️',label:'Loans & EMI',sub:`${loans.length} loans`,fn:"switchSection('loans',null)"},
+      {icon:'🎯',label:'Budget',sub:'Monthly limits',fn:"switchSection('budget',null)"},
+      {icon:'💼',label:'Portfolio',sub:'Investments',fn:"switchSection('portfolio',null)"},
+      {icon:'👤',label:'Profile',sub:'Personal details',fn:"switchSection('profile',null)"},
+    ];
+    tileMenu.innerHTML=tiles.map(t=>`<button class="tile-btn" onclick="${t.fn}">
+      <div class="tile-icon">${t.icon}</div>
+      <div class="tile-label">${t.label}</div>
+      <div class="tile-count">${t.sub}</div>
+    </button>`).join('');
+  }
   const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;}).slice(0,8);
   document.getElementById('dash-recent-txns').innerHTML=recent.length
     ?`<div style="overflow-x:auto"><table class="data-table" style="min-width:500px">${recent.map(t=>{
@@ -1411,7 +1501,6 @@ function renderChartOfAccounts(){
 }
 
 function renderAccounts(){
-  // Group by classification for better organization
   const classGroups={
     asset:{label:'🏦 Assets',color:'var(--green)',accs:[]},
     liability:{label:'💳 Liabilities',color:'var(--red)',accs:[]},
@@ -1424,34 +1513,62 @@ function renderAccounts(){
     if(classGroups[cls])classGroups[cls].accs.push(a);
     else classGroups.asset.accs.push(a);
   });
+  const isMobile=window.innerWidth<=768;
   let html='';
   Object.entries(classGroups).forEach(([cls,{label,color,accs}])=>{
     if(!accs.length)return;
     const total=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
-    html+=`<div style="margin-bottom:24px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:0.85rem;font-weight:700;color:var(--text)">${label}</div>
-        <div style="font-size:0.85rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
-      </div>
-      <div class="card-grid card-grid-2">
-      ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
-        <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
-        <div class="account-info">
-          <div class="account-name">${a.name}</div>
-          <div class="account-type" style="font-size:0.7rem;color:var(--text3)">${a.notes&&a.notes!=='Auto-created'?a.notes:capitalize(a.type)} · ${formatDate(a.opening_date||a.created_at?.split('T')[0])}</div>
-          <div style="font-size:0.7rem;color:var(--text2);margin-top:2px">Opening: ${fmt(a.opening_balance,a.currency)}</div>
+    if(isMobile){
+      // Mobile: tiles
+      html+=`<div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:0.85rem;font-weight:700">${label}</div>
+          <div style="font-size:0.85rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
         </div>
-        <div class="account-bal">
-          <div class="account-bal-val" style="color:${color}">${fmt(calcBalance(a),a.currency)}</div>
-          <div class="account-bal-curr">${a.currency} · Current</div>
+        <div class="card-grid card-grid-2">
+        ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
+          <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
+          <div class="account-info">
+            <div class="account-name">${a.name}</div>
+            <div class="account-type" style="font-size:0.7rem;color:var(--text3)">${a.currency}</div>
+          </div>
+          <div class="account-bal">
+            <div class="account-bal-val" style="color:${color};font-size:0.9rem">${fmt(calcBalance(a),a.currency)}</div>
+            <div class="account-bal-curr">Current</div>
+          </div>
+          <div style="display:flex;gap:3px">
+            <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
+            <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+          </div>
+        </div>`).join('')}
         </div>
-        <div style="display:flex;gap:4px">
-          <button class="btn-outline" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
-          <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+      </div>`;
+    } else {
+      // Desktop: list format
+      html+=`<div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:0.88rem;font-weight:700">${label}</div>
+          <div style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
         </div>
-      </div>`).join('')}
-      </div>
-    </div>`;
+        <div class="card" style="padding:0;overflow:hidden">
+          <table class="data-table">
+            <thead><tr><th>Account</th><th>Type</th><th>Notes</th><th>Opening Date</th><th style="text-align:right">Opening Bal</th><th style="text-align:right">Current Bal</th><th></th></tr></thead>
+            <tbody>${accs.map(a=>`<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
+              <td><b>${accIcon(a.type)} ${a.name}</b></td>
+              <td><span class="badge badge-blue" style="font-size:0.7rem">${capitalize(a.type)}</span></td>
+              <td style="font-size:0.78rem;color:var(--text2)">${a.notes&&a.notes!=='Auto-created'?a.notes:'—'}</td>
+              <td style="font-size:0.78rem;color:var(--text2)">${formatDate(a.opening_date)}</td>
+              <td style="text-align:right;color:var(--text2)">${fmt(a.opening_balance,a.currency)}</td>
+              <td style="text-align:right;font-weight:700;color:${color}">${fmt(calcBalance(a),a.currency)}</td>
+              <td><div style="display:flex;gap:4px;justify-content:flex-end">
+                <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
+                <button class="btn-danger" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+              </div></td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>`;
+    }
   });
   document.getElementById('accounts-list').innerHTML=html||`<div class="empty-state"><div class="empty-icon">🏦</div><div class="empty-text">No accounts yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button></div>`;
 }
@@ -1790,32 +1907,258 @@ function switchReportTab(tab,btn){
   if(btn)btn.classList.add('active');
   renderReports();
 }
+
 function renderReports(){
   const c=document.getElementById('reports-content');
-  if(currentReportTab==='monthly'){
-    const months=[];
-    for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short',year:'2-digit'}),key:toMonthISO(d)});}
-    const rows=months.map(m=>{
-      const inc=transactions.filter(t=>t.date.startsWith(m.key)&&t.type==='income').reduce((s,t)=>s+parseFloat(t.amount),0);
-      const exp=transactions.filter(t=>t.date.startsWith(m.key)&&t.type==='expense').reduce((s,t)=>s+parseFloat(t.amount),0);
-      return`<tr><td>${m.label}</td><td style="color:var(--green)">${fmt(inc,'INR')}</td><td style="color:var(--red)">${fmt(exp,'INR')}</td><td style="color:${inc-exp>=0?'var(--green)':'var(--red)'};font-weight:600">${fmt(Math.abs(inc-exp),'INR')}</td></tr>`;
-    }).join('');
-    c.innerHTML=`<div class="card"><table class="data-table"><thead><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Surplus/Deficit</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  } else if(currentReportTab==='category'){
-    const catMap={};
-    transactions.filter(t=>t.type==='expense').forEach(t=>catMap[t.category]=(catMap[t.category]||0)+parseFloat(t.amount));
-    const total=Object.values(catMap).reduce((s,v)=>s+v,0);
-    const rows=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<tr><td>${c}</td><td style="text-align:right">${fmt(v,'INR')}</td><td style="text-align:right">${total>0?Math.round(v/total*100):0}%</td><td style="width:120px"><div class="progress-wrap" style="height:6px"><div class="progress-fill" style="width:${total>0?v/total*100:0}%;background:var(--accent)"></div></div></td></tr>`).join('');
-    c.innerHTML=`<div class="card"><table class="data-table"><thead><tr><th>Category</th><th style="text-align:right">Total Spent</th><th style="text-align:right">%</th><th>Share</th></tr></thead><tbody>${rows||'<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text3)">No expense data</td></tr>'}</tbody></table></div>`;
-  } else {
-    const totalAssets=accounts.reduce((s,a)=>s+(a.currency==='INR'?parseFloat(a.opening_balance||0):0),0);
-    const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
-    c.innerHTML=`<div class="card-grid card-grid-3">
-      <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
-      <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(totalAssets-totalLiab,'INR')}</div></div>
+  if(!c)return;
+  if(currentReportTab==='bs')c.innerHTML=buildBalanceSheetHTML();
+  else if(currentReportTab==='pnl')c.innerHTML=buildPnLHTML();
+  else if(currentReportTab==='trial')c.innerHTML=buildTrialBalanceHTML();
+  else if(currentReportTab==='monthly')c.innerHTML=buildMonthlyHTML();
+  else if(currentReportTab==='category')c.innerHTML=buildCategoryHTML();
+  else if(currentReportTab==='networth')c.innerHTML=buildNetWorthHTML();
+}
+
+function buildSimpleDonut(segments,total){
+  if(!total)return'';
+  const r=55,cx=70,cy=70,sw=20,circ=2*Math.PI*r;
+  let offset=0,paths='';
+  segments.forEach(s=>{
+    if(!s.value)return;
+    const pct=s.value/total,dash=pct*circ,gap=circ-dash;
+    paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${sw}" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-offset*circ).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset+=pct;
+  });
+  return`<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <svg width="140" height="140" viewBox="0 0 140 140"><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="${sw}"/>${paths}</svg>
+    <div>${segments.filter(s=>s.value>0).map(s=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:12px;height:12px;border-radius:50%;background:${s.color}"></div><div><div style="font-size:0.82rem;font-weight:600">${s.label}</div><div style="font-size:0.78rem;color:var(--text2)">${fmt(s.value,'INR')} (${Math.round(s.value/total*100)}%)</div></div></div>`).join('')}</div>
+  </div>`;
+}
+
+function buildBalanceSheetHTML(){
+  const assetAccs=accounts.filter(a=>a.classification==='asset');
+  const liabAccs=accounts.filter(a=>a.classification==='liability');
+  const totalAssets=assetAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+liabAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  const netWorth=totalAssets-totalLiab;
+  const donut=buildSimpleDonut([{label:'Assets',value:totalAssets,color:'var(--green)'},{label:'Liabilities',value:Math.abs(totalLiab),color:'var(--red)'}],totalAssets+Math.abs(totalLiab));
+  return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
+    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">${donut}</div>
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:10px">Assets</div>
+    <table class="data-table"><thead><tr><th>Account</th><th style="text-align:right">Balance</th></tr></thead>
+    <tbody>${assetAccs.map(a=>`<tr><td>${accIcon(a.type)} ${a.name}</td><td style="text-align:right">${fmt(calcBalance(a),a.currency)}</td></tr>`).join('')}
+    <tr class="total-row"><td><b>Total Assets</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalAssets,'INR')}</b></td></tr>
+    </tbody></table>
+    <div class="divider"></div>
+    <div class="sec-title" style="margin-bottom:10px">Liabilities</div>
+    <table class="data-table"><tbody>
+    ${loans.map(l=>`<tr><td>${l.name}</td><td style="text-align:right;color:var(--red)">${fmt(l.principal,l.currency)}</td></tr>`).join('')}
+    ${liabAccs.map(a=>`<tr><td>${a.name}</td><td style="text-align:right;color:var(--red)">${fmt(calcBalance(a),a.currency)}</td></tr>`).join('')}
+    <tr class="total-row"><td><b>Total Liabilities</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(totalLiab,'INR')}</b></td></tr>
+    <tr class="total-row"><td><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,'INR')}</b></td></tr>
+    </tbody></table>
+  </div>`;
+}
+
+function buildPnLHTML(){
+  const to=todayISO();
+  const fy=getFinancialYear();
+  const fyTxns=transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end);
+  const{income,expenses}=calcIncomeExpense(fyTxns);
+  const net=income-expenses;
+  const maxVal=Math.max(income,expenses,1);
+  const bar=`<div style="display:flex;gap:12px;align-items:flex-end;height:80px;margin:12px 0 4px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="font-size:0.7rem;color:var(--green)">${fmt(income,'INR')}</div>
+      <div style="width:100%;height:${Math.round(income/maxVal*60)+4}px;background:var(--green);border-radius:4px 4px 0 0;opacity:0.8"></div>
+      <div style="font-size:0.7rem;color:var(--text2)">Income</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="font-size:0.7rem;color:var(--red)">${fmt(expenses,'INR')}</div>
+      <div style="width:100%;height:${Math.round(expenses/maxVal*60)+4}px;background:var(--red);border-radius:4px 4px 0 0;opacity:0.8"></div>
+      <div style="font-size:0.7rem;color:var(--text2)">Expenses</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="font-size:0.7rem;color:${net>=0?'var(--green)':'var(--red)'}">${fmt(Math.abs(net),'INR')}</div>
+      <div style="width:100%;height:${Math.round(Math.abs(net)/maxVal*60)+4}px;background:${net>=0?'var(--accent)':'var(--red)'};border-radius:4px 4px 0 0;opacity:0.8"></div>
+      <div style="font-size:0.7rem;color:var(--text2)">${net>=0?'Surplus':'Deficit'}</div>
+    </div>
+  </div>`;
+  const incByCat={};const expByCat={};
+  fyTxns.forEach(t=>{
+    const amt=parseFloat(t.amount||0);
+    if(t.type==='income')incByCat[t.category]=(incByCat[t.category]||0)+amt;
+    else if(t.type==='expense')expByCat[t.category]=(expByCat[t.category]||0)+amt;
+    else if(t.type==='journal'&&t.category!=='Opening Balance'){
+      const ca=accounts.find(a=>a.id===t.credit_account_id);
+      const da=accounts.find(a=>a.id===t.debit_account_id);
+      if(ca?.classification==='income')incByCat[ca.name.replace(' Income','')]=(incByCat[ca.name.replace(' Income','')]||0)+amt;
+      if(da?.classification==='expense')expByCat[da.name.replace(' Expense','')]=(expByCat[da.name.replace(' Expense','')]||0)+amt;
+    }
+  });
+  return`<div class="card" style="margin-bottom:14px">
+    <div class="stat-label" style="margin-bottom:4px">${fy.label} · ${fy.start} to ${fy.end}</div>${bar}
+  </div>
+  <div class="card">
+    <table class="data-table"><thead><tr><th>Particulars</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>
+      <tr class="group-row"><td colspan="2">Income</td></tr>
+      ${Object.entries(incByCat).map(([c,v])=>`<tr><td style="padding-left:20px">${c}</td><td style="text-align:right;color:var(--green)">${fmt(v,'INR')}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:10px">No income</td></tr>'}
+      <tr class="total-row"><td><b>Total Income</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(income,'INR')}</b></td></tr>
+      <tr class="group-row"><td colspan="2">Expenses</td></tr>
+      ${Object.entries(expByCat).map(([c,v])=>`<tr><td style="padding-left:20px">${c}</td><td style="text-align:right;color:var(--red)">${fmt(v,'INR')}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:10px">No expenses</td></tr>'}
+      <tr class="total-row"><td><b>Total Expenses</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(expenses,'INR')}</b></td></tr>
+      <tr class="total-row"><td><b>Net ${net>=0?'Surplus':'Deficit'}</b></td><td style="text-align:right;color:${net>=0?'var(--green)':'var(--red)'}"><b>${fmt(Math.abs(net),'INR')}</b></td></tr>
+    </tbody></table>
+  </div>`;
+}
+
+function buildTrialBalanceHTML(){
+  const groups={asset:'Assets',liability:'Liabilities',equity:'Equity',income:'Income',expense:'Expenses'};
+  let totalDr=0,totalCr=0,rows='';
+  Object.entries(groups).forEach(([cls,label])=>{
+    const accs=accounts.filter(a=>a.classification===cls);
+    if(!accs.length)return;
+    rows+=`<tr class="group-row"><td colspan="3">${label}</td></tr>`;
+    accs.forEach(a=>{
+      const bal=calcBalance(a);
+      const isDebitNormal=['asset','expense'].includes(cls);
+      const dr=isDebitNormal&&bal>0?bal:(!isDebitNormal&&bal<0?Math.abs(bal):0);
+      const cr=!isDebitNormal&&bal>0?bal:(isDebitNormal&&bal<0?Math.abs(bal):0);
+      if(a.currency==='INR'){totalDr+=dr;totalCr+=cr;}
+      rows+=`<tr><td style="padding-left:20px">${a.name}</td><td style="text-align:right;color:var(--green)">${dr>0?fmt(dr,a.currency):''}</td><td style="text-align:right;color:var(--accent)">${cr>0?fmt(cr,a.currency):''}</td></tr>`;
+    });
+  });
+  const balanced=Math.abs(totalDr-totalCr)<1;
+  return`<div class="card" style="margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+      <div class="stat-card"><div class="stat-label">Total Debits</div><div class="stat-val" style="color:var(--green)">${fmt(totalDr,'INR')}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Credits</div><div class="stat-val" style="color:var(--accent)">${fmt(totalCr,'INR')}</div></div>
+    </div>
+    <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDr-totalCr),'INR')}</div>
+  </div>
+  <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:320px">
+    <thead><tr><th>Account</th><th style="text-align:right">Dr</th><th style="text-align:right">Cr</th></tr></thead>
+    <tbody>${rows}<tr class="total-row"><td><b>Total</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalDr,'INR')}</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(totalCr,'INR')}</b></td></tr></tbody>
+  </table></div></div>`;
+}
+
+function buildMonthlyHTML(){
+  const months=[];
+  for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short',year:'2-digit'}),key:toMonthISO(d)});}
+  const rows=months.map(m=>{
+    const mTxns=transactions.filter(t=>t.date.startsWith(m.key));
+    const{income,expenses}=calcIncomeExpense(mTxns);
+    const net=income-expenses;
+    return`<tr><td style="white-space:nowrap">${m.label}</td><td style="color:var(--green)">${fmt(income,'INR')}</td><td style="color:var(--red)">${fmt(expenses,'INR')}</td><td style="color:${net>=0?'var(--green)':'var(--red)'};font-weight:600">${fmt(Math.abs(net),'INR')}</td></tr>`;
+  }).join('');
+  return`<div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:340px">
+    <thead><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Net</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div></div>`;
+}
+
+function buildCategoryHTML(){
+  const catMap={};
+  transactions.forEach(t=>{
+    const amt=parseFloat(t.amount||0);
+    if(t.type==='expense')catMap[t.category]=(catMap[t.category]||0)+amt;
+    else if(t.type==='journal'&&t.category!=='Opening Balance'){
+      const da=accounts.find(a=>a.id===t.debit_account_id);
+      if(da?.classification==='expense')catMap[da.name.replace(' Expense','')]=(catMap[da.name.replace(' Expense','')]||0)+amt;
+    }
+  });
+  const total=Object.values(catMap).reduce((s,v)=>s+v,0);
+  const colors=['var(--accent)','var(--green)','var(--red)','var(--yellow)','var(--purple)','#0891b2','#c2410c','#4338ca'];
+  const segments=Object.entries(catMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
+  const rows=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>`<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:6px"></span>${c}</td><td style="text-align:right">${fmt(v,'INR')}</td><td style="text-align:right">${total>0?Math.round(v/total*100):0}%</td></tr>`).join('');
+  return`<div class="card" style="margin-bottom:14px">${buildSimpleDonut(segments,total)}</div>
+  <div class="card"><table class="data-table"><thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">%</th></tr></thead>
+  <tbody>${rows||'<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text3)">No expense data</td></tr>'}</tbody></table></div>`;
+}
+
+function buildNetWorthHTML(){
+  const totalAssets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
+  const netWorth=totalAssets-totalLiab;
+  const fy=getFinancialYear();
+  const{income:fyInc,expenses:fyExp}=calcIncomeExpense(transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end));
+  return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
+    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">${buildSimpleDonut([{label:'Assets',value:totalAssets,color:'var(--green)'},{label:'Liabilities',value:totalLiab,color:'var(--red)'}],totalAssets+totalLiab)}</div>
+  <div class="card">
+    <div class="sec-title" style="margin-bottom:12px">${fy.label} Summary</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><div class="stat-label">FY Income</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(fyInc,'INR')}</div></div>
+      <div><div class="stat-label">FY Expenses</div><div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(fyExp,'INR')}</div></div>
+    </div>
+  </div>`;
+}
+
+
+// ═══════════════════════════════
+//  PROFILE
+// ═══════════════════════════════
+function toggleFieldVisibility(id,btn){
+  const input=document.getElementById(id);
+  if(!input)return;
+  input.type=input.type==='password'?'text':'password';
+  btn.textContent=input.type==='password'?'👁':'🙈';
+}
+
+async function renderProfile(){
+  const saved=JSON.parse(localStorage.getItem('as-profile-'+currentUser.id)||'{}');
+  document.getElementById('prof-name').value=saved.name||currentProfile?.name||'';
+  document.getElementById('prof-email').value=saved.email||currentUser.email||'';
+  document.getElementById('prof-address').value=saved.address||'';
+  document.getElementById('prof-phone').value=saved.phone||'';
+  document.getElementById('prof-dob').value=saved.dob||'';
+  document.getElementById('prof-aadhar').value=saved.aadhar||'';
+  document.getElementById('prof-pan').value=saved.pan||'';
+  updateProfilePreview(saved);
+}
+
+function updateProfilePreview(data){
+  const preview=document.getElementById('profile-preview-content');
+  if(!data.name)return;
+  preview.innerHTML=`
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;background:var(--bg2)">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:4px">${data.name||'—'}</div>
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:2px">📧 ${data.email||'—'}</div>
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:2px">📞 ${data.phone||'—'}</div>
+      <div style="font-size:0.82rem;color:var(--text2)">📍 ${data.address||'—'}</div>
     </div>`;
+  document.getElementById('profile-preview').style.display='block';
+}
+
+async function saveProfile(){
+  const data={
+    name:document.getElementById('prof-name').value.trim(),
+    email:document.getElementById('prof-email').value.trim(),
+    address:document.getElementById('prof-address').value.trim(),
+    phone:document.getElementById('prof-phone').value.trim(),
+    dob:document.getElementById('prof-dob').value,
+    aadhar:document.getElementById('prof-aadhar').value.trim(),
+    pan:document.getElementById('prof-pan').value.trim()
+  };
+  localStorage.setItem('as-profile-'+currentUser.id, JSON.stringify(data));
+  // Also update profiles table name
+  if(data.name){
+    await sb.from('profiles').update({name:data.name}).eq('id',currentUser.id);
+    document.getElementById('user-name-top').textContent=data.name;
+    document.getElementById('dropdown-name').textContent=data.name;
+    localStorage.setItem('as-user-name',data.name);
   }
+  showToast('Profile saved! ✅');
+  updateProfilePreview(data);
 }
 
 // ═══════════════════════════════
