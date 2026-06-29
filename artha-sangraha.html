@@ -3165,7 +3165,17 @@ document.addEventListener('click',e=>{
   }
 });
 
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./as-sw.js').catch(()=>{});
+// Force clear old service worker caches and unregister old SWs
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(reg=>{
+      // Unregister if it's an old version
+      reg.active?.scriptURL && !reg.active.scriptURL.includes('as-sw.js') && reg.unregister();
+    });
+  });
+  // Register new SW
+  navigator.serviceWorker.register('./as-sw.js?v=10').then(reg=>reg.update()).catch(()=>{});
+}
 
 // If redirected after logout, show login screen immediately
 if(window.location.search.includes('logout=')){
