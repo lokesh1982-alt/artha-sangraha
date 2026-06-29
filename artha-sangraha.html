@@ -86,10 +86,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .card-grid-4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
 
 /* STAT CARDS */
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
-.stat-label{font-size:0.75rem;color:var(--text2);margin-bottom:6px;font-weight:500;}
-.stat-val{font-size:1.5rem;font-weight:700;color:var(--text);}
-.stat-change{font-size:0.75rem;margin-top:4px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);}
+.stat-label{font-size:0.72rem;color:var(--text2);margin-bottom:4px;font-weight:500;}
+.stat-val{font-size:1.15rem;font-weight:700;color:var(--text);}
+.stat-change{font-size:0.72rem;margin-top:3px;}
 .stat-change.up{color:var(--green);}
 .stat-change.down{color:var(--red);}
 
@@ -195,12 +195,12 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 
 /* NET WORTH BANNER */
 .nw-banner{background:linear-gradient(135deg,#1e429f,#1a56db);border-radius:var(--radius);padding:20px;color:#fff;margin-bottom:20px;}
-.nw-label{font-size:0.78rem;opacity:0.8;margin-bottom:4px;}
-.nw-val{font-size:2rem;font-weight:700;margin-bottom:12px;}
-.nw-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.nw-box{background:rgba(255,255,255,0.15);border-radius:var(--radius-sm);padding:10px;}
-.nw-box-label{font-size:0.72rem;opacity:0.8;margin-bottom:3px;}
-.nw-box-val{font-size:1rem;font-weight:600;}
+.nw-label{font-size:0.75rem;opacity:0.8;margin-bottom:3px;}
+.nw-val{font-size:1.6rem;font-weight:700;margin-bottom:10px;}
+.nw-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.nw-box{background:rgba(255,255,255,0.15);border-radius:var(--radius-sm);padding:8px;}
+.nw-box-label{font-size:0.68rem;opacity:0.8;margin-bottom:2px;}
+.nw-box-val{font-size:0.9rem;font-weight:600;}
 
 @media(max-width:768px){
   .sidebar{display:none;}
@@ -292,7 +292,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 <div id="app">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="app-logo">अर्थ-संग्रह <span>Artha-Sangraha</span></div>
+      <div class="app-logo">
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--accent2);font-weight:700;line-height:1.1">अर्थ-संग्रह</div>
+        <div style="font-size:0.65rem;color:var(--text3);font-style:italic;line-height:1">Artha-Sangraha</div>
+      </div>
     </div>
     <div class="topbar-right">
       <button class="btn-icon" onclick="openModal('add-txn-modal')">+ Transaction</button>
@@ -342,6 +345,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="sidebar-label">Other</div>
         <button class="nav-item" onclick="switchSection('loans',this)"><span class="nav-icon">🏛️</span>Loans & EMI</button>
         <button class="nav-item" onclick="switchSection('family',this)"><span class="nav-icon">👥</span>Family</button>
+        <button class="nav-item" onclick="switchSection('categories',this)"><span class="nav-icon">🏷️</span>Categories</button>
         <button class="nav-item" onclick="switchSection('profile',this)"><span class="nav-icon">👤</span>My Profile</button>
       </div>
     </div>
@@ -384,7 +388,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="section" id="sec-accounts">
         <div class="page-header">
           <div><div class="page-title">Accounts</div><div class="page-sub">Manage all your accounts & assets</div></div>
-          <button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-outline" onclick="openModal('add-group-modal')">+ Group</button>
+            <button class="btn-sm" onclick="openModal('add-account-modal')">+ Account</button>
+          </div>
         </div>
         <div id="accounts-list"></div>
       </div>
@@ -407,10 +414,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
               </select>
               <select class="form-select" style="flex:1;min-width:100px" id="txn-filter-cat" onchange="renderTransactions()">
                 <option value="all">All categories</option>
-                <option value="Salary">Salary</option><option value="Rental">Rental</option>
-                <option value="Dividends">Dividends</option><option value="Household">Household</option>
-                <option value="EMI">EMI</option><option value="Utilities">Utilities</option>
-                <option value="Investment">Investment</option><option value="Other">Other</option>
               </select>
               <select class="form-select" style="flex:1;min-width:100px" id="txn-filter-account" onchange="renderTransactions()">
                 <option value="all">All accounts</option>
@@ -529,6 +532,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
       </div>
 
+      <!-- CATEGORIES -->
+      <div class="section" id="sec-categories">
+        <div class="page-header">
+          <div><div class="page-title">Categories</div><div class="page-sub">Manage income & expense categories</div></div>
+          <button class="btn-sm" onclick="openModal('add-category-modal')">+ Add Category</button>
+        </div>
+        <div id="categories-content"></div>
+      </div>
+
       <!-- FAMILY -->
       <div class="section" id="sec-family">
         <div class="page-header">
@@ -585,9 +597,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
       <div class="form-group" id="txn-category-wrap"><label class="form-label">Category</label>
         <select class="form-select" id="txn-category">
-          <option>Salary</option><option>Rental</option><option>Dividends</option><option>Business</option>
-          <option>Household</option><option>EMI</option><option>Utilities</option><option>Investment</option>
-          <option>Healthcare</option><option>Education</option><option>Travel</option><option>Other</option>
+          <option>Loading...</option>
         </select>
       </div>
     </div>
@@ -625,6 +635,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="btn-close" onclick="closeModal('add-account-modal')">✕</button>
     </div>
     <div class="form-group"><label class="form-label">Account Name *</label><input class="form-input" id="acc-name" placeholder="e.g. HDFC Savings, Nifty50 ETF"/></div>
+    <div class="form-group"><label class="form-label">Account Group (optional)</label>
+      <select class="form-select" id="acc-group">
+        <option value="">— No Group —</option>
+      </select>
+    </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type *</label>
         <select class="form-select" id="acc-type" onchange="updateAccClassification()">
@@ -695,14 +710,14 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Stock / Symbol *</label><input class="form-input" id="trade-stock" placeholder="e.g. RELIANCE, NIFTY, AAPL"/></div>
+      <div class="form-group"><label class="form-label">Stock / Symbol *</label><input class="form-input" id="trade-stock" placeholder="e.g. RELIANCE, NIFTY"/></div>
       <div class="form-group"><label class="form-label">Exchange</label>
         <select class="form-select" id="trade-exchange">
           <option>NSE</option><option>BSE</option><option>NFO</option><option>MCX</option><option>NASDAQ</option><option>NYSE</option><option>OTHER</option>
         </select>
       </div>
     </div>
-    <!-- F&O specific fields -->
+    <!-- F&O fields -->
     <div id="fno-fields" style="display:none">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Strike Price</label><input class="form-input" type="number" id="trade-strike" placeholder="e.g. 22000" step="0.01"/></div>
@@ -714,30 +729,16 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Action</label>
-        <select class="form-select" id="trade-type">
-          <option value="buy">BUY</option>
-          <option value="sell">SELL</option>
-        </select>
-      </div>
-      <div class="form-group"><label class="form-label">Quantity *</label><input class="form-input" type="number" id="trade-qty" placeholder="0"/></div>
-    </div>
-    <div class="form-row">
       <div class="form-group"><label class="form-label">Currency</label>
         <select class="form-select" id="trade-currency">
           <option value="INR">₹ INR</option><option value="USD">$ USD</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Brokerage</label><input class="form-input" type="number" id="trade-brokerage" placeholder="0.00" step="0.01"/></div>
+      <div class="form-group"><label class="form-label">Entry Amount * (total)</label><input class="form-input" type="number" id="trade-entry" placeholder="Total amount invested" step="0.01"/></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Entry Price *</label><input class="form-input" type="number" id="trade-entry" placeholder="0.00" step="0.01"/></div>
-      <div class="form-group"><label class="form-label">Exit Price (if closed)</label><input class="form-input" type="number" id="trade-exit" placeholder="Leave blank if holding" step="0.01"/></div>
-    </div>
-    <div class="form-group"><label class="form-label">Notes / Strategy</label><textarea class="form-textarea" id="trade-notes" placeholder="Why did you take this trade? What was your strategy?"></textarea></div>
-    <button class="btn-primary" onclick="saveTrade()">Save Trade</button>
+    <div class="form-group"><label class="form-label">Notes / Strategy</label><textarea class="form-textarea" id="trade-notes" placeholder="Why did you take this trade?"></textarea></div>
+    <button class="btn-primary" onclick="saveTrade()">Open Trade</button>
   </div>
-</div>
 
 <!-- ADD LOAN MODAL -->
 <div class="modal-overlay" id="add-loan-modal">
@@ -776,8 +777,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="form-group"><label class="form-label">Category *</label>
       <select class="form-select" id="budget-cat">
-        <option>Household</option><option>EMI</option><option>Utilities</option><option>Healthcare</option>
-        <option>Education</option><option>Travel</option><option>Investment</option><option>Other</option>
+        <option>Loading...</option>
       </select>
     </div>
     <div class="form-row">
@@ -806,6 +806,62 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 </div>
 
+<!-- ADD CATEGORY MODAL -->
+<div class="modal-overlay" id="add-category-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title" id="cat-modal-title">Add Category</div>
+      <button class="btn-close" onclick="closeModal('add-category-modal')">✕</button>
+    </div>
+    <div class="form-group"><label class="form-label">Category Name *</label><input class="form-input" id="cat-name" placeholder="e.g. Monthly Salary, Grocery"/></div>
+    <div class="form-group"><label class="form-label">Type *</label>
+      <select class="form-select" id="cat-type">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+        <option value="both">Both (Income & Expense)</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Icon (emoji)</label><input class="form-input" id="cat-icon" placeholder="💰" maxlength="2" style="width:80px;font-size:1.3rem"/></div>
+    <button class="btn-primary" onclick="saveCategory()">Save Category</button>
+  </div>
+</div>
+
+<!-- ADD ACCOUNT GROUP MODAL -->
+<div class="modal-overlay" id="add-group-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title" id="group-modal-title">Create Account Group</div>
+      <button class="btn-close" onclick="closeModal('add-group-modal')">✕</button>
+    </div>
+    <div class="form-group"><label class="form-label">Group Name *</label><input class="form-input" id="grp-name" placeholder="e.g. Fixed Deposits, Mutual Funds"/></div>
+    <div class="form-group"><label class="form-label">Classification</label>
+      <select class="form-select" id="grp-classification">
+        <option value="asset">Asset (Balance Sheet)</option>
+        <option value="liability">Liability (Balance Sheet)</option>
+        <option value="equity">Equity (Balance Sheet)</option>
+        <option value="income">Income (P&L)</option>
+        <option value="expense">Expense (P&L)</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Icon (emoji)</label><input class="form-input" id="grp-icon" placeholder="🏦" maxlength="2" style="font-size:1.5rem;width:80px"/></div>
+    <button class="btn-primary" onclick="saveGroup()">Save Group</button>
+  </div>
+</div>
+
+<!-- CLOSE TRADE MODAL -->
+<div class="modal-overlay" id="close-trade-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title">Close Trade</div>
+      <button class="btn-close" onclick="closeModal('close-trade-modal')">✕</button>
+    </div>
+    <div id="close-trade-info" style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:0.85rem"></div>
+    <div class="form-group"><label class="form-label">Exit Amount (total) *</label><input class="form-input" type="number" id="close-trade-exit" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Close Date *</label><input class="form-input" type="date" id="close-trade-date"/></div>
+    <button class="btn-primary" onclick="closeTrade()">Close Trade & Record P&L</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ═══════════════════════════════
@@ -826,7 +882,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 //  STATE
 // ═══════════════════════════════
 let currentUser=null,currentProfile=null;
-let accounts=[],transactions=[],trades=[],loans=[],budgets=[];
+let accounts=[],transactions=[],trades=[],loans=[],budgets=[],groups=[],categories=[];
 let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null,currentLedgerAccId=null;
 let currentReportTab='monthly';
 
@@ -953,11 +1009,13 @@ async function initApp(user){
     if(ddName)ddName.textContent=name;
     await loadAllData();
     appLoading=false;
+    updateCategoryDropdowns();
     renderDashboard();
   }catch(e){
     console.warn('Profile load error:',e);
     await loadAllData();
     appLoading=false;
+    updateCategoryDropdowns();
     renderDashboard();
   }
 }
@@ -976,6 +1034,184 @@ sb.auth.onAuthStateChange((event,session)=>{
   }
   // Ignore TOKEN_REFRESHED and other events
 });
+
+// ═══════════════════════════════
+//  CATEGORIES
+// ═══════════════════════════════
+let editingCatId=null;
+
+function getCategoryOptions(type='all'){
+  // type: 'income', 'expense', 'all'
+  const filtered=categories.filter(c=>type==='all'||c.type===type||c.type==='both');
+  return filtered.map(c=>`<option value="${c.name}">${c.icon||''} ${c.name}</option>`).join('');
+}
+
+function updateCategoryDropdowns(){
+  const txnCat=document.getElementById('txn-category');
+  if(txnCat)txnCat.innerHTML=getCategoryOptions('all');
+  const budgetCat=document.getElementById('budget-cat');
+  if(budgetCat)budgetCat.innerHTML=getCategoryOptions('expense');
+  const filterCat=document.getElementById('txn-filter-cat');
+  if(filterCat)filterCat.innerHTML='<option value="all">All categories</option>'+getCategoryOptions('all');
+}
+
+function renderCategories(){
+  const income=categories.filter(c=>c.type==='income'||c.type==='both');
+  const expense=categories.filter(c=>c.type==='expense'||c.type==='both');
+  const buildList=(cats,label,color)=>`
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:0.9rem;font-weight:700;color:${color};margin-bottom:12px">${label}</div>
+      ${cats.length?`<div style="display:flex;flex-direction:column;gap:0">
+        ${cats.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.1rem">${c.icon||'🏷️'}</span>
+            <div>
+              <div style="font-size:0.88rem;font-weight:500">${c.name}</div>
+              <div style="font-size:0.7rem;color:var(--text3)">${c.id?'Custom':'Default'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editCategory('${c.id||''}','${c.name}','${c.type}','${c.icon||''}')">✏️ Edit</button>
+            ${c.id?`<button class="btn-danger" style="padding:4px 8px" onclick="deleteCategory('${c.id}')">🗑</button>`:''}
+          </div>
+        </div>`).join('')}
+      </div>`:'<div style="color:var(--text3);font-size:0.85rem;padding:8px 0">No categories yet.</div>'}
+    </div>`;
+  document.getElementById('categories-content').innerHTML=
+    buildList(income,'💰 Income Categories','var(--green)')+
+    buildList(expense,'💸 Expense Categories','var(--red)');
+}
+
+function editCategory(id,name,type,icon){
+  editingCatId=id||null;
+  openModal('add-category-modal');
+  document.getElementById('cat-name').value=name;
+  document.getElementById('cat-type').value=type;
+  document.getElementById('cat-icon').value=icon;
+  document.querySelector('#add-category-modal .modal-title').textContent=id?'Edit Category':'Add Category';
+}
+
+async function saveCategory(){
+  const name=document.getElementById('cat-name').value.trim();
+  const type=document.getElementById('cat-type').value;
+  const icon=document.getElementById('cat-icon').value.trim();
+  if(!name){showToast('Please enter category name.');return;}
+  if(editingCatId){
+    // Update existing DB category
+    const{error}=await sb.from('categories').update({name,type,icon}).eq('id',editingCatId);
+    if(error){showToast('Error: '+error.message);return;}
+    editingCatId=null;
+  } else {
+    // Check if it's a default category being customized
+    const existing=categories.find(c=>c.name===name&&!c.id);
+    if(existing){
+      // Insert as custom (overrides default)
+      const{error}=await sb.from('categories').insert({user_id:currentUser.id,name,type,icon});
+      if(error){showToast('Error: '+error.message);return;}
+    } else {
+      const{error}=await sb.from('categories').insert({user_id:currentUser.id,name,type,icon});
+      if(error){showToast('Error: '+error.message);return;}
+    }
+  }
+  closeModal('add-category-modal');
+  showToast('Category saved! ✅');
+  await loadAllData();
+  updateCategoryDropdowns();
+  renderCategories();
+}
+
+async function deleteCategory(id){
+  if(!confirm('Delete this category?'))return;
+  await sb.from('categories').delete().eq('id',id);
+  await loadAllData();
+  updateCategoryDropdowns();
+  renderCategories();
+  showToast('Category deleted.');
+}
+
+// ═══════════════════════════════
+//  ACCOUNT GROUPS
+// ═══════════════════════════════
+let editingGroupId=null;
+
+async function saveGroup(){
+  const name=document.getElementById('grp-name').value.trim();
+  if(!name){showToast('Please enter group name.');return;}
+  const group={user_id:currentUser.id,name,classification:document.getElementById('grp-classification').value,icon:document.getElementById('grp-icon').value||'📁'};
+  if(editingGroupId){
+    await sb.from('account_groups').update(group).eq('id',editingGroupId);
+    editingGroupId=null;
+  } else {
+    const{error}=await sb.from('account_groups').insert(group);
+    if(error){showToast('Error: '+error.message);return;}
+  }
+  closeModal('add-group-modal');
+  showToast('Group saved! ✅');
+  await loadAllData();
+  renderAccounts();
+}
+
+// ═══════════════════════════════
+//  CLOSE TRADE
+// ═══════════════════════════════
+let closingTradeId=null;
+
+function openCloseTrade(id){
+  const t=trades.find(x=>x.id===id);if(!t)return;
+  closingTradeId=id;
+  document.getElementById('close-trade-date').value=todayISO();
+  document.getElementById('close-trade-exit').value='';
+  const entryAmt=parseFloat(t.entry_price||0);
+  const curr=t.currency||'INR';
+  document.getElementById('close-trade-info').innerHTML=`
+    <div style="font-weight:600;margin-bottom:6px">${t.stock} · ${t.exchange}</div>
+    <div style="display:flex;gap:16px;font-size:0.82rem">
+      <div><div style="color:var(--text2);font-size:0.72rem">Entry Amount</div><div style="font-weight:600">${fmt(entryAmt,curr)}</div></div>
+      <div><div style="color:var(--text2);font-size:0.72rem">Instrument</div><div style="font-weight:600">${t.notes?.split('|')[0]||'Equity'}</div></div>
+    </div>`;
+  openModal('close-trade-modal');
+}
+
+async function closeTrade(){
+  const t=trades.find(x=>x.id===closingTradeId);if(!t)return;
+  const exitAmt=parseFloat(document.getElementById('close-trade-exit').value);
+  const closeDate=document.getElementById('close-trade-date').value;
+  if(!exitAmt||!closeDate){showToast('Please fill all fields.');return;}
+  const entryAmt=parseFloat(t.entry_price||0);
+  const pnl=exitAmt-entryAmt;
+  const currency=t.currency||'INR';
+  // Update trade as closed
+  await sb.from('trades').update({exit_price:exitAmt,status:'closed'}).eq('id',closingTradeId);
+  // Ensure Trading Account exists
+  let tradingAcc=accounts.find(a=>a.name==='Trading Account');
+  if(!tradingAcc){
+    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Trading Account',type:'custom-asset',classification:'asset',opening_balance:0,currency,opening_date:closeDate,notes:'Auto-created'}).select().single();
+    if(data){accounts.push(data);tradingAcc=data;}
+  }
+  // Ensure P&L Account exists
+  let pnlAcc=accounts.find(a=>a.name==='Trading P&L');
+  if(!pnlAcc){
+    const cls=pnl>=0?'income':'expense';
+    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Trading P&L',type:pnl>=0?'custom-income':'custom-expense',classification:cls,opening_balance:0,currency,opening_date:closeDate,notes:'Auto-created'}).select().single();
+    if(data){accounts.push(data);pnlAcc=data;}
+  }
+  if(tradingAcc&&pnlAcc){
+    const txn={user_id:currentUser.id,type:'journal',date:closeDate,amount:Math.abs(pnl),currency,account_id:tradingAcc.id,category:'Trading P&L',description:`${t.stock} - ${pnl>=0?'Profit':'Loss'}`};
+    if(pnl>=0){
+      // Profit: Debit Trading Account, Credit P&L
+      txn.debit_account_id=tradingAcc.id;txn.credit_account_id=pnlAcc.id;
+    } else {
+      // Loss: Debit P&L, Credit Trading Account
+      txn.debit_account_id=pnlAcc.id;txn.credit_account_id=tradingAcc.id;
+    }
+    await sb.from('transactions').insert(txn);
+  }
+  closeModal('close-trade-modal');
+  closingTradeId=null;
+  showToast(`Trade closed! P&L: ${pnl>=0?'+':''}${fmt(Math.abs(pnl),currency)} ✅`);
+  await loadAllData();
+  renderTrading();
+}
 
 // ═══════════════════════════════
 //  EDIT FUNCTIONS
@@ -1209,18 +1445,33 @@ async function ensureCategoryAccount(category, type){
 }
 async function loadAllData(){
   const uid=currentUser.id;
-  const[a,t,tr,l,b]=await Promise.all([
+  const[a,t,tr,l,b,g,cat]=await Promise.all([
     sb.from('accounts').select('*').eq('user_id',uid).order('created_at'),
     sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:true}),
     sb.from('trades').select('*').eq('user_id',uid).order('date',{ascending:false}),
     sb.from('loans').select('*').eq('user_id',uid).order('created_at'),
-    sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false})
+    sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false}),
+    sb.from('account_groups').select('*').eq('user_id',uid).order('created_at').throwOnError().then(r=>r).catch(()=>({data:[]})),
+    sb.from('categories').select('*').eq('user_id',uid).order('name').throwOnError().then(r=>r).catch(()=>({data:[]}))
   ]);
   accounts=a.data||[];
   transactions=t.data||[];
   trades=tr.data||[];
   loans=l.data||[];
   budgets=b.data||[];
+  groups=g.data||[];
+  // Merge DB categories with defaults
+  const defaultCats=[
+    {name:'Salary',type:'income'},{name:'Rental',type:'income'},{name:'Dividends',type:'income'},
+    {name:'Business',type:'income'},{name:'Interest',type:'income'},{name:'Other Income',type:'income'},
+    {name:'Household',type:'expense'},{name:'EMI',type:'expense'},{name:'Utilities',type:'expense'},
+    {name:'Healthcare',type:'expense'},{name:'Education',type:'expense'},{name:'Travel',type:'expense'},
+    {name:'Investment',type:'expense'},{name:'Other',type:'expense'}
+  ];
+  const dbCats=cat?.data||[];
+  // Merge: DB cats override defaults with same name, then add unique DB ones
+  const catNames=new Set(dbCats.map(c=>c.name));
+  categories=[...dbCats,...defaultCats.filter(c=>!catNames.has(c.name))];
 
   // Auto-create income/expense accounts for existing transactions that don't have them
   // Only run if there are unprocessed transactions
@@ -1303,6 +1554,7 @@ function switchSection(name,btn){
   if(name==='profile')renderProfile();
   if(name==='balance-sheet'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
   if(name==='pnl'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
+  if(name==='categories')renderCategories();
   if(name==='family')renderFamily();
   if(name==='profile')renderProfile();
 }
@@ -1502,7 +1754,32 @@ function renderChartOfAccounts(){
   document.getElementById('coa-content').innerHTML=html||'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No accounts yet.</div></div>';
 }
 
-function renderAccounts(){
+function renderAccounts(groupId=null){
+  const isMobile=window.innerWidth<=768;
+  let html='';
+
+  if(groupId){
+    // Show accounts in a specific group
+    const grp=groups.find(g=>g.id===groupId);
+    if(!grp)return;
+    const grpAccs=accounts.filter(a=>a.group_id===groupId);
+    const total=grpAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+    html+=`<button onclick="renderAccounts()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:inherit;margin-bottom:16px;padding:0">← Back to Accounts</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div><div style="font-size:1.1rem;font-weight:700">${grp.icon||'📁'} ${grp.name}</div><div style="font-size:0.78rem;color:var(--text2)">${capitalize(grp.classification)} · ${grpAccs.length} accounts</div></div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(total,'INR')}</div>
+    </div>`;
+    if(isMobile){
+      html+=`<div style="display:flex;flex-direction:column;gap:10px">${grpAccs.map(a=>buildMobileAccountCard(a)).join('')}</div>`;
+    } else {
+      html+=buildDesktopAccountTable(grpAccs);
+    }
+    if(!grpAccs.length)html+=`<div class="empty-state"><div class="empty-icon">🏦</div><div class="empty-text">No accounts in this group yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button></div>`;
+    document.getElementById('accounts-list').innerHTML=html;
+    return;
+  }
+
+  // Group accounts by classification
   const classGroups={
     asset:{label:'🏦 Assets',color:'var(--green)',accs:[]},
     liability:{label:'💳 Liabilities',color:'var(--red)',accs:[]},
@@ -1515,65 +1792,96 @@ function renderAccounts(){
     if(classGroups[cls])classGroups[cls].accs.push(a);
     else classGroups.asset.accs.push(a);
   });
-  const isMobile=window.innerWidth<=768;
-  let html='';
+
   Object.entries(classGroups).forEach(([cls,{label,color,accs}])=>{
     if(!accs.length)return;
     const total=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+    html+=`<div style="margin-bottom:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:0.88rem;font-weight:700">${label}</div>
+        <div style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
+      </div>`;
+
+    // Find groups in this classification
+    const clsGroups=groups.filter(g=>g.classification===cls);
+    // Ungrouped accounts
+    const ungrouped=accs.filter(a=>!a.group_id||!groups.find(g=>g.id===a.group_id));
+
     if(isMobile){
-      // Mobile: tiles
-      html+=`<div style="margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-size:0.85rem;font-weight:700">${label}</div>
-          <div style="font-size:0.85rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
-        </div>
-        <div class="card-grid card-grid-2">
-        ${accs.map(a=>`<div class="account-card" onclick="openAccountLedger('${a.id}')">
-          <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
-          <div class="account-info">
-            <div class="account-name">${a.name}</div>
-            <div class="account-type" style="font-size:0.7rem;color:var(--text3)">${a.currency}</div>
-          </div>
-          <div class="account-bal">
-            <div class="account-bal-val" style="color:${color};font-size:0.9rem">${fmt(calcBalance(a),a.currency)}</div>
-            <div class="account-bal-curr">Current</div>
-          </div>
-          <div style="display:flex;gap:3px">
-            <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
-            <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
-          </div>
-        </div>`).join('')}
-        </div>
-      </div>`;
+      // Show groups as tiles
+      clsGroups.forEach(grp=>{
+        const grpAccs=accs.filter(a=>a.group_id===grp.id);
+        if(!grpAccs.length)return;
+        const grpTotal=grpAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+        html+=`<div class="account-card" onclick="renderAccounts('${grp.id}')" style="background:var(--accent-light);border-color:var(--accent);margin-bottom:8px">
+          <div class="account-icon" style="background:var(--accent);color:#fff;font-size:1.1rem">${grp.icon||'📁'}</div>
+          <div class="account-info"><div class="account-name">${grp.name}</div><div class="account-type">${grpAccs.length} accounts · tap to expand</div></div>
+          <div class="account-bal"><div class="account-bal-val" style="color:var(--accent)">${fmt(grpTotal,'INR')}</div><div class="account-bal-curr">Group Total</div></div>
+        </div>`;
+      });
+      // Ungrouped accounts
+      html+=ungrouped.map(a=>buildMobileAccountCard(a)).join('');
     } else {
-      // Desktop: list format
-      html+=`<div style="margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-size:0.88rem;font-weight:700">${label}</div>
-          <div style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden">
-          <table class="data-table">
-            <thead><tr><th>Account</th><th>Type</th><th>Notes</th><th>Opening Date</th><th style="text-align:right">Opening Bal</th><th style="text-align:right">Current Bal</th><th></th></tr></thead>
-            <tbody>${accs.map(a=>`<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
-              <td><b>${accIcon(a.type)} ${a.name}</b></td>
-              <td><span class="badge badge-blue" style="font-size:0.7rem">${capitalize(a.type)}</span></td>
-              <td style="font-size:0.78rem;color:var(--text2)">${a.notes&&a.notes!=='Auto-created'?a.notes:'—'}</td>
-              <td style="font-size:0.78rem;color:var(--text2)">${formatDate(a.opening_date)}</td>
-              <td style="text-align:right;color:var(--text2)">${fmt(a.opening_balance,a.currency)}</td>
-              <td style="text-align:right;font-weight:700;color:${color}">${fmt(calcBalance(a),a.currency)}</td>
-              <td><div style="display:flex;gap:4px;justify-content:flex-end">
-                <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
-                <button class="btn-danger" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
-              </div></td>
-            </tr>`).join('')}</tbody>
-          </table>
-        </div>
-      </div>`;
+      // Desktop: groups as expandable rows
+      clsGroups.forEach(grp=>{
+        const grpAccs=accs.filter(a=>a.group_id===grp.id);
+        if(!grpAccs.length)return;
+        const grpTotal=grpAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+        html+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">
+          <div onclick="renderAccounts('${grp.id}')" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:center;padding:12px 16px;cursor:pointer;background:var(--accent-light)">
+            <div><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></div>
+            <div style="font-size:0.78rem;color:var(--text2)">Group</div><div></div>
+            <div style="font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</div>
+            <div style="color:var(--accent);font-size:0.8rem">→</div>
+          </div>
+        </div>`;
+      });
+      // Ungrouped accounts in table
+      if(ungrouped.length)html+=buildDesktopAccountTable(ungrouped);
     }
+    html+=`</div>`;
   });
+
   document.getElementById('accounts-list').innerHTML=html||`<div class="empty-state"><div class="empty-icon">🏦</div><div class="empty-text">No accounts yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Account</button></div>`;
 }
+
+function buildMobileAccountCard(a){
+  return `<div class="account-card" onclick="openAccountLedger('${a.id}')">
+    <div class="account-icon" style="background:${accBg(a.type)}">${accIcon(a.type)}</div>
+    <div class="account-info">
+      <div class="account-name" style="font-size:0.85rem">${a.name}</div>
+      <div class="account-type" style="font-size:0.68rem;color:var(--text3)">${a.currency}</div>
+    </div>
+    <div class="account-bal">
+      <div class="account-bal-val" style="font-size:0.9rem">${fmt(calcBalance(a),a.currency)}</div>
+      <div class="account-bal-curr" style="font-size:0.65rem">Current</div>
+    </div>
+    <div style="display:flex;gap:3px">
+      <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
+      <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+    </div>
+  </div>`;
+}
+
+function buildDesktopAccountTable(accs){
+  return`<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">
+    <table class="data-table">
+      <thead><tr><th>Account</th><th>Type</th><th>Notes</th><th style="text-align:right">Opening</th><th style="text-align:right">Current Bal</th><th></th></tr></thead>
+      <tbody>${accs.map(a=>`<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
+        <td><b>${accIcon(a.type)} ${a.name}</b></td>
+        <td><span class="badge badge-blue" style="font-size:0.68rem">${capitalize(a.type)}</span></td>
+        <td style="font-size:0.75rem;color:var(--text2)">${a.notes&&a.notes!=='Auto-created'?a.notes:'—'}</td>
+        <td style="text-align:right;color:var(--text2)">${fmt(a.opening_balance,a.currency)}</td>
+        <td style="text-align:right;font-weight:700;color:var(--accent)">${fmt(calcBalance(a),a.currency)}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
+          <button class="btn-danger" style="padding:3px 7px;font-size:0.7rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
+        </div></td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
 
 // ═══════════════════════════════
 //  TRANSACTIONS
@@ -1611,40 +1919,56 @@ function renderTransactions(){
   const summaryEl=document.getElementById('txn-summary');
   if(summaryEl)summaryEl.innerHTML=`<span>Showing <b>${filtered.length}</b> transactions</span><span style="color:var(--green)">Income: <b>${fmt(totalInc,'INR')}</b></span><span style="color:var(--red)">Expenses: <b>${fmt(totalExp,'INR')}</b></span><span style="color:${net>=0?'var(--green)':'var(--red)'}">Net: <b>${fmt(Math.abs(net),'INR')}</b></span>`;
 
+  const isMobile=window.innerWidth<=768;
   document.getElementById('txn-table-wrap').innerHTML=filtered.length
-    ?`<table class="data-table" style="width:100%">
-      <thead><tr><th style="white-space:nowrap">Date</th><th>Description</th><th>Category</th><th>Type</th><th>Debit Account</th><th>Credit Account</th><th style="text-align:right">Amount</th><th></th></tr></thead>
-      <tbody>${filtered.map(t=>{
-        const acc=accounts.find(a=>a.id===t.account_id);
-        const toAcc=t.to_account_id?accounts.find(a=>a.id===t.to_account_id):null;
-        // For transfers: debit=destination(to), credit=source(from)
-        // For income: debit=bank account, credit=income account
-        // For expense: debit=expense account, credit=bank account
+    ?isMobile
+      // Mobile: compact card format
+      ?filtered.map(t=>{
         let debitAcc,creditAcc;
-        if(t.type==='transfer'){
-          debitAcc=toAcc;creditAcc=acc;
-        } else if(t.debit_account_id||t.credit_account_id){
-          debitAcc=accounts.find(a=>a.id===t.debit_account_id);
-          creditAcc=accounts.find(a=>a.id===t.credit_account_id);
-        } else {
-          debitAcc=t.type==='income'?acc:null;
-          creditAcc=t.type==='expense'?acc:null;
-        }
-        return `<tr>
-          <td style="white-space:nowrap;font-size:0.8rem">${formatDate(t.date)}</td>
-          <td style="max-width:160px;font-size:0.83rem">${t.description||'—'}</td>
-          <td><span class="badge badge-blue" style="white-space:nowrap;font-size:0.7rem">${t.category||'—'}</span></td>
-          <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.7rem">${capitalize(t.type)}</span></td>
-          <td style="font-size:0.78rem;color:var(--green);white-space:nowrap">${debitAcc?.name||'—'}</td>
-          <td style="font-size:0.78rem;color:var(--red);white-space:nowrap">${creditAcc?.name||'—'}</td>
-          <td style="font-weight:600;text-align:right;white-space:nowrap;font-size:0.83rem">${fmt(t.amount,t.currency)}</td>
-          <td style="white-space:nowrap">
-            <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem;margin-right:3px" onclick="editTxn('${t.id}')">✏️</button>
-            <button class="btn-danger" style="padding:3px 7px;font-size:0.7rem" onclick="deleteTxn('${t.id}')">🗑</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`
+        if(t.type==='transfer'){debitAcc=accounts.find(a=>a.id===t.to_account_id);creditAcc=accounts.find(a=>a.id===t.account_id);}
+        else{debitAcc=accounts.find(a=>a.id===t.debit_account_id);creditAcc=accounts.find(a=>a.id===t.credit_account_id);}
+        const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
+        return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-size:0.83rem;font-weight:600;truncate">${t.description||t.category||'—'}</div>
+              <div style="font-weight:700;color:${typeColor};font-size:0.88rem;white-space:nowrap;margin-left:8px">${fmt(t.amount,t.currency)}</div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:3px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:0.68rem;color:var(--text3)">${formatDate(t.date)}</span>
+              <span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.65rem;padding:1px 6px">${capitalize(t.type)}</span>
+              <span style="font-size:0.68rem;color:var(--green)">${debitAcc?.name||''}</span>
+              ${creditAcc?`<span style="font-size:0.68rem;color:var(--text3)">→</span><span style="font-size:0.68rem;color:var(--red)">${creditAcc.name}</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="editTxn('${t.id}')">✏️</button>
+            <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="deleteTxn('${t.id}')">🗑</button>
+          </div>
+        </div>`;
+      }).join('')
+      // Desktop: table format
+      :`<div style="overflow-x:auto"><table class="data-table" style="min-width:600px">
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Debit</th><th>Credit</th><th style="text-align:right">Amount</th><th></th></tr></thead>
+        <tbody>${filtered.map(t=>{
+          let debitAcc,creditAcc;
+          if(t.type==='transfer'){debitAcc=accounts.find(a=>a.id===t.to_account_id);creditAcc=accounts.find(a=>a.id===t.account_id);}
+          else{debitAcc=accounts.find(a=>a.id===t.debit_account_id);creditAcc=accounts.find(a=>a.id===t.credit_account_id);}
+          return`<tr>
+            <td style="white-space:nowrap;font-size:0.78rem">${formatDate(t.date)}</td>
+            <td style="font-size:0.82rem">${t.description||'—'}</td>
+            <td><span class="badge badge-blue" style="font-size:0.68rem">${t.category||'—'}</span></td>
+            <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.68rem">${capitalize(t.type)}</span></td>
+            <td style="font-size:0.75rem;color:var(--green)">${debitAcc?.name||'—'}</td>
+            <td style="font-size:0.75rem;color:var(--red)">${creditAcc?.name||'—'}</td>
+            <td style="font-weight:600;text-align:right;font-size:0.82rem">${fmt(t.amount,t.currency)}</td>
+            <td style="white-space:nowrap">
+              <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem;margin-right:3px" onclick="editTxn('${t.id}')">✏️</button>
+              <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="deleteTxn('${t.id}')">🗑</button>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`
     :`<div class="empty-state" style="padding:30px"><div class="empty-icon">💳</div><div class="empty-text">No transactions found.</div></div>`;
 }
 
@@ -1828,44 +2152,72 @@ function renderPortfolio(){
 //  TRADING JOURNAL
 // ═══════════════════════════════
 function renderTrading(){
-  const closed=trades.filter(t=>t.exit_price);
-  const wins=closed.filter(t=>{
-    const pl=(parseFloat(t.exit_price)-parseFloat(t.entry_price))*parseFloat(t.quantity);
-    return(t.trade_type==='buy'?pl:-pl)>0;
-  });
+  const closed=trades.filter(t=>t.exit_price||t.status==='closed');
   const totalPL=closed.reduce((s,t)=>{
-    const pl=(parseFloat(t.exit_price)-parseFloat(t.entry_price))*parseFloat(t.quantity);
-    return s+(t.trade_type==='buy'?pl:-pl);
+    const pl=parseFloat(t.exit_price||0)-parseFloat(t.entry_price||0);
+    return s+pl;
   },0);
+  const wins=closed.filter(t=>parseFloat(t.exit_price||0)>parseFloat(t.entry_price||0));
   const winRate=closed.length?Math.round(wins.length/closed.length*100):0;
+  // Trading account balance
+  const tradingAcc=accounts.find(a=>a.name==='Trading Account');
+  const tradingBal=tradingAcc?calcBalance(tradingAcc):0;
   document.getElementById('trading-stats').innerHTML=`
     <div class="stat-card"><div class="stat-label">Total Trades</div><div class="stat-val">${trades.length}</div></div>
     <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-val" style="color:var(--green)">${winRate}%</div></div>
-    <div class="stat-card"><div class="stat-label">Net P&L</div><div class="stat-val" style="color:${totalPL>=0?'var(--green)':'var(--red)'}">${totalPL>=0?'+':''}${totalPL.toFixed(2)}</div></div>
-    <div class="stat-card"><div class="stat-label">Open Positions</div><div class="stat-val">${trades.filter(t=>!t.exit_price).length}</div></div>`;
+    <div class="stat-card"><div class="stat-label">Net P&L</div><div class="stat-val" style="color:${totalPL>=0?'var(--green)':'var(--red)'}">${totalPL>=0?'+':''}${fmt(Math.abs(totalPL),'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Trading A/c Bal</div><div class="stat-val" style="color:var(--accent)">${fmt(tradingBal,'INR')}</div></div>`;
+  const isMobile=window.innerWidth<=768;
   document.getElementById('trading-table').innerHTML=trades.length
-    ?`<table class="data-table">
-      <thead><tr><th>Date</th><th>Stock</th><th>Exchange</th><th>Type</th><th>Qty</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Status</th><th></th></tr></thead>
-      <tbody>${trades.map(t=>{
-        const pl=t.exit_price?(parseFloat(t.exit_price)-parseFloat(t.entry_price))*parseFloat(t.quantity)*(t.trade_type==='buy'?1:-1):null;
+    ?isMobile
+      // Mobile card format
+      ?trades.map(t=>{
+        const pl=t.exit_price?parseFloat(t.exit_price)-parseFloat(t.entry_price):null;
         const curr=t.currency||'INR';
-        return `<tr>
-          <td style="white-space:nowrap">${formatDate(t.date)}</td>
-          <td><b>${t.stock}</b></td>
-          <td><span class="badge badge-blue">${t.exchange}</span></td>
-          <td><span class="badge ${t.trade_type==='buy'?'badge-green':'badge-red'}">${t.trade_type.toUpperCase()}</span></td>
-          <td>${t.quantity}</td>
-          <td>${fmt(t.entry_price,curr)}</td>
-          <td>${t.exit_price?fmt(t.exit_price,curr):'—'}</td>
-          <td style="font-weight:600;color:${pl===null?'var(--text2)':pl>=0?'var(--green)':'var(--red)'}">${pl===null?'—':(pl>=0?'+':'')+fmt(Math.abs(pl),curr)}</td>
-          <td><span class="badge ${t.exit_price?'badge-green':'badge-yellow'}">${t.exit_price?'Closed':'Holding'}</span></td>
-          <td style="white-space:nowrap">
-            <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem;margin-right:4px" onclick="editTrade('${t.id}')">✏️</button>
-            <button class="btn-danger" onclick="deleteTrade('${t.id}')">🗑</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`
+        const isClosed=t.exit_price||t.status==='closed';
+        return`<div class="card card-sm" style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div>
+              <div style="font-weight:700;font-size:0.95rem">${t.stock} <span style="font-size:0.72rem;color:var(--text2)">${t.exchange}</span></div>
+              <div style="font-size:0.72rem;color:var(--text3)">${formatDate(t.date)}</div>
+            </div>
+            <span class="badge ${isClosed?'badge-green':'badge-yellow'}">${isClosed?'Closed':'Open'}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;font-size:0.82rem">
+            <div><div style="color:var(--text2);font-size:0.7rem">Entry</div><div style="font-weight:600">${fmt(t.entry_price,curr)}</div></div>
+            <div><div style="color:var(--text2);font-size:0.7rem">Exit</div><div style="font-weight:600">${t.exit_price?fmt(t.exit_price,curr):'—'}</div></div>
+            ${pl!==null?`<div><div style="color:var(--text2);font-size:0.7rem">P&L</div><div style="font-weight:700;color:${pl>=0?'var(--green)':'var(--red)'}">${pl>=0?'+':''}${fmt(Math.abs(pl),curr)}</div></div>`:''}
+          </div>
+          <div style="display:flex;gap:8px">
+            ${!isClosed?`<button class="btn-sm" style="flex:1;background:var(--green)" onclick="openCloseTrade('${t.id}')">✅ Close Trade</button>`:''}
+            <button class="btn-outline" style="padding:6px 10px;font-size:0.78rem" onclick="editTrade('${t.id}')">✏️</button>
+            <button class="btn-danger" style="padding:6px 10px" onclick="deleteTrade('${t.id}')">🗑</button>
+          </div>
+        </div>`;
+      }).join('')
+      // Desktop table format
+      :`<div style="overflow-x:auto"><table class="data-table" style="min-width:600px">
+        <thead><tr><th>Date</th><th>Stock</th><th>Exchange</th><th>Entry Amt</th><th>Exit Amt</th><th>P&L</th><th>Status</th><th></th></tr></thead>
+        <tbody>${trades.map(t=>{
+          const pl=t.exit_price?parseFloat(t.exit_price)-parseFloat(t.entry_price):null;
+          const curr=t.currency||'INR';
+          const isClosed=t.exit_price||t.status==='closed';
+          return`<tr>
+            <td style="white-space:nowrap;font-size:0.8rem">${formatDate(t.date)}</td>
+            <td><b>${t.stock}</b></td>
+            <td><span class="badge badge-blue" style="font-size:0.7rem">${t.exchange}</span></td>
+            <td>${fmt(t.entry_price,curr)}</td>
+            <td>${t.exit_price?fmt(t.exit_price,curr):'—'}</td>
+            <td style="font-weight:600;color:${pl===null?'var(--text2)':pl>=0?'var(--green)':'var(--red)'}">${pl===null?'—':(pl>=0?'+':'')+fmt(Math.abs(pl),curr)}</td>
+            <td><span class="badge ${isClosed?'badge-green':'badge-yellow'}">${isClosed?'Closed':'Open'}</span></td>
+            <td style="white-space:nowrap">
+              ${!isClosed?`<button class="btn-sm" style="font-size:0.72rem;padding:4px 8px;background:var(--green);margin-right:4px" onclick="openCloseTrade('${t.id}')">Close</button>`:''}
+              <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem;margin-right:3px" onclick="editTrade('${t.id}')">✏️</button>
+              <button class="btn-danger" style="padding:3px 7px;font-size:0.7rem" onclick="deleteTrade('${t.id}')">🗑</button>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`
     :`<div class="empty-state"><div class="empty-icon">📓</div><div class="empty-text">No trades yet.</div><button class="btn-sm" onclick="openModal('add-trade-modal')">+ Add Trade</button></div>`;
 }
 
@@ -1923,7 +2275,7 @@ function renderReports(){
 
 function buildSimpleDonut(segments,total){
   if(!total)return'';
-  const r=55,cx=70,cy=70,sw=20,circ=2*Math.PI*r;
+  const r=45,cx=55,cy=55,sw=16,circ=2*Math.PI*r;
   let offset=0,paths='';
   segments.forEach(s=>{
     if(!s.value)return;
@@ -1931,9 +2283,9 @@ function buildSimpleDonut(segments,total){
     paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${sw}" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}" stroke-dashoffset="${(-offset*circ).toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>`;
     offset+=pct;
   });
-  return`<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-    <svg width="140" height="140" viewBox="0 0 140 140"><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="${sw}"/>${paths}</svg>
-    <div>${segments.filter(s=>s.value>0).map(s=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:12px;height:12px;border-radius:50%;background:${s.color}"></div><div><div style="font-size:0.82rem;font-weight:600">${s.label}</div><div style="font-size:0.78rem;color:var(--text2)">${fmt(s.value,'INR')} (${Math.round(s.value/total*100)}%)</div></div></div>`).join('')}</div>
+  return`<div style="display:flex;align-items:center;gap:16px;flex-wrap:nowrap">
+    <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0"><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="${sw}"/>${paths}</svg>
+    <div style="flex:1;min-width:0">${segments.filter(s=>s.value>0).map(s=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:${s.color};flex-shrink:0"></div><div style="min-width:0"><div style="font-size:0.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.label}</div><div style="font-size:0.72rem;color:var(--text2)">${fmt(s.value,'INR')} · ${Math.round(s.value/total*100)}%</div></div></div>`).join('')}</div>
   </div>`;
 }
 
@@ -2398,14 +2750,18 @@ async function saveAccount(){
     await sb.from('profiles').insert({id:currentUser.id,email:currentUser.email,name:currentUser.email.split('@')[0],role:'owner'});
   }
   const classification=document.getElementById('acc-classification').value||'asset';
+  const grpSel=document.getElementById('acc-group');
+  const group_id=grpSel?.value||null;
+  const accCustName=document.getElementById('acc-custom-name');
   const acc={
     user_id:currentUser.id,name,
     type:document.getElementById('acc-type').value,
     opening_balance,
     currency:document.getElementById('acc-currency').value,
-    notes:(document.getElementById('acc-custom-name').value.trim()||document.getElementById('acc-notes').value.trim()),
+    notes:(accCustName?.value.trim()||document.getElementById('acc-notes').value.trim()),
     opening_date:document.getElementById('acc-opening-date').value||todayISO(),
-    classification
+    classification,
+    group_id:group_id||null
   };
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
@@ -2455,33 +2811,23 @@ async function saveTrade(){
   if(editingTradeId){await updateTrade();return;}
   if(!currentUser){showToast('Not logged in.');return;}
   const stock=document.getElementById('trade-stock').value.trim();
-  const qty=parseFloat(document.getElementById('trade-qty').value);
   const entry=parseFloat(document.getElementById('trade-entry').value);
-  const exit=document.getElementById('trade-exit').value?parseFloat(document.getElementById('trade-exit').value):null;
   const instrument=document.getElementById('trade-instrument').value;
-  if(!stock||!qty||!entry){showToast('Please fill required fields.');return;}
+  if(!stock||!entry){showToast('Please fill stock and entry amount.');return;}
   const isFno=['futures','call','put'].includes(instrument);
+  const fnoNote=isFno?` | ${instrument.toUpperCase()} | Strike: ${document.getElementById('trade-strike').value||'N/A'} | Expiry: ${document.getElementById('trade-expiry').value||'N/A'}`:'';
   const trade={
-    user_id:currentUser.id,
-    date:document.getElementById('trade-date').value,
-    stock:stock.toUpperCase(),
-    exchange:document.getElementById('trade-exchange').value,
-    trade_type:document.getElementById('trade-type').value,
-    quantity:qty,
-    entry_price:entry,
-    exit_price:exit,
-    currency:document.getElementById('trade-currency').value,
-    status:exit?'closed':'open',
-    notes:(document.getElementById('trade-notes').value.trim()+
-      (isFno?` | ${instrument.toUpperCase()} | Strike: ${document.getElementById('trade-strike').value||'N/A'} | Expiry: ${document.getElementById('trade-expiry').value||'N/A'} | Lots: ${document.getElementById('trade-lots').value||'N/A'} x ${document.getElementById('trade-lot-size').value||'N/A'}`:'')
-    ).trim()
+    user_id:currentUser.id,date:document.getElementById('trade-date').value,
+    stock:stock.toUpperCase(),exchange:document.getElementById('trade-exchange').value,
+    trade_type:'buy',quantity:1,entry_price:entry,exit_price:null,
+    currency:document.getElementById('trade-currency').value,status:'open',
+    notes:(document.getElementById('trade-notes').value.trim()+fnoNote).trim()
   };
   const{data,error}=await sb.from('trades').insert(trade).select().single();
   if(error){showToast('Error: '+error.message);return;}
   closeModal('add-trade-modal');
-  showToast('Trade saved! ✅');
-  await loadAllData();
-  renderTrading();
+  showToast('Trade opened! ✅');
+  await loadAllData();renderTrading();
 }
 
 async function saveLoan(){
@@ -2605,6 +2951,23 @@ function openModal(id){
     document.getElementById('acc-classification').value='asset';
     const cw=document.getElementById('acc-custom-name-wrap');
     if(cw)cw.style.display='none';
+    // Populate groups dropdown
+    const grpSel=document.getElementById('acc-group');
+    if(grpSel)grpSel.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
+  }
+  if(id==='add-group-modal'){
+    editingGroupId=null;
+    document.getElementById('grp-name').value='';
+    document.getElementById('grp-icon').value='';
+    document.getElementById('grp-classification').value='asset';
+    document.querySelector('#add-group-modal .modal-title').textContent='Create Account Group';
+  }
+  if(id==='add-category-modal'){
+    editingCatId=null;
+    document.getElementById('cat-name').value='';
+    document.getElementById('cat-type').value='expense';
+    document.getElementById('cat-icon').value='';
+    document.querySelector('#add-category-modal .modal-title').textContent='Add Category';
   }
   if(id==='add-budget-modal'){document.getElementById('budget-month').value=toMonthISO(new Date());}
   if(id==='add-loan-modal'){
