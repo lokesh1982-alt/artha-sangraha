@@ -209,12 +209,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   .nw-val{font-size:1.5rem;}
   .card-grid-3,.card-grid-4{grid-template-columns:1fr 1fr;}
 }
-.tile-menu{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0;}
-.tile-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all 0.2s;text-align:center;box-shadow:var(--shadow);}
-.tile-btn:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md);}
-.tile-btn .tile-icon{font-size:1.8rem;}
-.tile-btn .tile-label{font-size:0.82rem;font-weight:600;color:var(--text2);}
-.tile-btn .tile-count{font-size:0.72rem;color:var(--text3);}
+.tile-menu{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:16px 0;}
+.tile-btn{background:transparent;border:none;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all 0.2s;text-align:center;padding:0;font-family:inherit;}
+.tile-btn:hover .tile-icon-wrap{transform:scale(1.06);}
+.tile-icon-wrap{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#1e3a5f,#1a2d4a);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 3px 10px rgba(0,0,0,0.15);}
+.tile-btn .tile-label{font-size:0.7rem;font-weight:500;color:var(--text2);line-height:1.3;max-width:70px;}
 /* HOME BUTTON */
 .home-btn{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:0.8rem;color:var(--text2);cursor:pointer;font-family:inherit;margin-bottom:16px;transition:all 0.2s;}
 .home-btn:hover{border-color:var(--accent);color:var(--accent);}
@@ -298,9 +297,9 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <div class="topbar-right">
       <button class="btn-icon" onclick="openModal('add-txn-modal')">+ Transaction</button>
       <div style="position:relative">
-        <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn">
+        <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn" style="padding:4px 10px 4px 4px">
           <div class="user-avatar" id="user-avatar">U</div>
-          <span id="user-name-top">User</span>
+          <span id="user-name-top" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">User</span>
           <span style="font-size:0.7rem;margin-left:2px">▾</span>
         </div>
         <div id="user-dropdown" style="display:none;position:absolute;right:0;top:44px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);min-width:180px;z-index:300;overflow:hidden;">
@@ -432,35 +431,8 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
             <div id="txn-table-wrap" style="min-width:700px"></div>
           </div>
         </div>
-      </div>div>
-
-      <!-- BALANCE SHEET -->
-      <div class="section" id="sec-balance-sheet">
-        <div class="page-header">
-          <div><div class="page-title">Balance Sheet</div><div class="page-sub" id="bs-date"></div></div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <div style="font-size:0.8rem;color:var(--text2)">As of:</div>
-            <input class="form-input" type="date" id="bs-as-of-date" style="width:150px" onchange="renderBalanceSheet()"/>
-            <button class="btn-outline" onclick="printSection('sec-balance-sheet')">🖨 Print</button>
-          </div>
-        </div>
-        <div id="bs-content"></div>
       </div>
 
-      <!-- P&L -->
-      <div class="section" id="sec-pnl">
-        <div class="page-header">
-          <div><div class="page-title">Profit & Loss</div></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <div style="font-size:0.8rem;color:var(--text2)">From:</div>
-            <input class="form-input" type="date" id="pnl-from" style="width:145px" onchange="renderPnL()"/>
-            <div style="font-size:0.8rem;color:var(--text2)">To:</div>
-            <input class="form-input" type="date" id="pnl-to" style="width:145px" onchange="renderPnL()"/>
-            <button class="btn-outline" onclick="printSection('sec-pnl')">🖨 Print</button>
-          </div>
-        </div>
-        <div id="pnl-content"></div>
-      </div>
 
       <!-- BUDGET -->
       <div class="section" id="sec-budget">
@@ -912,17 +884,10 @@ document.addEventListener('click',e=>{
   }
 });
 async function confirmLogout(){
-  // Immediately show login screen - don't wait for signOut
   closeModal('logout-modal');
   closeUserMenu();
-  currentUser=null;currentProfile=null;
-  accounts=[];transactions=[];trades=[];loans=[];budgets=[];
-  document.getElementById('auth-screen').style.display='flex';
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-email').value='';
-  document.getElementById('login-pass').value='';
-  document.getElementById('auth-msg').textContent='';
-  switchAuthTab('login');
+  // Show login immediately
+  showLoginScreen();
   // Clear storage and sign out in background
   localStorage.clear();
   sessionStorage.clear();
@@ -933,22 +898,30 @@ async function confirmLogout(){
 }
 
 let appInitialized=false;
+let appLoading=false;
+
+function showLoginScreen(){
+  currentUser=null;currentProfile=null;
+  accounts=[];transactions=[];trades=[];loans=[];budgets=[];
+  appInitialized=false;appLoading=false;
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('auth-msg').textContent='';
+  switchAuthTab('login');
+}
 
 sb.auth.onAuthStateChange(async(event,session)=>{
-  // Handle sign out
-  if(event==='SIGNED_OUT'||(!session&&event!=='INITIAL_SESSION')){
-    if(currentUser){// Only if we were logged in
-      currentUser=null;currentProfile=null;
-      accounts=[];transactions=[];trades=[];loans=[];budgets=[];
-      document.getElementById('auth-screen').style.display='flex';
-      document.getElementById('app').style.display='none';
-      appInitialized=false;
-    }
-    return;
-  }
-  // Only initialize app once per session to avoid race conditions
+  // Handle sign out events
+  if(event==='SIGNED_OUT'){showLoginScreen();return;}
+  // Skip if no user
   if(!session?.user)return;
-  if(appInitialized&&event==='TOKEN_REFRESHED')return;// Skip token refreshes
+  // Skip token refreshes if already initialized with data loaded
+  if(event==='TOKEN_REFRESHED'&&appInitialized&&accounts.length>0)return;
+  // Prevent concurrent loads
+  if(appLoading)return;
+  appLoading=true;
   currentUser=session.user;
   appInitialized=true;
   // Show app immediately
@@ -979,11 +952,12 @@ sb.auth.onAuthStateChange(async(event,session)=>{
     document.getElementById('user-avatar').textContent=name[0].toUpperCase();
     if(ddName)ddName.textContent=name;
     await loadAllData();
+    appLoading=false;
     renderDashboard();
   }catch(e){
-    // Even if profile load fails, still load data
     console.warn('Profile load error:',e);
     await loadAllData();
+    appLoading=false;
     renderDashboard();
   }
 });
@@ -1269,8 +1243,21 @@ async function loadAllData(){
 function switchSection(name,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item,.bnav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sec-'+name).classList.add('active');
+  const sec=document.getElementById('sec-'+name);
+  if(!sec)return;
+  sec.classList.add('active');
   if(btn)btn.classList.add('active');
+  // Add home button to every non-dashboard section (mobile only)
+  if(name!=='dashboard'){
+    const existing=sec.querySelector('.home-btn');
+    if(!existing){
+      const homeBtn=document.createElement('button');
+      homeBtn.className='home-btn';
+      homeBtn.innerHTML='🏠 Home';
+      homeBtn.onclick=()=>switchSection('dashboard',null);
+      sec.insertBefore(homeBtn,sec.firstChild);
+    }
+  }
   if(name==='dashboard')renderDashboard();
   if(name==='chart-of-accounts')renderChartOfAccounts();
   if(name==='accounts')renderAccounts();
@@ -1371,12 +1358,12 @@ function renderDashboard(){
       {icon:'👤',label:'Profile',sub:'Personal details',fn:"switchSection('profile',null)"},
     ];
     tileMenu.innerHTML=tiles.map(t=>`<button class="tile-btn" onclick="${t.fn}">
-      <div class="tile-icon">${t.icon}</div>
+      <div class="tile-icon-wrap">${t.icon}</div>
       <div class="tile-label">${t.label}</div>
-      <div class="tile-count">${t.sub}</div>
     </button>`).join('');
   }
-  const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).filter(t=>{if(seen.has(t.id))return false;seen.add(t.id);return true;}).slice(0,8);
+  const _seenIds=new Set();
+  const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).filter(t=>{if(_seenIds.has(t.id))return false;_seenIds.add(t.id);return true;}).slice(0,8);
   document.getElementById('dash-recent-txns').innerHTML=recent.length
     ?`<div style="overflow-x:auto"><table class="data-table" style="min-width:500px">${recent.map(t=>{
         let debitAcc,creditAcc;
@@ -1941,7 +1928,10 @@ function buildBalanceSheetHTML(){
   const totalAssets=assetAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+liabAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const netWorth=totalAssets-totalLiab;
-  const donut=buildSimpleDonut([{label:'Assets',value:totalAssets,color:'var(--green)'},{label:'Liabilities',value:Math.abs(totalLiab),color:'var(--red)'}],totalAssets+Math.abs(totalLiab));
+  // Donut shows each individual asset
+  const colors=['var(--accent)','var(--green)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#dc2626','#7c3aed'];
+  const assetSegments=assetAccs.filter(a=>a.currency==='INR'&&calcBalance(a)>0).map((a,i)=>({label:a.name,value:calcBalance(a),color:colors[i%colors.length]}));
+  const donut=buildSimpleDonut(assetSegments,totalAssets);
   return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
     <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
@@ -2001,9 +1991,8 @@ function buildPnLHTML(){
       if(da?.classification==='expense')expByCat[da.name.replace(' Expense','')]=(expByCat[da.name.replace(' Expense','')]||0)+amt;
     }
   });
-  return`<div class="card" style="margin-bottom:14px">
-    <div class="stat-label" style="margin-bottom:4px">${fy.label} · ${fy.start} to ${fy.end}</div>${bar}
-  </div>
+  return`<div class="sec-header" style="margin-bottom:10px"><div class="sec-title">${fy.label}</div></div>
+  <div class="card" style="margin-bottom:14px">${bar}</div>
   <div class="card">
     <table class="data-table"><thead><tr><th>Particulars</th><th style="text-align:right">Amount</th></tr></thead>
     <tbody>
@@ -2036,9 +2025,9 @@ function buildTrialBalanceHTML(){
   });
   const balanced=Math.abs(totalDr-totalCr)<1;
   return`<div class="card" style="margin-bottom:14px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
-      <div class="stat-card"><div class="stat-label">Total Debits</div><div class="stat-val" style="color:var(--green)">${fmt(totalDr,'INR')}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Credits</div><div class="stat-val" style="color:var(--accent)">${fmt(totalCr,'INR')}</div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+      <div><div class="stat-label">Total Debits (Dr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(totalDr,'INR')}</div></div>
+      <div><div class="stat-label">Total Credits (Cr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalCr,'INR')}</div></div>
     </div>
     <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDr-totalCr),'INR')}</div>
   </div>
@@ -2088,17 +2077,49 @@ function buildNetWorthHTML(){
   const netWorth=totalAssets-totalLiab;
   const fy=getFinancialYear();
   const{income:fyInc,expenses:fyExp}=calcIncomeExpense(transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end));
+  // Build 12-month net worth trend (cumulative)
+  const months=[];
+  for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short'}),key:toMonthISO(d)});}
+  // Calculate running net worth per month
+  const nwPoints=months.map(m=>{
+    const asOf=m.key+'-28';
+    const assets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a,asOf):0),0);
+    const liab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
+    return{label:m.label,val:assets-liab};
+  });
+  const maxVal=Math.max(...nwPoints.map(p=>Math.abs(p.val)),1);
+  const minVal=Math.min(...nwPoints.map(p=>p.val),0);
+  const range=maxVal-minVal||1;
+  const W=280,H=100,pad=20;
+  const pts=nwPoints.map((p,i)=>{
+    const x=pad+i*(W-pad*2)/(nwPoints.length-1);
+    const y=H-pad-(p.val-minVal)/range*(H-pad*2);
+    return{x,y,val:p.val,label:p.label};
+  });
+  const polyline=pts.map(p=>`${p.x},${p.y}`).join(' ');
+  const areaPath=`M${pts[0].x},${H-pad} `+pts.map(p=>`L${p.x},${p.y}`).join(' ')+` L${pts[pts.length-1].x},${H-pad} Z`;
+  const lineChart=`<svg viewBox="0 0 ${W} ${H+30}" style="width:100%;max-height:160px">
+    <defs><linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a56db" stop-opacity="0.3"/><stop offset="100%" stop-color="#1a56db" stop-opacity="0"/></linearGradient></defs>
+    <path d="${areaPath}" fill="url(#nwGrad)"/>
+    <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    ${pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"/>`).join('')}
+    ${pts.filter((p,i)=>i%2===0||i===pts.length-1).map(p=>`<text x="${p.x}" y="${H+16}" text-anchor="middle" font-size="8" fill="#94A3B8">${p.label}</text>`).join('')}
+    <line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="var(--border)" stroke-width="1"/>
+  </svg>`;
+
   return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
     <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
   </div>
-  <div class="card" style="margin-bottom:14px">${buildSimpleDonut([{label:'Assets',value:totalAssets,color:'var(--green)'},{label:'Liabilities',value:totalLiab,color:'var(--red)'}],totalAssets+totalLiab)}</div>
+  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">Net Worth Trend (12 months)</div></div>
+  <div class="card" style="margin-bottom:14px">${lineChart}</div>
   <div class="card">
     <div class="sec-title" style="margin-bottom:12px">${fy.label} Summary</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div><div class="stat-label">FY Income</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(fyInc,'INR')}</div></div>
       <div><div class="stat-label">FY Expenses</div><div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(fyExp,'INR')}</div></div>
+      <div><div class="stat-label">FY Net Savings</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(fyInc-fyExp,'INR')}</div></div>
     </div>
   </div>`;
 }
