@@ -166,6 +166,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 /* DIVIDER */
 .divider{height:1px;background:var(--border);margin:16px 0;}
 
+.txn-row:hover{background:var(--bg2);}
 /* TOAST */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);border-radius:var(--radius-sm);padding:10px 20px;font-size:0.82rem;color:#fff;z-index:500;opacity:0;transition:all 0.3s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -535,38 +536,65 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <!-- SETTINGS -->
       <div class="section" id="sec-settings">
         <div class="page-header">
-          <div><div class="page-title">Settings</div><div class="page-sub">Manage accounts, categories & more</div></div>
+          <div><div class="page-title">⚙️ Settings</div><div class="page-sub">Manage your app configuration</div></div>
         </div>
-        <div class="card-grid card-grid-2" style="margin-bottom:20px">
-          <div class="tile-btn" onclick="switchSection('accounts',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
-            <div class="tile-icon-wrap" style="margin-bottom:10px">🏦</div>
-            <div style="font-weight:600;font-size:0.88rem">Accounts</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Manage your bank, FD, stocks & other accounts</div>
+
+        <!-- Accounts -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">🏦</div>
+              <div><div style="font-weight:600;font-size:0.9rem">Accounts</div><div style="font-size:0.72rem;color:var(--text2)">Add or manage your accounts</div></div>
+            </div>
+            <button class="btn-sm" onclick="openModal('add-account-modal')">+ Add</button>
           </div>
-          <div class="tile-btn" onclick="openModal('add-group-modal')" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
-            <div class="tile-icon-wrap" style="margin-bottom:10px">📁</div>
-            <div style="font-weight:600;font-size:0.88rem">Account Groups</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Group FDs, stocks etc. under one folder</div>
+          <div style="margin-top:12px" id="settings-accounts-list"></div>
+        </div>
+
+        <!-- Account Groups -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">📁</div>
+              <div><div style="font-weight:600;font-size:0.9rem">Account Groups</div><div style="font-size:0.72rem;color:var(--text2)">Group FDs, stocks etc.</div></div>
+            </div>
+            <button class="btn-sm" onclick="openModal('add-group-modal')">+ Add</button>
           </div>
-          <div class="tile-btn" onclick="switchSection('categories',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
-            <div class="tile-icon-wrap" style="margin-bottom:10px">🏷️</div>
-            <div style="font-weight:600;font-size:0.88rem">Categories</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Add, rename or delete income & expense categories</div>
+          <div style="margin-top:12px" id="settings-groups-list"></div>
+        </div>
+
+        <!-- Categories -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">🏷️</div>
+              <div><div style="font-weight:600;font-size:0.9rem">Categories</div><div style="font-size:0.72rem;color:var(--text2)">Income & expense categories</div></div>
+            </div>
+            <button class="btn-sm" onclick="openModal('add-category-modal')">+ Add</button>
           </div>
-          <div class="tile-btn" onclick="switchSection('profile',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
-            <div class="tile-icon-wrap" style="margin-bottom:10px">👤</div>
-            <div style="font-weight:600;font-size:0.88rem">My Profile</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Personal details used in reports</div>
+          <div style="margin-top:12px" id="settings-categories-list"></div>
+        </div>
+
+        <!-- Profile -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">👤</div>
+              <div><div style="font-weight:600;font-size:0.9rem">My Profile</div><div style="font-size:0.72rem;color:var(--text2)">Personal details for reports</div></div>
+            </div>
+            <button class="btn-outline" onclick="switchSection('profile',null)">Edit →</button>
           </div>
-          <div class="tile-btn" onclick="switchSection('family',null)" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
-            <div class="tile-icon-wrap" style="margin-bottom:10px">👥</div>
-            <div style="font-weight:600;font-size:0.88rem">Family Members</div>
-            <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">Manage users who have access</div>
-          </div>
-          <div class="tile-btn" onclick="openModal('logout-modal')" style="background:var(--red-light);border:1px solid var(--red-light);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)">
-            <div class="tile-icon-wrap" style="margin-bottom:10px;background:var(--red-light)">🚪</div>
-            <div style="font-weight:600;font-size:0.88rem;color:var(--red)">Sign Out</div>
-            <div style="font-size:0.72rem;color:var(--red-text);margin-top:4px">Sign out of Artha-Sangraha</div>
+          <div id="settings-profile-preview" style="margin-top:10px;font-size:0.82rem;color:var(--text2)"></div>
+        </div>
+
+        <!-- Sign Out -->
+        <div class="card" style="margin-bottom:12px;border-color:var(--red-light)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px;background:var(--red-light)">🚪</div>
+              <div><div style="font-weight:600;font-size:0.9rem;color:var(--red)">Sign Out</div><div style="font-size:0.72rem;color:var(--text2)">Sign out of Artha-Sangraha</div></div>
+            </div>
+            <button class="btn-danger" onclick="openModal('logout-modal')">Sign Out</button>
           </div>
         </div>
       </div>
@@ -1087,6 +1115,91 @@ sb.auth.onAuthStateChange((event,session)=>{
 });
 
 // ═══════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════
+function renderSettings(){
+  // Accounts list
+  const accEl=document.getElementById('settings-accounts-list');
+  if(accEl){
+    const assetAccs=accounts.filter(a=>['asset','bank','cash','fd','pf','gold','crypto','property','indian-stock','us-stock','other','custom-asset'].includes(a.type)||a.classification==='asset');
+    accEl.innerHTML=assetAccs.length
+      ?assetAccs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">${accIcon(a.type)}</span>
+            <div><div style="font-size:0.83rem;font-weight:500">${a.name}</div>
+            <div style="font-size:0.7rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editAccount('${a.id}')">✏️</button>
+            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteAccountPrompt('${a.id}')">🗑</button>
+          </div>
+        </div>`).join('')
+      :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No accounts yet. Click + Add to create one.</div>`;
+  }
+  // Groups list
+  const grpEl=document.getElementById('settings-groups-list');
+  if(grpEl){
+    grpEl.innerHTML=groups.length
+      ?groups.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">${g.icon||'📁'}</span>
+            <div><div style="font-size:0.83rem;font-weight:500">${g.name}</div>
+            <div style="font-size:0.7rem;color:var(--text2)">${capitalize(g.classification)}</div></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editGroup('${g.id}')">✏️</button>
+            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteGroup('${g.id}')">🗑</button>
+          </div>
+        </div>`).join('')
+      :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No groups yet. Click + Add to create one.</div>`;
+  }
+  // Categories list
+  const catEl=document.getElementById('settings-categories-list');
+  if(catEl){
+    const allCats=[...categories];
+    catEl.innerHTML=allCats.length
+      ?allCats.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:0.9rem">${c.icon||'🏷️'}</span>
+            <div><div style="font-size:0.83rem;font-weight:500">${c.name}</div>
+            <div style="font-size:0.68rem;color:var(--text2)">${capitalize(c.type)}</div></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editCategory('${c.id||''}','${c.name}','${c.type}','${c.icon||''}')">✏️</button>
+            ${c.id?`<button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteCategory('${c.id}')">🗑</button>`:'<span style="width:30px"></span>'}
+          </div>
+        </div>`).join('')
+      :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No categories.</div>`;
+  }
+  // Profile preview
+  const profEl=document.getElementById('settings-profile-preview');
+  if(profEl){
+    const saved=JSON.parse(localStorage.getItem('as-profile-'+currentUser?.id)||'{}');
+    profEl.innerHTML=saved.name
+      ?`<span>📧 ${saved.email||'—'} &nbsp; 📞 ${saved.phone||'—'}</span>`
+      :`<span style="color:var(--text3)">No profile set yet.</span>`;
+  }
+}
+
+function editGroup(id){
+  const g=groups.find(x=>x.id===id);if(!g)return;
+  editingGroupId=id;
+  openModal('add-group-modal');
+  const gn=document.getElementById('grp-name');if(gn)gn.value=g.name;
+  const gi=document.getElementById('grp-icon');if(gi)gi.value=g.icon||'';
+  const gc=document.getElementById('grp-classification');if(gc)gc.value=g.classification||'asset';
+  const gt=document.querySelector('#add-group-modal .modal-title');if(gt)gt.textContent='Edit Group';
+}
+
+async function deleteGroup(id){
+  if(!confirm('Delete this group? Accounts in this group will become ungrouped.'))return;
+  await sb.from('account_groups').delete().eq('id',id);
+  await loadAllData();
+  renderSettings();
+  showToast('Group deleted.');
+}
+
+// ═══════════════════════════════
 //  CATEGORIES
 // ═══════════════════════════════
 let editingCatId=null;
@@ -1169,6 +1282,7 @@ async function saveCategory(){
   await loadAllData();
   updateCategoryDropdowns();
   renderCategories();
+  if(document.getElementById('sec-settings').classList.contains('active'))renderSettings();
 }
 
 async function deleteCategory(id){
@@ -1200,6 +1314,7 @@ async function saveGroup(){
   showToast('Group saved! ✅');
   await loadAllData();
   renderAccounts();
+  if(document.getElementById('sec-settings').classList.contains('active'))renderSettings();
 }
 
 // ═══════════════════════════════
@@ -1353,6 +1468,7 @@ async function updateAccount(){
   editingAccId=null;
   showToast('Account updated! ✅');
   await loadAllData();renderAccounts();renderDashboard();
+  if(document.getElementById('sec-settings')?.classList.contains('active'))renderSettings();
 }
 
 async function updateTxn(){
@@ -1605,7 +1721,7 @@ function switchSection(name,btn){
   if(name==='profile')renderProfile();
   if(name==='balance-sheet'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
   if(name==='pnl'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
-  if(name==='settings'){} // static page, no render needed
+  if(name==='settings'){renderSettings();}
   if(name==='categories')renderCategories();
   if(name==='family')renderFamily();
   if(name==='profile')renderProfile();
@@ -1688,7 +1804,7 @@ function renderDashboard(){
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
         const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
         const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
-        return`<div onclick="showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        return`<div data-txnid="${t.id}" class="txn-row" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s">
           <div style="width:30px;height:30px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
@@ -1975,7 +2091,7 @@ function renderTransactions(){
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
         const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
         const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
-        return`<div onclick="showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        return`<div data-txnid="${t.id}" class="txn-row" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s">
           <div style="width:32px;height:32px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
@@ -3070,6 +3186,14 @@ function capitalize(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 function monthsBetween(d1,d2){return(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());}
 function accIcon(type){return{cash:'💵',bank:'🏦','indian-stock':'📈','us-stock':'🌐',property:'🏠',fd:'🔒',pf:'🏛️',gold:'🥇',crypto:'₿',other:'✨'}[type]||'💼';}
 function accBg(type){return{cash:'#D1FAE5',bank:'#DBEAFE','indian-stock':'#FEF3C7','us-stock':'#EDE9FE',property:'#FEE2E2',fd:'#E0E7FF',pf:'#F0FDF4',gold:'#FEF9C3',crypto:'#FEE2E2',other:'#F1F5F9'}[type]||'#F1F5F9';}
+
+// Event delegation for transaction rows
+document.addEventListener('click',e=>{
+  const row=e.target.closest('.txn-row');
+  if(row&&row.dataset.txnid){
+    showTxnDetail(row.dataset.txnid);
+  }
+});
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./as-sw.js').catch(()=>{});
 
