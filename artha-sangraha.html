@@ -60,7 +60,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .btn-icon:hover{border-color:var(--accent);color:var(--accent);}
 
 /* SIDEBAR + MAIN (desktop) */
-.app-body{display:flex;flex:1;overflow:hidden;}
+.app-body{display:flex;flex:1;min-height:0;}
 .sidebar{width:220px;background:var(--card);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;overflow-y:auto;}
 .sidebar-section{padding:0 12px;margin-bottom:20px;}
 .sidebar-label{font-size:0.68rem;font-weight:600;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;padding:0 8px;margin-bottom:6px;}
@@ -3057,7 +3057,6 @@ async function deleteAccountPrompt(id){
 //  MODAL HELPERS
 // ═══════════════════════════════
 function openModal(id){
-  // Reset fields based on modal type
   if(id==='add-txn-modal'){
     editingTxnId=null;
     const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
