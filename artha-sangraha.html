@@ -292,13 +292,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 <div id="app">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="app-logo">
-        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--accent2);font-weight:700;line-height:1.1">अर्थ-संग्रह</div>
-        <div style="font-size:0.65rem;color:var(--text3);font-style:italic;line-height:1">Artha-Sangraha</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#1a56db,#1e429f);display:flex;align-items:center;justify-content:center;font-size:1rem;color:#fff;font-weight:700;flex-shrink:0;font-family:'Playfair Display',serif;">₹</div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:0.98rem;color:var(--accent2);font-weight:700;line-height:1.1">अर्थ-संग्रह</div>
+          <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;line-height:1">Artha-Sangraha</div>
+        </div>
       </div>
     </div>
     <div class="topbar-right">
-      <button class="btn-icon" onclick="openModal('add-txn-modal')">+ Transaction</button>
       <div style="position:relative">
         <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn" style="padding:4px 10px 4px 4px">
           <div class="user-avatar" id="user-avatar">U</div>
@@ -431,7 +433,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="card" style="padding:0;overflow:hidden">
           <div id="txn-summary" style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:0.82rem;display:flex;gap:16px;flex-wrap:wrap"></div>
           <div style="overflow-y:auto;max-height:calc(100vh - 340px);overflow-x:auto">
-            <div id="txn-table-wrap" style="min-width:700px"></div>
+            <div id="txn-table-wrap"></div>
           </div>
         </div>
       </div>
@@ -803,6 +805,18 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="btn-outline" style="flex:1" onclick="closeModal('logout-modal')">Cancel</button>
       <button class="btn-primary" style="flex:1" onclick="confirmLogout()">Sign Out</button>
     </div>
+  </div>
+</div>
+
+<!-- TRANSACTION DETAIL POPUP -->
+<div class="modal-overlay" id="txn-detail-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Transaction Details</div>
+      <button class="btn-close" onclick="closeModal('txn-detail-modal')">✕</button>
+    </div>
+    <div id="txn-detail-content"></div>
+    <div style="display:flex;gap:10px;margin-top:16px" id="txn-detail-actions"></div>
   </div>
 </div>
 
@@ -1632,24 +1646,22 @@ function renderDashboard(){
   const _seenIds=new Set();
   const recent=[...transactions].sort((a,b)=>b.date.localeCompare(a.date)).filter(t=>{if(_seenIds.has(t.id))return false;_seenIds.add(t.id);return true;}).slice(0,8);
   document.getElementById('dash-recent-txns').innerHTML=recent.length
-    ?`<div style="overflow-x:auto"><table class="data-table" style="min-width:500px">${recent.map(t=>{
-        let debitAcc,creditAcc;
-        if(t.type==='transfer'){
-          debitAcc=accounts.find(a=>a.id===t.to_account_id);
-          creditAcc=accounts.find(a=>a.id===t.account_id);
-        } else {
-          debitAcc=t.debit_account_id?accounts.find(a=>a.id===t.debit_account_id):accounts.find(a=>a.id===t.account_id);
-          creditAcc=t.credit_account_id?accounts.find(a=>a.id===t.credit_account_id):null;
-        }
-        const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--text2)';
-        return `<tr>
-          <td style="white-space:nowrap;font-size:0.78rem">${formatDate(t.date)}</td>
-          <td><div style="font-size:0.82rem;font-weight:500">${t.description||t.category||'—'}</div><div style="font-size:0.7rem;color:var(--text3)">${t.category||''}</div></td>
-          <td style="font-size:0.75rem;color:var(--green)">${debitAcc?.name||'—'}</td>
-          <td style="font-size:0.75rem;color:var(--red)">${creditAcc?.name||'—'}</td>
-          <td style="text-align:right;font-weight:600;color:${typeColor};white-space:nowrap">${fmt(t.amount,t.currency)}</td>
-        </tr>`;
-      }).join('')}</table></div>`
+    ?recent.map(t=>{
+        const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
+        const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
+        const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
+        return`<div onclick="showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <div style="width:30px;height:30px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
+            <div style="font-size:0.7rem;color:var(--text3);margin-top:1px">${formatDate(t.date)} · ${t.category||capitalize(t.type)}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:0.85rem;font-weight:700;color:${typeColor}">${amtSign}${fmt(t.amount,t.currency)}</div>
+          </div>
+          <div style="color:var(--text3);font-size:0.8rem">›</div>
+        </div>`;
+      }).join('')
     :`<div class="empty-state"><div class="empty-icon">💳</div><div class="empty-text">No transactions yet.</div></div>`;
 
   const assetAccs=accounts.filter(a=>a.classification==='asset').slice(0,6);
@@ -1919,57 +1931,51 @@ function renderTransactions(){
   const summaryEl=document.getElementById('txn-summary');
   if(summaryEl)summaryEl.innerHTML=`<span>Showing <b>${filtered.length}</b> transactions</span><span style="color:var(--green)">Income: <b>${fmt(totalInc,'INR')}</b></span><span style="color:var(--red)">Expenses: <b>${fmt(totalExp,'INR')}</b></span><span style="color:${net>=0?'var(--green)':'var(--red)'}">Net: <b>${fmt(Math.abs(net),'INR')}</b></span>`;
 
-  const isMobile=window.innerWidth<=768;
+  // Both mobile and desktop: clean rows with tap-for-detail
   document.getElementById('txn-table-wrap').innerHTML=filtered.length
-    ?isMobile
-      // Mobile: compact card format
-      ?filtered.map(t=>{
-        let debitAcc,creditAcc;
-        if(t.type==='transfer'){debitAcc=accounts.find(a=>a.id===t.to_account_id);creditAcc=accounts.find(a=>a.id===t.account_id);}
-        else{debitAcc=accounts.find(a=>a.id===t.debit_account_id);creditAcc=accounts.find(a=>a.id===t.credit_account_id);}
+    ?filtered.map(t=>{
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
-        return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+        const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
+        const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
+        return`<div onclick="showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+          <div style="width:32px;height:32px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-size:0.83rem;font-weight:600;truncate">${t.description||t.category||'—'}</div>
-              <div style="font-weight:700;color:${typeColor};font-size:0.88rem;white-space:nowrap;margin-left:8px">${fmt(t.amount,t.currency)}</div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:3px;align-items:center;flex-wrap:wrap">
-              <span style="font-size:0.68rem;color:var(--text3)">${formatDate(t.date)}</span>
-              <span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.65rem;padding:1px 6px">${capitalize(t.type)}</span>
-              <span style="font-size:0.68rem;color:var(--green)">${debitAcc?.name||''}</span>
-              ${creditAcc?`<span style="font-size:0.68rem;color:var(--text3)">→</span><span style="font-size:0.68rem;color:var(--red)">${creditAcc.name}</span>`:''}
-            </div>
+            <div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
+            <div style="font-size:0.72rem;color:var(--text3);margin-top:1px">${formatDate(t.date)} · ${t.category||capitalize(t.type)}</div>
           </div>
-          <div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="editTxn('${t.id}')">✏️</button>
-            <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="deleteTxn('${t.id}')">🗑</button>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:0.88rem;font-weight:700;color:${typeColor}">${amtSign}${fmt(t.amount,t.currency)}</div>
           </div>
+          <div style="color:var(--text3);font-size:0.8rem;flex-shrink:0">›</div>
         </div>`;
       }).join('')
-      // Desktop: table format
-      :`<div style="overflow-x:auto"><table class="data-table" style="min-width:600px">
-        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Debit</th><th>Credit</th><th style="text-align:right">Amount</th><th></th></tr></thead>
-        <tbody>${filtered.map(t=>{
-          let debitAcc,creditAcc;
-          if(t.type==='transfer'){debitAcc=accounts.find(a=>a.id===t.to_account_id);creditAcc=accounts.find(a=>a.id===t.account_id);}
-          else{debitAcc=accounts.find(a=>a.id===t.debit_account_id);creditAcc=accounts.find(a=>a.id===t.credit_account_id);}
-          return`<tr>
-            <td style="white-space:nowrap;font-size:0.78rem">${formatDate(t.date)}</td>
-            <td style="font-size:0.82rem">${t.description||'—'}</td>
-            <td><span class="badge badge-blue" style="font-size:0.68rem">${t.category||'—'}</span></td>
-            <td><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.68rem">${capitalize(t.type)}</span></td>
-            <td style="font-size:0.75rem;color:var(--green)">${debitAcc?.name||'—'}</td>
-            <td style="font-size:0.75rem;color:var(--red)">${creditAcc?.name||'—'}</td>
-            <td style="font-weight:600;text-align:right;font-size:0.82rem">${fmt(t.amount,t.currency)}</td>
-            <td style="white-space:nowrap">
-              <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem;margin-right:3px" onclick="editTxn('${t.id}')">✏️</button>
-              <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="deleteTxn('${t.id}')">🗑</button>
-            </td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table></div>`
     :`<div class="empty-state" style="padding:30px"><div class="empty-icon">💳</div><div class="empty-text">No transactions found.</div></div>`;
+}
+
+function showTxnDetail(id){
+  const t=transactions.find(x=>x.id===id);
+  if(!t)return;
+  let debitAcc,creditAcc;
+  if(t.type==='transfer'){debitAcc=accounts.find(a=>a.id===t.to_account_id);creditAcc=accounts.find(a=>a.id===t.account_id);}
+  else{debitAcc=accounts.find(a=>a.id===t.debit_account_id);creditAcc=accounts.find(a=>a.id===t.credit_account_id);}
+  const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
+  document.getElementById('txn-detail-content').innerHTML=`
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:1.6rem;font-weight:800;color:${typeColor}">${t.type==='income'?'+':t.type==='expense'?'-':''}${fmt(t.amount,t.currency)}</div>
+      <div style="font-size:0.88rem;color:var(--text2);margin-top:4px">${t.description||t.category||'—'}</div>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Date</span><span style="font-size:0.82rem;font-weight:500">${formatDate(t.date)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Type</span><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.72rem">${capitalize(t.type)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Category</span><span style="font-size:0.82rem;font-weight:500">${t.category||'—'}</span></div>
+      ${debitAcc?`<div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Debit Account</span><span style="font-size:0.82rem;font-weight:500;color:var(--green)">${debitAcc.name}</span></div>`:''}
+      ${creditAcc?`<div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Credit Account</span><span style="font-size:0.82rem;font-weight:500;color:var(--red)">${creditAcc.name}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Currency</span><span style="font-size:0.82rem;font-weight:500">${t.currency||'INR'}</span></div>
+    </div>`;
+  document.getElementById('txn-detail-actions').innerHTML=`
+    <button class="btn-outline" style="flex:1" onclick="closeModal('txn-detail-modal');editTxn('${t.id}')">✏️ Edit</button>
+    <button class="btn-danger" style="flex:1" onclick="closeModal('txn-detail-modal');deleteTxn('${t.id}')">🗑 Delete</button>`;
+  openModal('txn-detail-modal');
 }
 
 // ═══════════════════════════════
