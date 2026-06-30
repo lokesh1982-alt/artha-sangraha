@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v44</title>
+<title>Artha-Sangraha v45</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -764,6 +764,12 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
     </div>
     <div class="form-group"><label class="form-label">Opening Balance Date *</label><input class="form-input" type="date" id="acc-opening-date"/></div>
+    <div class="form-group" id="acc-category-wrap" style="display:none">
+      <label class="form-label">Category <span style="color:var(--red)">*</span> <span style="font-size:0.72rem;color:var(--text2)">(required for P&L accounts)</span></label>
+      <select class="form-select" id="acc-category-select">
+        <option value="">— Select Category —</option>
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="acc-notes" placeholder="Bank name, account number, etc."/></div>
     <button class="btn-primary" onclick="saveAccount()">Save Account</button>
   </div>
@@ -1436,12 +1442,24 @@ function editAccount(id){
   document.getElementById('acc-type').value=a.type||'bank';
   document.getElementById('acc-currency').value=a.currency||'INR';
   document.getElementById('acc-classification').value=a.classification||'asset';
-  // Show classification wrap when editing (user may need to change it)
+  // Show classification wrap when editing
   const cw=document.getElementById('acc-classification-wrap');
   if(cw)cw.style.display='block';
   updateAccClassification();
-  // But keep classification at saved value even after updateAccClassification
+  // Restore saved values after updateAccClassification resets them
   document.getElementById('acc-classification').value=a.classification||'asset';
+  // Show and populate category if P&L account
+  const isPnL=(a.classification==='income'||a.classification==='expense');
+  const catWrap=document.getElementById('acc-category-wrap');
+  if(catWrap)catWrap.style.display=isPnL?'block':'none';
+  if(isPnL){
+    const catSel=document.getElementById('acc-category-select');
+    if(catSel){
+      const filtered=categories.filter(c=>c.type===a.classification||c.type==='both');
+      catSel.innerHTML='<option value="">— Select Category —</option>'+filtered.map(c=>`<option value="${c.name}">${c.icon||''} ${c.name}</option>`).join('');
+      catSel.value=a.category_account||'';
+    }
+  }
 }
 
 function editTxn(id){
@@ -2791,22 +2809,43 @@ function buildMonthlyHTML(){
 }
 
 function buildCategoryHTML(){
-  const catMap={};
+  const incMap={},expMap={};
   transactions.forEach(t=>{
     const amt=parseFloat(t.amount||0);
-    if(t.type==='expense')catMap[t.category]=(catMap[t.category]||0)+amt;
-    else if(t.type==='journal'&&t.category!=='Opening Balance'){
+    const cat=t.category||'Uncategorized';
+    if(t.type==='income') incMap[cat]=(incMap[cat]||0)+amt;
+    else if(t.type==='expense') expMap[cat]=(expMap[cat]||0)+amt;
+    else if(t.type==='journal'&&cat!=='Opening Balance'){
+      // For journal entries use category field directly
       const da=accounts.find(a=>a.id===t.debit_account_id);
-      if(da?.classification==='expense')catMap[da.name.replace(' Expense','')]=(catMap[da.name.replace(' Expense','')]||0)+amt;
+      const ca=accounts.find(a=>a.id===t.credit_account_id);
+      if(da?.classification==='expense') expMap[cat]=(expMap[cat]||0)+amt;
+      if(ca?.classification==='income') incMap[cat]=(incMap[cat]||0)+amt;
     }
   });
-  const total=Object.values(catMap).reduce((s,v)=>s+v,0);
-  const colors=['var(--accent)','var(--green)','var(--red)','var(--yellow)','var(--purple)','#0891b2','#c2410c','#4338ca'];
-  const segments=Object.entries(catMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
-  const rows=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>`<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:6px"></span>${c}</td><td style="text-align:right">${fmt(v,'INR')}</td><td style="text-align:right">${total>0?Math.round(v/total*100):0}%</td></tr>`).join('');
-  return`<div class="card" style="margin-bottom:14px">${buildSimpleDonut(segments,total)}</div>
-  <div class="card"><table class="data-table"><thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">%</th></tr></thead>
-  <tbody>${rows||'<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text3)">No expense data</td></tr>'}</tbody></table></div>`;
+  const colors=['var(--accent)','var(--green)','var(--red)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#d97706'];
+  const expTotal=Object.values(expMap).reduce((s,v)=>s+v,0);
+  const incTotal=Object.values(incMap).reduce((s,v)=>s+v,0);
+  const expSegments=Object.entries(expMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
+  const incSegments=Object.entries(incMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
+  const buildRows=(map,total)=>Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>`<tr>
+    <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:6px"></span>${c}</td>
+    <td style="text-align:right">${fmt(v,'INR')}</td>
+    <td style="text-align:right">${total>0?Math.round(v/total*100):0}%</td>
+  </tr>`).join('');
+  return`
+  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">💸 Expenses by Category</div></div>
+  <div class="card" style="margin-bottom:14px">${expTotal?buildSimpleDonut(expSegments,expTotal):'<div style="color:var(--text3);font-size:0.85rem;padding:12px">No expense data</div>'}</div>
+  <div class="card" style="margin-bottom:20px"><table class="data-table">
+    <thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">%</th></tr></thead>
+    <tbody>${buildRows(expMap,expTotal)||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">No expense data</td></tr>'}</tbody>
+  </table></div>
+  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">💰 Income by Category</div></div>
+  <div class="card" style="margin-bottom:14px">${incTotal?buildSimpleDonut(incSegments,incTotal):'<div style="color:var(--text3);font-size:0.85rem;padding:12px">No income data</div>'}</div>
+  <div class="card"><table class="data-table">
+    <thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">%</th></tr></thead>
+    <tbody>${buildRows(incMap,incTotal)||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">No income data</td></tr>'}</tbody>
+  </table></div>`;
 }
 
 function buildNetWorthHTML(){
@@ -2955,11 +2994,22 @@ function updateAccClassification(){
   const clsEl=document.getElementById('acc-classification');
   if(clsEl)clsEl.value=cls;
   const isCustom=type.startsWith('custom-');
-  // Hide classification dropdown for non-custom types (it's auto-set)
+  // Hide classification dropdown for non-custom types
   const clsWrap=document.getElementById('acc-classification-wrap');
   if(clsWrap)clsWrap.style.display=isCustom?'block':'none';
   const cnWrap=document.getElementById('acc-custom-name-wrap');
   if(cnWrap)cnWrap.style.display=isCustom?'block':'none';
+  // Show category field for P&L accounts (income/expense)
+  const isPnL=cls==='income'||cls==='expense';
+  const catWrap=document.getElementById('acc-category-wrap');
+  if(catWrap)catWrap.style.display=isPnL?'block':'none';
+  if(isPnL){
+    const catSel=document.getElementById('acc-category-select');
+    if(catSel){
+      const filtered=categories.filter(c=>c.type===cls||c.type==='both');
+      catSel.innerHTML='<option value="">— Select Category —</option>'+filtered.map(c=>`<option value="${c.name}">${c.icon||''} ${c.name}</option>`).join('');
+    }
+  }
 }
 
 function toggleFnoFields(){
@@ -3139,6 +3189,9 @@ async function saveAccount(){
   const grpSel=document.getElementById('acc-group');
   const group_id=grpSel?.value||null;
   const accCustName=document.getElementById('acc-custom-name');
+  const catSel=document.getElementById('acc-category-select');
+  const isPnL=classification==='income'||classification==='expense';
+  if(isPnL&&catSel&&!catSel.value){showToast('Please select a category for this P&L account.');return;}
   const acc={
     user_id:currentUser.id,name,
     type:document.getElementById('acc-type').value,
@@ -3147,7 +3200,8 @@ async function saveAccount(){
     notes:(accCustName?.value.trim()||document.getElementById('acc-notes').value.trim()),
     opening_date:document.getElementById('acc-opening-date').value||todayISO(),
     classification,
-    group_id:group_id||null
+    group_id:group_id||null,
+    category_account:isPnL&&catSel?.value?catSel.value:null
   };
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
