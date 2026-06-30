@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v45</title>
+<title>Artha-Sangraha v46</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1516,14 +1516,22 @@ function editLoan(id){
 
 async function updateAccount(){
   const a=accounts.find(x=>x.id===editingAccId);if(!a)return;
+  const classification=document.getElementById('acc-classification').value;
+  const isPnL=classification==='income'||classification==='expense';
+  const catSel=document.getElementById('acc-category-select');
+  const category_account=isPnL&&catSel?.value?catSel.value:null;
+  const accCustName=document.getElementById('acc-custom-name');
+  const grpSel=document.getElementById('acc-group');
   const updates={
     name:document.getElementById('acc-name').value.trim(),
     opening_balance:parseFloat(document.getElementById('acc-balance').value)||0,
-    notes:document.getElementById('acc-notes').value.trim(),
+    notes:(accCustName?.value.trim()||document.getElementById('acc-notes').value.trim()),
     opening_date:document.getElementById('acc-opening-date').value,
     type:document.getElementById('acc-type').value,
     currency:document.getElementById('acc-currency').value,
-    classification:document.getElementById('acc-classification').value
+    classification,
+    group_id:grpSel?.value||null,
+    category_account
   };
   const{error}=await sb.from('accounts').update(updates).eq('id',editingAccId);
   if(error){showToast('Error: '+error.message);return;}
