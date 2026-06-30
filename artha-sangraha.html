@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v42</title>
+<title>Artha-Sangraha v44</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -739,14 +739,16 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <option value="other">✨ Other</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Classification</label>
-        <select class="form-select" id="acc-classification">
-          <option value="asset">Asset (Balance Sheet)</option>
-          <option value="liability">Liability (Balance Sheet)</option>
-          <option value="equity">Equity (Balance Sheet)</option>
-          <option value="income">Income (P&L)</option>
-          <option value="expense">Expense (P&L)</option>
-        </select>
+      <div id="acc-classification-wrap" style="display:none">
+        <div class="form-group"><label class="form-label">Classification</label>
+          <select class="form-select" id="acc-classification">
+            <option value="asset">Asset (Balance Sheet)</option>
+            <option value="liability">Liability (Balance Sheet)</option>
+            <option value="equity">Equity (Balance Sheet)</option>
+            <option value="income">Income (P&L)</option>
+            <option value="expense">Expense (P&L)</option>
+          </select>
+        </div>
       </div>
     </div>
     <div id="acc-custom-name-wrap" style="display:none">
@@ -1127,61 +1129,92 @@ sb.auth.onAuthStateChange((event,session)=>{
 //  SETTINGS
 // ═══════════════════════════════
 function renderSettings(){
-  // Accounts list
+  // Accounts list — ALL accounts grouped by classification
   const accEl=document.getElementById('settings-accounts-list');
   if(accEl){
-    const assetAccs=accounts.filter(a=>['asset','bank','cash','fd','pf','gold','crypto','property','indian-stock','us-stock','other','custom-asset'].includes(a.type)||a.classification==='asset');
-    accEl.innerHTML=assetAccs.length
-      ?assetAccs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:1rem">${accIcon(a.type)}</span>
-            <div><div style="font-size:0.83rem;font-weight:500">${a.name}</div>
-            <div style="font-size:0.7rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+    const clsOrder=['asset','liability','equity','income','expense'];
+    const clsLabels={asset:'🏦 Assets',liability:'💳 Liabilities',equity:'🏛️ Equity',income:'💰 Income A/c',expense:'💸 Expense A/c'};
+    let html='';
+    clsOrder.forEach(cls=>{
+      const clsAccs=accounts.filter(a=>(a.classification||'asset')===cls);
+      if(!clsAccs.length)return;
+      const total=clsAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+      const colId='settings-acc-cls-'+cls;
+      html+=`<div style="margin-bottom:8px">
+        <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border)">
+          <div style="font-size:0.82rem;font-weight:700">${clsLabels[cls]} <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(${clsAccs.length})</span></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:0.78rem;font-weight:600;color:var(--accent)">${fmt(total,'INR')}</span>
+            <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           </div>
-          <div style="display:flex;gap:6px">
-            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editAccount('${a.id}')">✏️</button>
-            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteAccountPrompt('${a.id}')">🗑</button>
-          </div>
-        </div>`).join('')
-      :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No accounts yet. Click + Add to create one.</div>`;
+        </div>
+        <div id="${colId}" style="display:none">
+          ${clsAccs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0 7px 12px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.9rem">${accIcon(a.type)}</span>
+              <div><div style="font-size:0.82rem;font-weight:500">${a.name}</div>
+              <div style="font-size:0.68rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+            </div>
+            <div style="display:flex;gap:5px">
+              <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="editAccount('${a.id}')">✏️</button>
+              <button class="btn-danger" style="padding:3px 7px;font-size:0.72rem" onclick="deleteAccountPrompt('${a.id}')">🗑</button>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    });
+    accEl.innerHTML=html||`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No accounts yet.</div>`;
   }
-  // Groups list
+  // Groups list — collapsible
   const grpEl=document.getElementById('settings-groups-list');
   if(grpEl){
-    grpEl.innerHTML=groups.length
-      ?groups.map(g=>{
+    if(!groups.length){grpEl.innerHTML=`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No groups yet.</div>`;}
+    else{
+      const inner=groups.map(g=>{
         const isProtected=g.name==='Trading Account'&&g.classification==='asset';
-        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        const grpAccs=accounts.filter(a=>a.group_id===g.id);
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0 7px 12px;border-bottom:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:1rem">${g.icon||'📁'}</span>
-            <div><div style="font-size:0.83rem;font-weight:500">${g.name}${isProtected?' <span style="font-size:0.65rem;color:var(--text3)">(system)</span>':''}</div>
-            <div style="font-size:0.7rem;color:var(--text2)">${capitalize(g.classification)}</div></div>
+            <span>${g.icon||'📁'}</span>
+            <div><div style="font-size:0.82rem;font-weight:500">${g.name}${isProtected?` <span style="font-size:0.62rem;color:var(--text3)">(system)</span>`:''}</div>
+            <div style="font-size:0.68rem;color:var(--text2)">${capitalize(g.classification)} · ${grpAccs.length} accounts</div></div>
           </div>
-          <div style="display:flex;gap:6px">
-            ${isProtected?'':`<button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editGroup('${g.id}')">✏️</button>
-            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteGroup('${g.id}')">🗑</button>`}
+          <div style="display:flex;gap:5px">
+            ${isProtected?'':`<button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="editGroup('${g.id}')">✏️</button>
+            <button class="btn-danger" style="padding:3px 7px;font-size:0.72rem" onclick="deleteGroup('${g.id}')">🗑</button>`}
           </div>
         </div>`;
-      }).join('')
-      :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No groups yet. Click + Add to create one.</div>`;
+      }).join('');
+      grpEl.innerHTML=`<div onclick="toggleSettingsSection('settings-grp-inner')" style="display:flex;justify-content:space-between;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--border)">
+        <span style="font-size:0.78rem;color:var(--text2)">${groups.length} groups</span>
+        <span id="settings-grp-inner-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
+      </div><div id="settings-grp-inner" style="display:none">${inner}</div>`;
+    }
   }
-  // Categories list
+  // Categories list — collapsible by type
   const catEl=document.getElementById('settings-categories-list');
   if(catEl){
-    const allCats=[...categories];
-    catEl.innerHTML=allCats.length
-      ?allCats.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:0.9rem">${c.icon||'🏷️'}</span>
-            <div><div style="font-size:0.83rem;font-weight:500">${c.name}</div>
-            <div style="font-size:0.68rem;color:var(--text2)">${capitalize(c.type)}</div></div>
+    const incCats=categories.filter(c=>c.type==='income'||c.type==='both');
+    const expCats=categories.filter(c=>c.type==='expense'||c.type==='both');
+    const buildCatGroup=(cats,label,colId)=>`<div style="margin-bottom:4px">
+      <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;padding:7px 0;cursor:pointer;border-bottom:1px solid var(--border)">
+        <span style="font-size:0.8rem;font-weight:600">${label} <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(${cats.length})</span></span>
+        <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
+      </div>
+      <div id="${colId}" style="display:none">
+        ${cats.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 6px 12px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="font-size:0.88rem">${c.icon||'🏷️'}</span>
+            <span style="font-size:0.82rem">${c.name} ${!c.id?'<span style="font-size:0.62rem;color:var(--text3)">(default)</span>':''}</span>
           </div>
-          <div style="display:flex;gap:6px">
-            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editCategory('${c.id||''}','${c.name}','${c.type}','${c.icon||''}')">✏️</button>
-            ${c.id?`<button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteCategory('${c.id}')">🗑</button>`:'<span style="width:30px"></span>'}
+          <div style="display:flex;gap:5px">
+            <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="editCategory('${c.id||''}','${c.name}','${c.type}','${c.icon||''}')">✏️</button>
+            ${c.id?`<button class="btn-danger" style="padding:3px 7px;font-size:0.72rem" onclick="deleteCategory('${c.id}')">🗑</button>`:''}
           </div>
-        </div>`).join('')
-      :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No categories.</div>`;
+        </div>`).join('')}
+      </div>
+    </div>`;
+    catEl.innerHTML=buildCatGroup(incCats,'💰 Income Categories','settings-cat-income')+buildCatGroup(expCats,'💸 Expense Categories','settings-cat-expense');
   }
   // Profile preview
   const profEl=document.getElementById('settings-profile-preview');
@@ -1402,6 +1435,12 @@ function editAccount(id){
   document.getElementById('acc-opening-date').value=a.opening_date||todayISO();
   document.getElementById('acc-type').value=a.type||'bank';
   document.getElementById('acc-currency').value=a.currency||'INR';
+  document.getElementById('acc-classification').value=a.classification||'asset';
+  // Show classification wrap when editing (user may need to change it)
+  const cw=document.getElementById('acc-classification-wrap');
+  if(cw)cw.style.display='block';
+  updateAccClassification();
+  // But keep classification at saved value even after updateAccClassification
   document.getElementById('acc-classification').value=a.classification||'asset';
 }
 
@@ -2598,10 +2637,39 @@ function buildBalanceSheetHTML(){
   const totalAssets=assetAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+liabAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
   const netWorth=totalAssets-totalLiab;
-  // Donut shows each individual asset
-  const colors=['var(--accent)','var(--green)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#dc2626','#7c3aed'];
-  const assetSegments=assetAccs.filter(a=>a.currency==='INR'&&calcBalance(a)>0).map((a,i)=>({label:a.name,value:calcBalance(a),color:colors[i%colors.length]}));
-  const donut=buildSimpleDonut(assetSegments,totalAssets);
+  const colors=['var(--accent)','var(--green)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#dc2626','#7c3aed','#d97706','#0284c7'];
+
+  // Build grouped segments: grouped accounts → show group total, ungrouped → show individual
+  const segments=[];
+  const tableRows=[];
+  const usedGroups=new Set();
+
+  assetAccs.filter(a=>a.currency==='INR').forEach(a=>{
+    const grp=a.group_id?groups.find(g=>g.id===a.group_id):null;
+    if(grp&&!usedGroups.has(grp.id)){
+      // First time we see this group — calculate total for ALL accounts in this group
+      usedGroups.add(grp.id);
+      const grpAccs=assetAccs.filter(x=>x.group_id===grp.id&&x.currency==='INR');
+      const grpTotal=grpAccs.reduce((s,x)=>s+calcBalance(x),0);
+      if(grpTotal>0){
+        const color=colors[segments.length%colors.length];
+        segments.push({label:`${grp.icon||'📁'} ${grp.name}`,value:grpTotal,color});
+        // Table: group header + expandable accounts
+        tableRows.push(`<tr style="background:var(--bg2)"><td colspan="2"><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></td><td style="text-align:right;font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</td></tr>`);
+        grpAccs.forEach(x=>tableRows.push(`<tr><td style="padding-left:20px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmt(calcBalance(x),x.currency)}</td></tr>`));
+      }
+    } else if(!grp){
+      // Ungrouped account — show individually
+      const bal=calcBalance(a);
+      if(bal>0){
+        const color=colors[segments.length%colors.length];
+        segments.push({label:a.name,value:bal,color});
+        tableRows.push(`<tr><td>${accIcon(a.type)} ${a.name}</td><td></td><td style="text-align:right">${fmt(bal,a.currency)}</td></tr>`);
+      }
+    }
+  });
+
+  const donut=buildSimpleDonut(segments,totalAssets);
   return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
     <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
@@ -2610,17 +2678,17 @@ function buildBalanceSheetHTML(){
   <div class="card" style="margin-bottom:14px">${donut}</div>
   <div class="card">
     <div class="sec-title" style="margin-bottom:10px">Assets</div>
-    <table class="data-table"><thead><tr><th>Account</th><th style="text-align:right">Balance</th></tr></thead>
-    <tbody>${assetAccs.map(a=>`<tr><td>${accIcon(a.type)} ${a.name}</td><td style="text-align:right">${fmt(calcBalance(a),a.currency)}</td></tr>`).join('')}
-    <tr class="total-row"><td><b>Total Assets</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalAssets,'INR')}</b></td></tr>
+    <table class="data-table"><thead><tr><th>Account / Group</th><th></th><th style="text-align:right">Balance</th></tr></thead>
+    <tbody>${tableRows.join('')}
+    <tr class="total-row"><td colspan="2"><b>Total Assets</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalAssets,'INR')}</b></td></tr>
     </tbody></table>
     <div class="divider"></div>
     <div class="sec-title" style="margin-bottom:10px">Liabilities</div>
     <table class="data-table"><tbody>
-    ${loans.map(l=>`<tr><td>${l.name}</td><td style="text-align:right;color:var(--red)">${fmt(l.principal,l.currency)}</td></tr>`).join('')}
-    ${liabAccs.map(a=>`<tr><td>${a.name}</td><td style="text-align:right;color:var(--red)">${fmt(calcBalance(a),a.currency)}</td></tr>`).join('')}
-    <tr class="total-row"><td><b>Total Liabilities</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(totalLiab,'INR')}</b></td></tr>
-    <tr class="total-row"><td><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,'INR')}</b></td></tr>
+    ${loans.map(l=>`<tr><td colspan="2">${l.name}</td><td style="text-align:right;color:var(--red)">${fmt(l.principal,l.currency)}</td></tr>`).join('')}
+    ${liabAccs.map(a=>`<tr><td colspan="2">${a.name}</td><td style="text-align:right;color:var(--red)">${fmt(calcBalance(a),a.currency)}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="2"><b>Total Liabilities</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(totalLiab,'INR')}</b></td></tr>
+    <tr class="total-row"><td colspan="2"><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,'INR')}</b></td></tr>
     </tbody></table>
   </div>`;
 }
@@ -2871,12 +2939,27 @@ async function renderFamily(){
 // ═══════════════════════════════
 //  SAVE FUNCTIONS
 // ═══════════════════════════════
+function toggleSettingsSection(id){
+  const el=document.getElementById(id);
+  const icon=document.getElementById(id+'-icon');
+  if(!el)return;
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'block';
+  if(icon)icon.textContent=isOpen?'▾':'▴';
+}
+
 function updateAccClassification(){
   const type=document.getElementById('acc-type').value;
   const classMap={cash:'asset',bank:'asset','indian-stock':'asset','us-stock':'asset',property:'asset',fd:'asset',pf:'asset',gold:'asset',crypto:'asset','custom-asset':'asset','custom-liability':'liability','custom-equity':'equity','custom-income':'income','custom-expense':'expense',other:'asset'};
-  document.getElementById('acc-classification').value=classMap[type]||'asset';
+  const cls=classMap[type]||'asset';
+  const clsEl=document.getElementById('acc-classification');
+  if(clsEl)clsEl.value=cls;
   const isCustom=type.startsWith('custom-');
-  document.getElementById('acc-custom-name-wrap').style.display=isCustom?'block':'none';
+  // Hide classification dropdown for non-custom types (it's auto-set)
+  const clsWrap=document.getElementById('acc-classification-wrap');
+  if(clsWrap)clsWrap.style.display=isCustom?'block':'none';
+  const cnWrap=document.getElementById('acc-custom-name-wrap');
+  if(cnWrap)cnWrap.style.display=isCustom?'block':'none';
 }
 
 function toggleFnoFields(){
