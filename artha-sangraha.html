@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v46</title>
+<title>Artha-Sangraha v47</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2746,13 +2746,19 @@ function buildPnLHTML(){
   const incByCat={};const expByCat={};
   fyTxns.forEach(t=>{
     const amt=parseFloat(t.amount||0);
-    if(t.type==='income')incByCat[t.category]=(incByCat[t.category]||0)+amt;
-    else if(t.type==='expense')expByCat[t.category]=(expByCat[t.category]||0)+amt;
-    else if(t.type==='journal'&&t.category!=='Opening Balance'){
+    if(t.type==='income'){
+      const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+      const cat=creditAcc?.category_account||t.category||'Other Income';
+      incByCat[cat]=(incByCat[cat]||0)+amt;
+    } else if(t.type==='expense'){
+      const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+      const cat=debitAcc?.category_account||t.category||'Other';
+      expByCat[cat]=(expByCat[cat]||0)+amt;
+    } else if(t.type==='journal'&&t.category!=='Opening Balance'&&t.category!=='Trading P&L'){
       const ca=accounts.find(a=>a.id===t.credit_account_id);
       const da=accounts.find(a=>a.id===t.debit_account_id);
-      if(ca?.classification==='income')incByCat[ca.name.replace(' Income','')]=(incByCat[ca.name.replace(' Income','')]||0)+amt;
-      if(da?.classification==='expense')expByCat[da.name.replace(' Expense','')]=(expByCat[da.name.replace(' Expense','')]||0)+amt;
+      if(ca?.classification==='income'){const cat=ca.category_account||t.category||'Other Income';incByCat[cat]=(incByCat[cat]||0)+amt;}
+      if(da?.classification==='expense'){const cat=da.category_account||t.category||'Other';expByCat[cat]=(expByCat[cat]||0)+amt;}
     }
   });
   return`<div class="sec-header" style="margin-bottom:10px"><div class="sec-title">${fy.label}</div></div>
@@ -2820,15 +2826,29 @@ function buildCategoryHTML(){
   const incMap={},expMap={};
   transactions.forEach(t=>{
     const amt=parseFloat(t.amount||0);
-    const cat=t.category||'Uncategorized';
-    if(t.type==='income') incMap[cat]=(incMap[cat]||0)+amt;
-    else if(t.type==='expense') expMap[cat]=(expMap[cat]||0)+amt;
-    else if(t.type==='journal'&&cat!=='Opening Balance'){
-      // For journal entries use category field directly
-      const da=accounts.find(a=>a.id===t.debit_account_id);
-      const ca=accounts.find(a=>a.id===t.credit_account_id);
-      if(da?.classification==='expense') expMap[cat]=(expMap[cat]||0)+amt;
-      if(ca?.classification==='income') incMap[cat]=(incMap[cat]||0)+amt;
+    // Determine category: use transaction category first, then look up from account
+    let cat=t.category||'';
+    const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+    const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+    if(t.type==='income'){
+      // Category from credit account (income source) or transaction category
+      const incAcc=creditAcc?.classification==='income'?creditAcc:null;
+      cat=incAcc?.category_account||t.category||'Other Income';
+      incMap[cat]=(incMap[cat]||0)+amt;
+    } else if(t.type==='expense'){
+      // Category from debit account (expense destination) or transaction category
+      const expAcc=debitAcc?.classification==='expense'?debitAcc:null;
+      cat=expAcc?.category_account||t.category||'Other';
+      expMap[cat]=(expMap[cat]||0)+amt;
+    } else if(t.type==='journal'&&t.category!=='Opening Balance'&&t.category!=='Trading P&L'&&t.category!=='Trade Entry'){
+      if(debitAcc?.classification==='expense'){
+        cat=debitAcc.category_account||t.category||'Other';
+        expMap[cat]=(expMap[cat]||0)+amt;
+      }
+      if(creditAcc?.classification==='income'){
+        cat=creditAcc.category_account||t.category||'Other Income';
+        incMap[cat]=(incMap[cat]||0)+amt;
+      }
     }
   });
   const colors=['var(--accent)','var(--green)','var(--red)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#d97706'];
