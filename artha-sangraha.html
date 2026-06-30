@@ -459,11 +459,23 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <!-- TRADING JOURNAL -->
       <div class="section" id="sec-trading">
         <div class="page-header">
-          <div><div class="page-title">Trading Journal</div><div class="page-sub">Track your trades · India & US markets</div></div>
+          <div><div class="page-title">Trading Journal</div><div class="page-sub">Track your trading accounts & trades</div></div>
           <button class="btn-sm" onclick="openModal('add-trade-modal')">+ Add Trade</button>
         </div>
-        <div class="card-grid card-grid-4" id="trading-stats"></div>
-        <div class="card" style="margin-top:16px">
+
+        <!-- Trading Sub-Accounts -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:0.88rem;font-weight:700">💹 Trading Accounts</div>
+          <button class="btn-outline" onclick="openModal('add-account-modal');presetTradingAccount()">+ Add Trading Account</button>
+        </div>
+        <div id="trading-accounts-list" style="margin-bottom:20px"></div>
+
+        <!-- Trade Stats -->
+        <div class="card-grid card-grid-4" id="trading-stats" style="margin-bottom:16px"></div>
+
+        <!-- Trades -->
+        <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">All Trades</div></div>
+        <div class="card">
           <div id="trading-table"></div>
         </div>
       </div>
@@ -776,6 +788,9 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </select>
       </div>
     </div>
+    <div class="form-group"><label class="form-label">Trading Account *</label>
+      <select class="form-select" id="trade-account"></select>
+    </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Stock / Symbol *</label><input class="form-input" id="trade-stock" placeholder="e.g. RELIANCE, NIFTY"/></div>
       <div class="form-group"><label class="form-label">Exchange</label>
@@ -883,6 +898,25 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div id="txn-detail-content"></div>
     <div style="display:flex;gap:10px;margin-top:16px" id="txn-detail-actions"></div>
+  </div>
+</div>
+
+<!-- DEPOSIT/WITHDRAW MODAL -->
+<div class="modal-overlay" id="deposit-withdraw-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="dw-modal-title">Deposit to Trading Account</div>
+      <button class="btn-close" onclick="closeModal('deposit-withdraw-modal')">✕</button>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px;font-size:0.85rem" id="dw-account-info"></div>
+    <div class="form-group" id="dw-from-wrap">
+      <label class="form-label" id="dw-from-label">From Account *</label>
+      <select class="form-select" id="dw-other-account"></select>
+    </div>
+    <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="dw-amount" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="dw-date"/></div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="dw-notes" placeholder="Optional notes"/></div>
+    <button class="btn-primary" id="dw-submit-btn" onclick="submitDepositWithdraw()">Confirm</button>
   </div>
 </div>
 
@@ -1323,26 +1357,26 @@ async function closeTrade(){
   const currency=t.currency||'INR';
   // Update trade as closed
   await sb.from('trades').update({exit_price:exitAmt,status:'closed'}).eq('id',closingTradeId);
-  // Ensure Trading Account exists
-  let tradingAcc=accounts.find(a=>a.name==='Trading Account');
+  // Use the trade's specific trading sub-account
+  let tradingAcc=accounts.find(a=>a.id===t.trading_account_id);
   if(!tradingAcc){
-    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Trading Account',type:'custom-asset',classification:'asset',opening_balance:0,currency,opening_date:closeDate,notes:'Auto-created'}).select().single();
-    if(data){accounts.push(data);tradingAcc=data;}
+    // Fallback: find any trading account
+    const grp=groups.find(g=>g.name==='Trading Account');
+    tradingAcc=grp?accounts.find(a=>a.group_id===grp.id):null;
   }
   // Ensure P&L Account exists
   let pnlAcc=accounts.find(a=>a.name==='Trading P&L');
   if(!pnlAcc){
-    const cls=pnl>=0?'income':'expense';
-    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Trading P&L',type:pnl>=0?'custom-income':'custom-expense',classification:cls,opening_balance:0,currency,opening_date:closeDate,notes:'Auto-created'}).select().single();
+    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Trading P&L',type:'custom-income',classification:'income',opening_balance:0,currency,opening_date:closeDate,notes:'Auto-created'}).select().single();
     if(data){accounts.push(data);pnlAcc=data;}
   }
   if(tradingAcc&&pnlAcc){
     const txn={user_id:currentUser.id,type:'journal',date:closeDate,amount:Math.abs(pnl),currency,account_id:tradingAcc.id,category:'Trading P&L',description:`${t.stock} - ${pnl>=0?'Profit':'Loss'}`};
     if(pnl>=0){
-      // Profit: Debit Trading Account, Credit P&L
+      // Profit: Debit Trading sub-account (balance increases), Credit P&L
       txn.debit_account_id=tradingAcc.id;txn.credit_account_id=pnlAcc.id;
     } else {
-      // Loss: Debit P&L, Credit Trading Account
+      // Loss: Debit P&L, Credit Trading sub-account (balance decreases)
       txn.debit_account_id=pnlAcc.id;txn.credit_account_id=tradingAcc.id;
     }
     await sb.from('transactions').insert(txn);
@@ -1589,7 +1623,7 @@ async function loadAllData(){
     sb.from('loans').select('*').eq('user_id',uid).order('created_at'),
     sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false}),
     sb.from('account_groups').select('*').eq('user_id',uid).order('created_at').throwOnError().then(r=>r).catch(()=>({data:[]})),
-    sb.from('categories').select('*').eq('user_id',uid).order('name').throwOnError().then(r=>r).catch(()=>({data:[]}))
+    sb.from('categories').select('*').eq('user_id',uid).order('name')
   ]);
   accounts=a.data||[];
   transactions=t.data||[];
@@ -2294,7 +2328,127 @@ function renderPortfolio(){
 // ═══════════════════════════════
 //  TRADING JOURNAL
 // ═══════════════════════════════
+// ═══════════════════════════════
+//  TRADING SUB-ACCOUNTS
+// ═══════════════════════════════
+async function ensureTradingGroup(){
+  let grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
+  if(!grp){
+    const{data}=await sb.from('account_groups').insert({user_id:currentUser.id,name:'Trading Account',classification:'asset',icon:'💹'}).select().single();
+    if(data){groups.push(data);grp=data;}
+  }
+  return grp;
+}
+
+async function presetTradingAccount(){
+  // Called right after opening add-account-modal to preselect Trading group
+  await ensureTradingGroup();
+  const grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
+  const gs=document.getElementById('acc-group');
+  if(gs&&grp){
+    gs.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
+    gs.value=grp.id;
+  }
+}
+
+function renderTradingAccounts(){
+  const grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
+  const el=document.getElementById('trading-accounts-list');
+  if(!el)return;
+  if(!grp){
+    el.innerHTML=`<div class="empty-state" style="padding:20px"><div class="empty-text">No trading accounts yet. Click + Add Trading Account to create one (e.g. CoinDCX, 5paisa).</div></div>`;
+    return;
+  }
+  const tAccs=accounts.filter(a=>a.group_id===grp.id);
+  const totalBal=tAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+  if(!tAccs.length){
+    el.innerHTML=`<div class="empty-state" style="padding:20px"><div class="empty-text">No trading accounts yet. Click + Add Trading Account to create one (e.g. CoinDCX, 5paisa).</div></div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div class="card" style="margin-bottom:10px;background:var(--accent-light);border-color:var(--accent)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:0.85rem;font-weight:600">💹 Total Trading Balance</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalBal,'INR')}</div>
+      </div>
+    </div>
+    ${tAccs.map(a=>`<div class="card" style="margin-bottom:8px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1.1rem">💹</span>
+          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div style="font-size:0.78rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem" onclick="editAccount('${a.id}')">✏️</button>
+          <button class="btn-danger" style="padding:3px 7px;font-size:0.7rem" onclick="deleteAccountPrompt('${a.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" style="flex:1;background:var(--green)" onclick="openDepositWithdraw('${a.id}','deposit')">⬇️ Deposit</button>
+        <button class="btn-sm" style="flex:1;background:var(--red)" onclick="openDepositWithdraw('${a.id}','withdraw')">⬆️ Withdraw</button>
+      </div>
+    </div>`).join('')}
+  `;
+}
+
+let dwAccountId=null,dwMode=null;
+
+function openDepositWithdraw(accId,mode){
+  dwAccountId=accId;dwMode=mode;
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  const title=document.getElementById('dw-modal-title');
+  if(title)title.textContent=mode==='deposit'?`Deposit to ${acc.name}`:`Withdraw from ${acc.name}`;
+  const info=document.getElementById('dw-account-info');
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(calcBalance(acc),acc.currency)}</b>`;
+  const fromLabel=document.getElementById('dw-from-label');
+  if(fromLabel)fromLabel.textContent=mode==='deposit'?'From Account *':'To Account *';
+  // Populate other accounts (excluding this trading account)
+  const sel=document.getElementById('dw-other-account');
+  if(sel){
+    const otherAccs=accounts.filter(a=>a.id!==accId&&a.classification==='asset');
+    sel.innerHTML=otherAccs.map(a=>`<option value="${a.id}">${a.name} (${fmt(calcBalance(a),a.currency)})</option>`).join('');
+  }
+  const amt=document.getElementById('dw-amount');if(amt)amt.value='';
+  const dt=document.getElementById('dw-date');if(dt)dt.value=todayISO();
+  const nt=document.getElementById('dw-notes');if(nt)nt.value='';
+  const btn=document.getElementById('dw-submit-btn');
+  if(btn){btn.textContent=mode==='deposit'?'Confirm Deposit':'Confirm Withdrawal';btn.style.background=mode==='deposit'?'var(--green)':'var(--red)';}
+  openModal('deposit-withdraw-modal');
+}
+
+async function submitDepositWithdraw(){
+  const acc=accounts.find(a=>a.id===dwAccountId);if(!acc)return;
+  const otherAccId=document.getElementById('dw-other-account').value;
+  const otherAcc=accounts.find(a=>a.id===otherAccId);
+  const amount=parseFloat(document.getElementById('dw-amount').value);
+  const date=document.getElementById('dw-date').value;
+  const notes=document.getElementById('dw-notes').value.trim();
+  if(!otherAcc||!amount||!date){showToast('Please fill all required fields.');return;}
+  const txn={
+    user_id:currentUser.id,type:'transfer',date,amount,currency:acc.currency,
+    category:dwMode==='deposit'?'Trading Deposit':'Trading Withdrawal',
+    description:notes||(dwMode==='deposit'?`Deposit to ${acc.name}`:`Withdraw from ${acc.name}`)
+  };
+  if(dwMode==='deposit'){
+    // Money moves FROM other account TO trading account
+    txn.account_id=otherAcc.id;txn.to_account_id=acc.id;
+    txn.credit_account_id=otherAcc.id;txn.debit_account_id=acc.id;
+  } else {
+    // Money moves FROM trading account TO other account
+    txn.account_id=acc.id;txn.to_account_id=otherAcc.id;
+    txn.credit_account_id=acc.id;txn.debit_account_id=otherAcc.id;
+  }
+  const{error}=await sb.from('transactions').insert(txn);
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('deposit-withdraw-modal');
+  showToast(`${dwMode==='deposit'?'Deposit':'Withdrawal'} recorded! ✅`);
+  await loadAllData();
+  renderTradingAccounts();
+  renderTrading();
+}
+
 function renderTrading(){
+  renderTradingAccounts();
   const closed=trades.filter(t=>t.exit_price||t.status==='closed');
   const totalPL=closed.reduce((s,t)=>{
     const pl=parseFloat(t.exit_price||0)-parseFloat(t.entry_price||0);
@@ -2956,7 +3110,10 @@ async function saveTrade(){
   const stock=document.getElementById('trade-stock').value.trim();
   const entry=parseFloat(document.getElementById('trade-entry').value);
   const instrument=document.getElementById('trade-instrument').value;
+  const tradingAccId=document.getElementById('trade-account').value;
   if(!stock||!entry){showToast('Please fill stock and entry amount.');return;}
+  if(!tradingAccId){showToast('Please select a trading account. Add one first if none exist.');return;}
+  const tradingAcc=accounts.find(a=>a.id===tradingAccId);
   const isFno=['futures','call','put'].includes(instrument);
   const fnoNote=isFno?` | ${instrument.toUpperCase()} | Strike: ${document.getElementById('trade-strike').value||'N/A'} | Expiry: ${document.getElementById('trade-expiry').value||'N/A'}`:'';
   const trade={
@@ -2964,6 +3121,7 @@ async function saveTrade(){
     stock:stock.toUpperCase(),exchange:document.getElementById('trade-exchange').value,
     trade_type:'buy',quantity:1,entry_price:entry,exit_price:null,
     currency:document.getElementById('trade-currency').value,status:'open',
+    trading_account_id:tradingAccId,
     notes:(document.getElementById('trade-notes').value.trim()+fnoNote).trim()
   };
   const{data,error}=await sb.from('trades').insert(trade).select().single();
@@ -3099,6 +3257,12 @@ function openModal(id){
     const ti=document.getElementById('trade-instrument');if(ti)ti.value='equity';
     const ff=document.getElementById('fno-fields');if(ff)ff.style.display='none';
     const tm=document.querySelector('#add-trade-modal .modal-title');if(tm)tm.textContent='Add Trade';
+    const taSel=document.getElementById('trade-account');
+    if(taSel){
+      const grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
+      const tAccs=grp?accounts.filter(a=>a.group_id===grp.id):[];
+      taSel.innerHTML=tAccs.length?tAccs.map(a=>`<option value="${a.id}">${a.name}</option>`).join(''):'<option value="">No trading accounts — add one first</option>';
+    }
   }
   else if(id==='add-loan-modal'){
     editingLoanId=null;
