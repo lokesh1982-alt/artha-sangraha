@@ -1149,17 +1149,20 @@ function renderSettings(){
   const grpEl=document.getElementById('settings-groups-list');
   if(grpEl){
     grpEl.innerHTML=groups.length
-      ?groups.map(g=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      ?groups.map(g=>{
+        const isProtected=g.name==='Trading Account'&&g.classification==='asset';
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:1rem">${g.icon||'📁'}</span>
-            <div><div style="font-size:0.83rem;font-weight:500">${g.name}</div>
+            <div><div style="font-size:0.83rem;font-weight:500">${g.name}${isProtected?' <span style="font-size:0.65rem;color:var(--text3)">(system)</span>':''}</div>
             <div style="font-size:0.7rem;color:var(--text2)">${capitalize(g.classification)}</div></div>
           </div>
           <div style="display:flex;gap:6px">
-            <button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editGroup('${g.id}')">✏️</button>
-            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteGroup('${g.id}')">🗑</button>
+            ${isProtected?'':`<button class="btn-outline" style="padding:4px 10px;font-size:0.75rem" onclick="editGroup('${g.id}')">✏️</button>
+            <button class="btn-danger" style="padding:4px 8px;font-size:0.75rem" onclick="deleteGroup('${g.id}')">🗑</button>`}
           </div>
-        </div>`).join('')
+        </div>`;
+      }).join('')
       :`<div style="font-size:0.8rem;color:var(--text3);padding:8px 0">No groups yet. Click + Add to create one.</div>`;
   }
   // Categories list
@@ -1201,6 +1204,11 @@ function editGroup(id){
 }
 
 async function deleteGroup(id){
+  const g=groups.find(x=>x.id===id);
+  if(g&&g.name==='Trading Account'&&g.classification==='asset'){
+    showToast('Trading Account group is required by the app and cannot be deleted.');
+    return;
+  }
   if(!confirm('Delete this group? Accounts in this group will become ungrouped.'))return;
   await sb.from('account_groups').delete().eq('id',id);
   await loadAllData();
@@ -1270,21 +1278,13 @@ async function saveCategory(){
   const icon=document.getElementById('cat-icon').value.trim();
   if(!name){showToast('Please enter category name.');return;}
   if(editingCatId){
-    // Update existing DB category
     const{error}=await sb.from('categories').update({name,type,icon}).eq('id',editingCatId);
-    if(error){showToast('Error: '+error.message);return;}
+    if(error){showToast('Error: '+error.message);console.error(error);return;}
     editingCatId=null;
   } else {
-    // Check if it's a default category being customized
-    const existing=categories.find(c=>c.name===name&&!c.id);
-    if(existing){
-      // Insert as custom (overrides default)
-      const{error}=await sb.from('categories').insert({user_id:currentUser.id,name,type,icon});
-      if(error){showToast('Error: '+error.message);return;}
-    } else {
-      const{error}=await sb.from('categories').insert({user_id:currentUser.id,name,type,icon});
-      if(error){showToast('Error: '+error.message);return;}
-    }
+    const{data,error}=await sb.from('categories').insert({user_id:currentUser.id,name,type,icon}).select();
+    if(error){showToast('Error: '+error.message);console.error(error);return;}
+    console.log('Category saved successfully:',data);
   }
   closeModal('add-category-modal');
   showToast('Category saved! ✅');
@@ -1640,6 +1640,8 @@ async function loadAllData(){
     {name:'Investment',type:'expense'},{name:'Other',type:'expense'}
   ];
   const dbCats=cat?.data||[];
+  if(cat?.error)console.error('Categories fetch error:',cat.error);
+  console.log('Loaded categories from DB:',dbCats.length,dbCats);
   // Merge: DB cats override defaults with same name, then add unique DB ones
   const catNames=new Set(dbCats.map(c=>c.name));
   categories=[...dbCats,...defaultCats.filter(c=>!catNames.has(c.name))];
@@ -2345,10 +2347,14 @@ async function presetTradingAccount(){
   await ensureTradingGroup();
   const grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
   const gs=document.getElementById('acc-group');
+  const cs=document.getElementById('acc-classification');
+  if(cs)cs.value='asset';
   if(gs&&grp){
     gs.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
     gs.value=grp.id;
   }
+  const tm=document.querySelector('#add-account-modal .modal-title');
+  if(tm)tm.textContent='Add Trading Account';
 }
 
 function renderTradingAccounts(){
