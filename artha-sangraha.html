@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v54</title>
+<title>Artha-Sangraha v56</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2333,6 +2333,7 @@ function renderTransactions(){
 async function openAttachAfterSave(txnId){
   await loadAllData();
   renderDashboard();
+  if(document.getElementById('sec-transactions').classList.contains('active'))renderTransactions();
   window.showTxnDetail(txnId);
 }
 
@@ -2367,7 +2368,10 @@ window.showTxnDetail=function(id){
     <button class="btn-danger" style="flex:1" onclick="closeModal('txn-detail-modal');deleteTxn('${t.id}')">🗑 Delete</button>`;
   window._currentTxnId=t.id;
   renderAttachmentsList(t.id);
-  document.getElementById('txn-detail-modal').classList.add('open');
+  // Give txn-detail-modal higher z-index so it appears above ledger modal
+  const tdModal=document.getElementById('txn-detail-modal');
+  tdModal.style.zIndex='10001';
+  tdModal.classList.add('open');
 };
 
 function renderAttachmentsList(txnId){
@@ -2701,7 +2705,10 @@ async function submitBuy(attachAfter=false){
     renderPortfolio();
   } else {
     showToast(`Buy recorded! ${acc.name} +${fmt(amount,acc.currency)} ✅`);
-    await loadAllData();renderPortfolio();
+    await loadAllData();
+    renderPortfolio();
+    renderDashboard();
+    if(document.getElementById('sec-transactions').classList.contains('active'))renderTransactions();
   }
 }
 
@@ -2778,7 +2785,8 @@ async function submitSell(attachAfter=false){
     else{await loadAllData();renderPortfolio();}
   } else {
     showToast(`Sell recorded! P&L: ${pnl>=0?'+':''}${fmt(pnl,currency)} ✅`);
-    await loadAllData();renderPortfolio();
+    await loadAllData();renderPortfolio();renderDashboard();
+    if(document.getElementById('sec-transactions').classList.contains('active'))renderTransactions();
   }
 }
 
@@ -2909,8 +2917,8 @@ async function submitDepositWithdraw(attachAfter=false){
   } else {
     showToast(`${dwMode==='deposit'?'Deposit':'Withdrawal'} recorded! ✅`);
     await loadAllData();
-    renderTradingAccounts();
-    renderTrading();
+    renderTradingAccounts();renderTrading();renderDashboard();
+    if(document.getElementById('sec-transactions').classList.contains('active'))renderTransactions();
   }
 }
 
@@ -3870,7 +3878,12 @@ function openModal(id){
   else console.warn('Modal not found:',id);
 }
 
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function closeModal(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.classList.remove('open');
+  if(id==='txn-detail-modal')el.style.zIndex='';
+}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{
   if(e.target!==o)return;
   // Don't close ledger modal if txn detail is open on top
