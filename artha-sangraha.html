@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v60</title>
+<title>Artha-Sangraha v61</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2824,6 +2824,7 @@ async function submitSell(attachAfter=false){
   if(!pnlAccId){showToast('Please select a P&L account (Long Term / Short Term).');return;}
   const pnlAcc=accounts.find(a=>a.id===pnlAccId);
   if(!saleAmt||!date||!destId){showToast('Please fill sale amount, date and destination account.');return;}
+  const currency=acc.currency||'INR';
   const pnl=saleAmt-cost;
   // Journal entries for sell:
   if(pnl>=0){
