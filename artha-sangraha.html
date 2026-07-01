@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v61</title>
+<title>Artha-Sangraha v62</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2241,12 +2241,12 @@ function renderAccounts(groupId=null){
     html+=`<div style="margin-bottom:16px">
       <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;padding:4px 0">
         <div style="display:flex;align-items:center;gap:6px">
-          <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
+          <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▴</span>
           <div style="font-size:0.88rem;font-weight:700">${label} <span style="font-size:0.72rem;color:var(--text3);font-weight:400">(${accs.length})</span></div>
         </div>
         <div style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
       </div>
-      <div id="${colId}">`;
+      <div id="${colId}" style="display:block">`;
 
     // Find groups in this classification
     const clsGroups=groups.filter(g=>g.classification===cls);
@@ -2828,24 +2828,26 @@ async function submitSell(attachAfter=false){
   const pnl=saleAmt-cost;
   // Journal entries for sell:
   if(pnl>=0){
-    // Profit: Dr Destination (sale proceeds), Cr Investment (cost), Cr P&L (profit)
-    await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:cost,currency,
+    const{error:e1}=await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:cost,currency,
       account_id:acc.id,debit_account_id:destId,credit_account_id:acc.id,
       category:'Investment Sell',description:`Sell: ${acc.name} (cost recovery)`});
+    if(e1){showToast('Error saving sell: '+e1.message);return;}
     if(pnl>0&&pnlAcc){
-      await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:pnl,currency,
-        account_id:acc.id,debit_account_id:destId,credit_account_id:pnlAcc.id,
+      const{error:e2}=await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:pnl,currency,
+        debit_account_id:destId,credit_account_id:pnlAcc.id,
         category:'Investment P&L',description:`Profit: ${acc.name}`});
+      if(e2){showToast('Error saving profit: '+e2.message);return;}
     }
   } else {
-    // Loss: Dr Destination (sale proceeds), Dr P&L (loss), Cr Investment (cost)
-    await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:saleAmt,currency,
+    const{error:e1}=await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:saleAmt,currency,
       account_id:acc.id,debit_account_id:destId,credit_account_id:acc.id,
       category:'Investment Sell',description:`Sell: ${acc.name}`});
+    if(e1){showToast('Error saving sell: '+e1.message);return;}
     if(pnlAcc){
-      await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:Math.abs(pnl),currency,
-        account_id:acc.id,debit_account_id:pnlAcc.id,credit_account_id:acc.id,
+      const{error:e2}=await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:Math.abs(pnl),currency,
+        debit_account_id:pnlAcc.id,credit_account_id:acc.id,
         category:'Investment P&L',description:`Loss: ${acc.name}`});
+      if(e2){showToast('Error saving loss: '+e2.message);return;}
     }
   }
   // Commission
