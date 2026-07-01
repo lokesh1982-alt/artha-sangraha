@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v57</title>
+<title>Artha-Sangraha v59</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1649,11 +1649,13 @@ async function updateAccount(){
   const category_account=isPnL&&catSel?.value?catSel.value:null;
   const accCustName=document.getElementById('acc-custom-name');
   const grpSel=document.getElementById('acc-group');
+  const newOpeningBal=parseFloat(document.getElementById('acc-balance').value)||0;
+  const openingDate=document.getElementById('acc-opening-date').value||todayISO();
   const updates={
     name:document.getElementById('acc-name').value.trim(),
-    opening_balance:parseFloat(document.getElementById('acc-balance').value)||0,
+    opening_balance:newOpeningBal,
     notes:(accCustName?.value.trim()||document.getElementById('acc-notes').value.trim()),
-    opening_date:document.getElementById('acc-opening-date').value,
+    opening_date:openingDate,
     type:document.getElementById('acc-type').value,
     currency:document.getElementById('acc-currency').value,
     classification,
@@ -1662,6 +1664,18 @@ async function updateAccount(){
   };
   const{error}=await sb.from('accounts').update(updates).eq('id',editingAccId);
   if(error){showToast('Error: '+error.message);return;}
+  // If opening balance changed and no journal entry exists, create/update one
+  if(newOpeningBal!==0){
+    const hasJournal=transactions.some(t=>t.category==='Opening Balance'&&(t.debit_account_id===editingAccId||t.credit_account_id===editingAccId));
+    if(!hasJournal){
+      // Create opening balance journal entry
+      await ensureOpeningBalanceJournal({id:editingAccId,classification,opening_balance:newOpeningBal,currency:updates.currency,opening_date:openingDate});
+    } else {
+      // Update existing opening balance journal entry amount
+      const obTxn=transactions.find(t=>t.category==='Opening Balance'&&(t.debit_account_id===editingAccId||t.credit_account_id===editingAccId));
+      if(obTxn)await sb.from('transactions').update({amount:Math.abs(newOpeningBal),date:openingDate}).eq('id',obTxn.id);
+    }
+  }
   closeModal('add-account-modal');
   editingAccId=null;
   showToast('Account updated! ✅');
@@ -1817,6 +1831,35 @@ function calcBalance(acc, asOfDate=null){
 }
 
 // Auto-create income/expense accounts for a category
+async function ensureOpeningBalanceJournal(acc){
+  // Find or create Capital Account for equity
+  let capitalAcc=accounts.find(a=>a.classification==='equity'&&a.category_account==='capital');
+  if(!capitalAcc){
+    const{data}=await sb.from('accounts').insert({
+      user_id:currentUser.id,name:"Owner's Capital",type:'custom-equity',
+      classification:'equity',opening_balance:0,currency:acc.currency,
+      opening_date:acc.opening_date||todayISO(),notes:'Auto-created',category_account:'capital'
+    }).select().single();
+    if(data){accounts.push(data);capitalAcc=data;}
+  }
+  if(!capitalAcc)return;
+  const amt=Math.abs(parseFloat(acc.opening_balance||0));
+  const cls=acc.classification||'asset';
+  let debitId,creditId;
+  if(['asset','expense'].includes(cls)){
+    debitId=acc.id;creditId=capitalAcc.id;
+  } else {
+    debitId=capitalAcc.id;creditId=acc.id;
+  }
+  await sb.from('transactions').insert({
+    user_id:currentUser.id,type:'journal',
+    date:acc.opening_date||todayISO(),amount:amt,
+    currency:acc.currency||'INR',
+    account_id:acc.id,debit_account_id:debitId,credit_account_id:creditId,
+    category:'Opening Balance',description:'Opening Balance'
+  });
+}
+
 async function ensureCategoryAccount(category, type){
   const classification=type==='income'?'income':'expense';
   const accountName=category+(type==='income'?' Income':' Expense');
@@ -3497,6 +3540,28 @@ function openAccountLedger(accId, fromDate='', toDate=''){
 
   const rows=[];
 
+  // Show opening balance as first row if no journal entry and balance > 0
+  if(!hasOpeningJournal&&parseFloat(acc.opening_balance||0)!==0){
+    const ob=parseFloat(acc.opening_balance||0);
+    const cls=acc.classification||'asset';
+    const isDebitNormal=['asset','expense'].includes(cls);
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2)">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:0.83rem;font-weight:600">Opening Balance</div>
+          <div style="font-weight:700;font-size:0.85rem;color:${ob>=0?'var(--green)':'var(--red)'}">
+            ${ob>=0?'+':'-'}${fmt(Math.abs(ob),acc.currency)}
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:2px">
+          <div style="font-size:0.7rem;color:var(--text3)">${formatDate(acc.opening_date||todayISO())}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">Bal: ${fmt(balance,acc.currency)}</div>
+        </div>
+      </div>
+      <div style="color:var(--text3);font-size:0.8rem;flex-shrink:0"> </div>
+    </div>`);
+  }
+
   accTxns.forEach(t=>{
     let debit=0,credit=0;
     const cls=acc.classification||'asset';
@@ -3524,8 +3589,8 @@ function openAccountLedger(accId, fromDate='', toDate=''){
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:0.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">${isOpening?'Opening Balance':(t.description||t.category||'—')}${hasAtt?' <span style="font-size:0.7rem">📎</span>':''}</div>
-          <div style="font-weight:700;font-size:0.85rem;color:${debit>0?(isDebitNormal?'var(--green)':'var(--red)'):'var(--green)'}">
-            ${debit>0?(isDebitNormal?'+':'-')+fmt(debit,acc.currency):'+'+fmt(credit,acc.currency)}
+          <div style="font-weight:700;font-size:0.85rem;color:${debit>0?(isDebitNormal?'var(--green)':'var(--red)'):(credit>0?(isDebitNormal?'var(--red)':'var(--green)'):'var(--text2)')}">
+            ${debit>0?(isDebitNormal?'+':'-')+fmt(debit,acc.currency):(credit>0?(isDebitNormal?'-':'+'+'')+fmt(credit,acc.currency):'₹0.00')}
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:2px">
