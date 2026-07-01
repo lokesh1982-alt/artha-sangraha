@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v47</title>
+<title>Artha-Sangraha v52</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -167,6 +167,14 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .divider{height:1px;background:var(--border);margin:16px 0;}
 
 .txn-row:hover{background:var(--bg2);}
+/* SEARCHABLE SELECT */
+.search-select-wrap{position:relative;}
+.search-select-input{width:100%;}
+.search-select-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:500;max-height:200px;overflow-y:auto;display:none;}
+.search-select-dropdown.open{display:block;}
+.search-select-option{padding:9px 12px;font-size:0.85rem;cursor:pointer;transition:background 0.15s;}
+.search-select-option:hover{background:var(--bg2);}
+.search-select-option.selected{background:var(--accent-light);color:var(--accent);font-weight:600;}
 /* TOAST */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);border-radius:var(--radius-sm);padding:10px 20px;font-size:0.82rem;color:#fff;z-index:500;opacity:0;transition:all 0.3s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -404,28 +412,26 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="btn-sm" onclick="openModal('add-txn-modal')">+ Add</button>
         </div>
         <div style="position:sticky;top:0;z-index:50;background:var(--bg);padding-bottom:10px">
-          <div class="card card-sm" style="margin-bottom:0">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-              <select class="form-select" style="flex:1;min-width:100px" id="txn-filter-type" onchange="renderTransactions()">
+          <div class="card card-sm" style="margin-bottom:0;padding:10px 12px">
+            <div style="display:flex;gap:6px;align-items:center">
+              <select class="form-select" style="flex:1;min-width:0;font-size:0.75rem;padding:7px 6px" id="txn-filter-type" onchange="renderTransactions()">
                 <option value="all">All types</option>
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
                 <option value="transfer">Transfer</option>
                 <option value="journal">Journal</option>
               </select>
-              <select class="form-select" style="flex:1;min-width:100px" id="txn-filter-cat" onchange="renderTransactions()">
-                <option value="all">All categories</option>
+              <select class="form-select" style="flex:1;min-width:0;font-size:0.75rem;padding:7px 6px" id="txn-filter-cat" onchange="renderTransactions()">
+                <option value="all">All cats</option>
               </select>
-              <select class="form-select" style="flex:1;min-width:100px" id="txn-filter-account" onchange="renderTransactions()">
+              <input class="form-input" type="date" id="txn-filter-from" style="flex:1;min-width:0;font-size:0.75rem;padding:7px 6px" onchange="renderTransactions()"/>
+              <input class="form-input" type="date" id="txn-filter-to" style="flex:1;min-width:0;font-size:0.75rem;padding:7px 6px" onchange="renderTransactions()"/>
+              <button class="btn-outline" onclick="clearTxnFilters()" style="padding:7px 8px;font-size:0.72rem;white-space:nowrap">✕</button>
+            </div>
+            <div style="margin-top:6px">
+              <select class="form-select" style="width:100%;font-size:0.75rem;padding:7px 6px" id="txn-filter-account" onchange="renderTransactions()">
                 <option value="all">All accounts</option>
               </select>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <label style="font-size:0.78rem;color:var(--text2)">From</label>
-              <input class="form-input" type="date" id="txn-filter-from" style="flex:1;min-width:130px" onchange="renderTransactions()"/>
-              <label style="font-size:0.78rem;color:var(--text2)">To</label>
-              <input class="form-input" type="date" id="txn-filter-to" style="flex:1;min-width:130px" onchange="renderTransactions()"/>
-              <button class="btn-outline" onclick="clearTxnFilters()" style="white-space:nowrap">Clear</button>
             </div>
           </div>
         </div>
@@ -683,26 +689,45 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <!-- Simple mode fields -->
     <div id="simple-mode-fields">
       <div class="form-group"><label class="form-label" id="txn-account-label">Account *</label>
-        <select class="form-select" id="txn-account"></select>
+        <div class="search-select-wrap">
+          <input class="form-input search-select-input" id="txn-account-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('txn-account')" onfocus="openAccountSearch('txn-account')" onblur="setTimeout(()=>closeAccountSearch('txn-account'),200)"/>
+          <select class="form-select" id="txn-account" style="display:none"></select>
+          <div class="search-select-dropdown" id="txn-account-dropdown"></div>
+        </div>
       </div>
       <div class="form-group" id="txn-to-account-wrap" style="display:none">
         <label class="form-label">Transfer To Account *</label>
-        <select class="form-select" id="txn-to-account"></select>
+        <div class="search-select-wrap">
+          <input class="form-input search-select-input" id="txn-to-account-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('txn-to-account')" onfocus="openAccountSearch('txn-to-account')" onblur="setTimeout(()=>closeAccountSearch('txn-to-account'),200)"/>
+          <select class="form-select" id="txn-to-account" style="display:none"></select>
+          <div class="search-select-dropdown" id="txn-to-account-dropdown"></div>
+        </div>
       </div>
     </div>
     <!-- Double entry fields -->
     <div id="double-entry-fields" style="display:none">
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px;font-weight:600">📘 DEBIT (increases asset/expense)</div>
-        <select class="form-select" id="txn-debit-account"></select>
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px;font-weight:600">📘 DEBIT (increases asset/expense)</div>
+        <div class="search-select-wrap">
+          <input class="form-input search-select-input" id="txn-debit-account-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('txn-debit-account')" onfocus="openAccountSearch('txn-debit-account')" onblur="setTimeout(()=>closeAccountSearch('txn-debit-account'),200)"/>
+          <select class="form-select" id="txn-debit-account" style="display:none"></select>
+          <div class="search-select-dropdown" id="txn-debit-account-dropdown"></div>
+        </div>
       </div>
       <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px;font-weight:600">📗 CREDIT (increases income/liability)</div>
-        <select class="form-select" id="txn-credit-account"></select>
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px;font-weight:600">📗 CREDIT (increases income/liability)</div>
+        <div class="search-select-wrap">
+          <input class="form-input search-select-input" id="txn-credit-account-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('txn-credit-account')" onfocus="openAccountSearch('txn-credit-account')" onblur="setTimeout(()=>closeAccountSearch('txn-credit-account'),200)"/>
+          <select class="form-select" id="txn-credit-account" style="display:none"></select>
+          <div class="search-select-dropdown" id="txn-credit-account-dropdown"></div>
+        </div>
       </div>
     </div>
     <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="txn-desc" placeholder="What was this for?"/></div>
-    <button class="btn-primary" onclick="saveTxn()">Save Transaction</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1" onclick="saveTxn(false)">Save</button>
+      <button class="btn-outline" style="flex:1" onclick="saveTxn(true)">Save & Attach 📎</button>
+    </div>
   </div>
 </div>
 
@@ -905,7 +930,87 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="btn-close" onclick="closeModal('txn-detail-modal')">✕</button>
     </div>
     <div id="txn-detail-content"></div>
-    <div style="display:flex;gap:10px;margin-top:16px" id="txn-detail-actions"></div>
+    <!-- Attachments Section -->
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:0.82rem;font-weight:600">📎 Attachments</div>
+        <label style="cursor:pointer">
+          <span class="btn-outline" style="padding:4px 10px;font-size:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);display:inline-block">+ Attach</span>
+          <input type="file" id="attachment-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="uploadAttachment(this)"/>
+        </label>
+      </div>
+      <div id="attachments-list" style="min-height:20px">
+        <div style="font-size:0.78rem;color:var(--text3)">No attachments</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px" id="txn-detail-actions"></div>
+  </div>
+</div>
+
+<!-- PORTFOLIO BUY MODAL -->
+<div class="modal-overlay" id="portfolio-buy-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="buy-modal-title">Buy Investment</div>
+      <button class="btn-close" onclick="closeModal('portfolio-buy-modal')">✕</button>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem" id="buy-invest-info"></div>
+    <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="buy-date"/></div>
+    <div class="form-group"><label class="form-label">Amount Invested *</label><input class="form-input" type="number" id="buy-amount" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Commission / Brokerage</label><input class="form-input" type="number" id="buy-commission" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Source Account * <span style="font-size:0.72rem;color:var(--text2)">(money goes FROM here)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="buy-source-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('buy-source')" onfocus="openAccountSearch('buy-source')" onblur="setTimeout(()=>closeAccountSearch('buy-source'),200)"/>
+        <select class="form-select" id="buy-source" style="display:none"></select>
+        <div class="search-select-dropdown" id="buy-source-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Commission Account</label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="buy-comm-acc-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('buy-comm-acc')" onfocus="openAccountSearch('buy-comm-acc')" onblur="setTimeout(()=>closeAccountSearch('buy-comm-acc'),200)"/>
+        <select class="form-select" id="buy-comm-acc" style="display:none"></select>
+        <div class="search-select-dropdown" id="buy-comm-acc-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="buy-notes" placeholder="Optional"/></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1;background:var(--green)" onclick="submitBuy(false)">✅ Confirm Buy</button>
+      <button class="btn-outline" style="flex:1" onclick="submitBuy(true)">Confirm & Attach 📎</button>
+    </div>
+  </div>
+</div>
+
+<!-- PORTFOLIO SELL MODAL -->
+<div class="modal-overlay" id="portfolio-sell-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="sell-modal-title">Sell Investment</div>
+      <button class="btn-close" onclick="closeModal('portfolio-sell-modal')">✕</button>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem" id="sell-invest-info"></div>
+    <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="sell-date"/></div>
+    <div class="form-group"><label class="form-label">Sale Amount * <span style="font-size:0.72rem;color:var(--text2)">(what you received)</span></label><input class="form-input" type="number" id="sell-amount" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Original Cost <span style="font-size:0.72rem;color:var(--text2)">(for P&L calculation)</span></label><input class="form-input" type="number" id="sell-cost" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Commission / Brokerage</label><input class="form-input" type="number" id="sell-commission" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group"><label class="form-label">Destination Account * <span style="font-size:0.72rem;color:var(--text2)">(money goes TO here)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="sell-dest-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sell-dest')" onfocus="openAccountSearch('sell-dest')" onblur="setTimeout(()=>closeAccountSearch('sell-dest'),200)"/>
+        <select class="form-select" id="sell-dest" style="display:none"></select>
+        <div class="search-select-dropdown" id="sell-dest-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Commission Account</label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="sell-comm-acc-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sell-comm-acc')" onfocus="openAccountSearch('sell-comm-acc')" onblur="setTimeout(()=>closeAccountSearch('sell-comm-acc'),200)"/>
+        <select class="form-select" id="sell-comm-acc" style="display:none"></select>
+        <div class="search-select-dropdown" id="sell-comm-acc-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="sell-notes" placeholder="Optional"/></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1;background:var(--red)" onclick="submitSell(false)">✅ Confirm Sell</button>
+      <button class="btn-outline" style="flex:1" onclick="submitSell(true)">Confirm & Attach 📎</button>
+    </div>
   </div>
 </div>
 
@@ -924,7 +1029,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="dw-amount" placeholder="0.00" step="0.01"/></div>
     <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="dw-date"/></div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="dw-notes" placeholder="Optional notes"/></div>
-    <button class="btn-primary" id="dw-submit-btn" onclick="submitDepositWithdraw()">Confirm</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1" id="dw-submit-btn" onclick="submitDepositWithdraw(false)">Confirm</button>
+      <button class="btn-outline" style="flex:1" onclick="submitDepositWithdraw(true)">Confirm & Attach 📎</button>
+    </div>
   </div>
 </div>
 
@@ -1004,7 +1112,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 //  STATE
 // ═══════════════════════════════
 let currentUser=null,currentProfile=null;
-let accounts=[],transactions=[],trades=[],loans=[],budgets=[],groups=[],categories=[];
+let accounts=[],transactions=[],trades=[],loans=[],budgets=[],groups=[],categories=[],attachments=[];
 let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null,currentLedgerAccId=null;
 let currentReportTab='monthly';
 
@@ -1616,6 +1724,40 @@ async function updateLoan(){
   showToast('Loan updated! ✅');
   await loadAllData();renderLoans();
 }
+// ═══════════════════════════════
+//  SEARCHABLE ACCOUNT SELECT
+// ═══════════════════════════════
+function buildAccountDropdown(selectId){
+  const sel=document.getElementById(selectId);
+  const drop=document.getElementById(selectId+'-dropdown');
+  const searchEl=document.getElementById(selectId+'-search');
+  if(!sel||!drop)return;
+  const opts=Array.from(sel.options).filter(o=>o.value);
+  const q=(searchEl?.value||'').toLowerCase();
+  const filtered=q?opts.filter(o=>o.text.toLowerCase().includes(q)):opts;
+  drop.innerHTML=filtered.length?filtered.map(o=>`<div class="search-select-option${sel.value===o.value?' selected':''}" data-value="${o.value}" onmousedown="event.preventDefault();selectAccountOption('${selectId}','${o.value}',this.textContent.trim())">${o.text}</div>`).join(''):'<div style="padding:10px 12px;font-size:0.82rem;color:var(--text3)">No accounts found</div>';
+}
+function openAccountSearch(selectId){buildAccountDropdown(selectId);const d=document.getElementById(selectId+'-dropdown');if(d)d.classList.add('open');}
+function closeAccountSearch(selectId){const d=document.getElementById(selectId+'-dropdown');if(d)d.classList.remove('open');}
+function filterAccountSearch(selectId){buildAccountDropdown(selectId);const d=document.getElementById(selectId+'-dropdown');if(d)d.classList.add('open');}
+function selectAccountOption(selectId,value,text){
+  const sel=document.getElementById(selectId);
+  const inp=document.getElementById(selectId+'-search');
+  if(sel)sel.value=value;
+  if(inp)inp.value=text;
+  closeAccountSearch(selectId);
+}
+function syncAccountSearchInputs(){
+  ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(id=>{
+    const sel=document.getElementById(id);
+    const inp=document.getElementById(id+'-search');
+    if(sel&&inp){
+      const opt=Array.from(sel.options).find(o=>o.value===sel.value);
+      inp.value=opt?opt.text:'';
+    }
+  });
+}
+
 function calcBalance(acc, asOfDate=null){
   const hasOpeningJournal=transactions.some(t=>
     t.category==='Opening Balance'&&
@@ -1681,14 +1823,15 @@ async function ensureCategoryAccount(category, type){
 }
 async function loadAllData(){
   const uid=currentUser.id;
-  const[a,t,tr,l,b,g,cat]=await Promise.all([
+  const[a,t,tr,l,b,g,cat,att]=await Promise.all([
     sb.from('accounts').select('*').eq('user_id',uid).order('created_at'),
     sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:true}),
     sb.from('trades').select('*').eq('user_id',uid).order('date',{ascending:false}),
     sb.from('loans').select('*').eq('user_id',uid).order('created_at'),
     sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false}),
     sb.from('account_groups').select('*').eq('user_id',uid).order('created_at').throwOnError().then(r=>r).catch(()=>({data:[]})),
-    sb.from('categories').select('*').eq('user_id',uid).order('name')
+    sb.from('categories').select('*').eq('user_id',uid).order('name'),
+    sb.from('transaction_attachments').select('*').eq('user_id',uid).throwOnError().then(r=>r).catch(()=>({data:[]}))
   ]);
   accounts=a.data||[];
   transactions=t.data||[];
@@ -1696,6 +1839,7 @@ async function loadAllData(){
   loans=l.data||[];
   budgets=b.data||[];
   groups=g.data||[];
+  attachments=att?.data||[];
   // Merge DB categories with defaults
   const defaultCats=[
     {name:'Salary',type:'income'},{name:'Rental',type:'income'},{name:'Dividends',type:'income'},
@@ -1864,10 +2008,11 @@ function renderDashboard(){
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
         const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
         const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
+        const hasAtt=attachments.some(a=>a.transaction_id===t.id);
         return`<div onclick="window.showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent">
           <div style="width:30px;height:30px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
+            <div style="font-size:0.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}${hasAtt?' <span style="font-size:0.7rem">📎</span>':''}</div>
             <div style="font-size:0.7rem;color:var(--text3);margin-top:1px">${formatDate(t.date)} · ${t.category||capitalize(t.type)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
@@ -2145,10 +2290,11 @@ function renderTransactions(){
         const typeColor=t.type==='income'?'var(--green)':t.type==='expense'?'var(--red)':t.type==='journal'?'var(--purple)':'var(--yellow)';
         const typeIcon=t.type==='income'?'↑':t.type==='expense'?'↓':t.type==='journal'?'J':'⇄';
         const amtSign=t.type==='income'?'+':t.type==='expense'?'-':'';
+        const hasAtt=attachments.some(a=>a.transaction_id===t.id);
         return`<div onclick="window.showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent">
           <div style="width:32px;height:32px;border-radius:50%;background:${t.type==='income'?'var(--green-light)':t.type==='expense'?'var(--red-light)':t.type==='journal'?'var(--purple-light)':'var(--yellow-light)'};display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:${typeColor};flex-shrink:0">${typeIcon}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}</div>
+            <div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||t.category||'—'}${hasAtt?' <span style="font-size:0.72rem">📎</span>':''}</div>
             <div style="font-size:0.72rem;color:var(--text3);margin-top:1px">${formatDate(t.date)} · ${t.category||capitalize(t.type)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
@@ -2158,6 +2304,13 @@ function renderTransactions(){
         </div>`;
       }).join('')
     :`<div class="empty-state" style="padding:30px"><div class="empty-icon">💳</div><div class="empty-text">No transactions found.</div></div>`;
+}
+
+// Open transaction detail for attachment after any save
+async function openAttachAfterSave(txnId){
+  await loadAllData();
+  renderDashboard();
+  window.showTxnDetail(txnId);
 }
 
 window.showTxnDetail=function(id){
@@ -2179,38 +2332,76 @@ window.showTxnDetail=function(id){
       <div style="font-size:0.9rem;color:var(--text2);margin-top:6px">${t.description||t.category||'—'}</div>
     </div>
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text2)">Date</span>
-        <span style="font-size:0.82rem;font-weight:500">${formatDate(t.date)}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text2)">Type</span>
-        <span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.72rem">${capitalize(t.type)}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text2)">Category</span>
-        <span style="font-size:0.82rem;font-weight:500">${t.category||'—'}</span>
-      </div>
-      ${debitAcc?`<div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text2)">Debit (Dr)</span>
-        <span style="font-size:0.82rem;font-weight:500;color:var(--green)">${debitAcc.name}</span>
-      </div>`:''}
-      ${creditAcc?`<div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text2)">Credit (Cr)</span>
-        <span style="font-size:0.82rem;font-weight:500;color:var(--red)">${creditAcc.name}</span>
-      </div>`:''}
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:0.78rem;color:var(--text2)">Currency</span>
-        <span style="font-size:0.82rem;font-weight:500">${t.currency||'INR'}</span>
-      </div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Date</span><span style="font-size:0.82rem;font-weight:500">${formatDate(t.date)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Type</span><span class="badge ${t.type==='income'?'badge-green':t.type==='expense'?'badge-red':t.type==='journal'?'badge-purple':'badge-yellow'}" style="font-size:0.72rem">${capitalize(t.type)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Category</span><span style="font-size:0.82rem;font-weight:500">${t.category||'—'}</span></div>
+      ${debitAcc?`<div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Debit (Dr)</span><span style="font-size:0.82rem;font-weight:500;color:var(--green)">${debitAcc.name}</span></div>`:''}
+      ${creditAcc?`<div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Credit (Cr)</span><span style="font-size:0.82rem;font-weight:500;color:var(--red)">${creditAcc.name}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between"><span style="font-size:0.78rem;color:var(--text2)">Currency</span><span style="font-size:0.82rem;font-weight:500">${t.currency||'INR'}</span></div>
     </div>`;
-  // Store id for edit/delete buttons
   document.getElementById('txn-detail-actions').innerHTML=`
     <button class="btn-outline" style="flex:1" onclick="closeModal('txn-detail-modal');editTxn('${t.id}')">✏️ Edit</button>
     <button class="btn-danger" style="flex:1" onclick="closeModal('txn-detail-modal');deleteTxn('${t.id}')">🗑 Delete</button>`;
-  // Show modal directly (bypass openModal to avoid field resets)
+  window._currentTxnId=t.id;
+  renderAttachmentsList(t.id);
   document.getElementById('txn-detail-modal').classList.add('open');
 };
+
+function renderAttachmentsList(txnId){
+  const txnAtts=attachments.filter(a=>a.transaction_id===txnId);
+  const el=document.getElementById('attachments-list');
+  if(!el)return;
+  if(!txnAtts.length){el.innerHTML=`<div style="font-size:0.78rem;color:var(--text3);padding:4px 0">No attachments yet. Click + Attach to upload.</div>`;return;}
+  el.innerHTML=txnAtts.map(att=>{
+    const icon=att.mime_type?.startsWith('image/')?'🖼️':att.mime_type==='application/pdf'?'📄':'📎';
+    const sizeKB=att.file_size?Math.round(att.file_size/1024)+'KB':'';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span>${icon}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:0.8rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${att.file_name}</div>
+      <div style="font-size:0.68rem;color:var(--text3)">${sizeKB}</div></div>
+      <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="viewAttachment('${att.file_path}')">👁 View</button>
+      <button class="btn-danger" style="padding:3px 7px;font-size:0.72rem" onclick="deleteAttachment('${att.id}','${att.file_path}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+async function uploadAttachment(input){
+  const file=input.files[0];
+  if(!file)return;
+  if(file.size>5242880){showToast('File too large! Max 5MB.');input.value='';return;}
+  const txnId=window._currentTxnId;
+  if(!txnId){showToast('No transaction selected.');return;}
+  showToast('Uploading... ⏳');
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const filePath=`${currentUser.id}/${txnId}/${Date.now()}_${safeName}`;
+  const{error:upErr}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
+  if(upErr){showToast('Upload failed: '+upErr.message);input.value='';return;}
+  const{error:dbErr}=await sb.from('transaction_attachments').insert({
+    user_id:currentUser.id,transaction_id:txnId,
+    file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
+  });
+  if(dbErr){showToast('Error saving: '+dbErr.message);input.value='';return;}
+  input.value='';
+  const{data}=await sb.from('transaction_attachments').select('*').eq('user_id',currentUser.id).throwOnError().then(r=>r).catch(()=>({data:[]}));
+  attachments=data||[];
+  renderAttachmentsList(txnId);
+  showToast('Attachment uploaded! ✅');
+}
+
+async function viewAttachment(filePath){
+  const{data,error}=await sb.storage.from('attachments').createSignedUrl(filePath,300);
+  if(error){showToast('Cannot open: '+error.message);return;}
+  window.open(data.signedUrl,'_blank');
+}
+
+async function deleteAttachment(attId,filePath){
+  if(!confirm('Delete this attachment?'))return;
+  await sb.storage.from('attachments').remove([filePath]);
+  await sb.from('transaction_attachments').delete().eq('id',attId);
+  attachments=attachments.filter(a=>a.id!==attId);
+  renderAttachmentsList(window._currentTxnId);
+  showToast('Deleted.');
+}
 
 // ═══════════════════════════════
 //  BALANCE SHEET
@@ -2370,26 +2561,202 @@ function renderBudget(){
 //  PORTFOLIO
 // ═══════════════════════════════
 function renderPortfolio(){
-  const investTypes=['indian-stock','us-stock','fd','pf','gold','crypto'];
+  const investTypes=['indian-stock','us-stock','fd','pf','gold','crypto','etf'];
   const investments=accounts.filter(a=>investTypes.includes(a.type));
-  const totalINR=investments.filter(a=>a.currency==='INR').reduce((s,a)=>s+parseFloat(a.opening_balance||0),0);
-  const totalUSD=investments.filter(a=>a.currency==='USD').reduce((s,a)=>s+parseFloat(a.opening_balance||0),0);
-  document.getElementById('portfolio-content').innerHTML=`
-  <div class="card-grid card-grid-2" style="margin-bottom:16px">
+  const totalINR=investments.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+  const totalUSD=investments.filter(a=>a.currency==='USD').reduce((s,a)=>s+calcBalance(a),0);
+  const isMobile=window.innerWidth<=768;
+  if(!investments.length){
+    document.getElementById('portfolio-content').innerHTML=`<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-text">No investments yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Investment</button></div>`;
+    return;
+  }
+  const byType={};
+  investments.forEach(a=>{if(!byType[a.type])byType[a.type]=[];byType[a.type].push(a);});
+  const typeLabel={'indian-stock':'🇮🇳 Indian Stocks','us-stock':'🇺🇸 US Stocks',fd:'🏦 Fixed Deposits',pf:'🏛️ PF/EPF',gold:'🥇 Gold',crypto:'₿ Crypto',etf:'📊 ETF/MF'};
+  let html=`<div class="card-grid card-grid-2" style="margin-bottom:16px">
     <div class="stat-card"><div class="stat-label">Total (INR)</div><div class="stat-val" style="color:var(--accent)">${fmt(totalINR,'INR')}</div></div>
     <div class="stat-card"><div class="stat-label">Total (USD)</div><div class="stat-val" style="color:var(--purple)">${fmt(totalUSD,'USD')}</div></div>
-  </div>
-  ${investments.length?`<div class="card"><table class="data-table">
-    <thead><tr><th>Asset</th><th>Type</th><th>Currency</th><th style="text-align:right">Value</th><th style="text-align:right">% of Portfolio</th></tr></thead>
-    <tbody>${investments.map(a=>{
-      const val=parseFloat(a.opening_balance||0);
-      const total=a.currency==='INR'?totalINR:totalUSD;
-      const pct=total>0?Math.round(val/total*100):0;
-      return `<tr><td><b>${a.name}</b></td><td><span class="badge badge-blue">${capitalize(a.type)}</span></td><td>${a.currency}</td><td style="text-align:right;font-weight:600">${fmt(val,a.currency)}</td>
-      <td style="text-align:right"><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div class="progress-wrap" style="width:60px;height:6px"><div class="progress-fill" style="width:${pct}%;background:var(--accent)"></div></div>${pct}%</div></td></tr>`;
-    }).join('')}</tbody>
-  </table></div>`
-  :`<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-text">No investments yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Investment</button></div>`}`;
+  </div>`;
+  Object.entries(byType).forEach(([type,accs])=>{
+    const grpTotal=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+    html+=`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:0.88rem;font-weight:700">${typeLabel[type]||capitalize(type)}</div>
+      <div style="font-size:0.88rem;font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</div></div>`;
+    accs.forEach(a=>{
+      const bal=calcBalance(a);
+      const pct=totalINR>0&&a.currency==='INR'?Math.round(bal/totalINR*100):0;
+      html+=`<div class="card" style="margin-bottom:8px;padding:12px;cursor:pointer" onclick="openAccountLedger('${a.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div style="flex:1;min-width:0"><div style="font-size:0.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</div>
+            <div style="font-size:0.7rem;color:var(--text3);margin-top:2px">${a.currency} · ${pct}% of portfolio</div>
+            <div style="margin-top:6px;height:4px;background:var(--bg3);border-radius:2px"><div style="height:4px;background:var(--accent);border-radius:2px;width:${pct}%"></div></div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(bal,a.currency)}</div>
+            <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">Tap for ledger ›</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
+          <button class="btn-sm" style="flex:1;background:var(--green);font-size:0.78rem" onclick="openPortfolioBuy('${a.id}')">📈 Buy</button>
+          <button class="btn-sm" style="flex:1;background:var(--red);font-size:0.78rem" onclick="openPortfolioSell('${a.id}')">📉 Sell</button>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('portfolio-content').innerHTML=html;
+}
+
+
+// ═══════════════════════════════
+//  PORTFOLIO BUY / SELL
+// ═══════════════════════════════
+let portfolioInvestAccId=null;
+
+function populatePortfolioAccOptions(){
+  const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  const expOpts=accounts.filter(a=>a.classification==='expense').map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  ['buy-source','buy-comm-acc','sell-dest','sell-comm-acc'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      el.innerHTML=id.includes('comm')?expOpts:opts;
+      const inp=document.getElementById(id+'-search');
+      if(inp)inp.value='';
+    }
+  });
+}
+
+function openPortfolioBuy(accId){
+  portfolioInvestAccId=accId;
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  const info=document.getElementById('buy-invest-info');
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(calcBalance(acc),acc.currency)}</b>`;
+  const title=document.getElementById('buy-modal-title');
+  if(title)title.textContent=`Buy — ${acc.name}`;
+  ['buy-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=todayISO();});
+  ['buy-amount','buy-commission','buy-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  populatePortfolioAccOptions();
+  openModal('portfolio-buy-modal');
+}
+
+async function ensureCommissionAccount(currency,date){
+  let commAcc=accounts.find(a=>a.name==='Brokerage & Commission'&&a.classification==='expense');
+  if(!commAcc){
+    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Brokerage & Commission',type:'custom-expense',classification:'expense',opening_balance:0,currency,opening_date:date,notes:'Auto-created',category_account:'Commission'}).select().single();
+    if(data){accounts.push(data);commAcc=data;}
+  }
+  return commAcc;
+}
+
+async function submitBuy(attachAfter=false){
+  const acc=accounts.find(a=>a.id===portfolioInvestAccId);if(!acc)return;
+  const amount=parseFloat(document.getElementById('buy-amount').value||0);
+  const commission=parseFloat(document.getElementById('buy-commission').value||0);
+  const date=document.getElementById('buy-date').value;
+  const sourceId=document.getElementById('buy-source').value;
+  const commAccId=document.getElementById('buy-comm-acc').value;
+  if(!amount||!date||!sourceId){showToast('Please fill amount, date and source account.');return;}
+  const sourceAcc=accounts.find(a=>a.id===sourceId);
+  if(!sourceAcc){showToast('Source account not found.');return;}
+  // Journal: Debit Investment (asset increases), Credit Source account
+  const{data:buyData}=await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount,currency:acc.currency,
+    account_id:acc.id,debit_account_id:acc.id,credit_account_id:sourceId,
+    category:'Investment Buy',description:`Buy: ${acc.name}`}).select().single();
+  // Commission: Debit Commission expense, Credit Source
+  if(commission>0){
+    const commId=commAccId||(await ensureCommissionAccount(acc.currency,date))?.id;
+    if(commId){
+      await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:commission,currency:acc.currency,
+        account_id:acc.id,debit_account_id:commId,credit_account_id:sourceId,
+        category:'Commission',description:`Commission: ${acc.name}`});
+    }
+  }
+  closeModal('portfolio-buy-modal');
+  if(attachAfter&&buyData?.id){
+    showToast('Buy recorded! Opening for attachment... 📎');
+    await openAttachAfterSave(buyData.id);
+    renderPortfolio();
+  } else {
+    showToast(`Buy recorded! ${acc.name} +${fmt(amount,acc.currency)} ✅`);
+    await loadAllData();renderPortfolio();
+  }
+}
+
+function openPortfolioSell(accId){
+  portfolioInvestAccId=accId;
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  const bal=calcBalance(acc);
+  const info=document.getElementById('sell-invest-info');
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(bal,acc.currency)}</b>`;
+  const title=document.getElementById('sell-modal-title');
+  if(title)title.textContent=`Sell — ${acc.name}`;
+  ['sell-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=todayISO();});
+  ['sell-amount','sell-commission','sell-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  // Pre-fill cost with current balance
+  const costEl=document.getElementById('sell-cost');
+  if(costEl)costEl.value=bal>0?bal.toFixed(2):'';
+  populatePortfolioAccOptions();
+  openModal('portfolio-sell-modal');
+}
+
+async function submitSell(attachAfter=false){
+  const acc=accounts.find(a=>a.id===portfolioInvestAccId);if(!acc)return;
+  const saleAmt=parseFloat(document.getElementById('sell-amount').value||0);
+  const cost=parseFloat(document.getElementById('sell-cost').value||0);
+  const commission=parseFloat(document.getElementById('sell-commission').value||0);
+  const date=document.getElementById('sell-date').value;
+  const destId=document.getElementById('sell-dest').value;
+  const commAccId=document.getElementById('sell-comm-acc').value;
+  if(!saleAmt||!date||!destId){showToast('Please fill sale amount, date and destination account.');return;}
+  const pnl=saleAmt-cost;
+  const currency=acc.currency;
+  // Ensure P&L account
+  let pnlAcc=accounts.find(a=>a.name==='Investment P&L');
+  if(!pnlAcc){
+    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Investment P&L',type:'custom-income',classification:'income',opening_balance:0,currency,opening_date:date,notes:'Auto-created',category_account:'Investment P&L'}).select().single();
+    if(data){accounts.push(data);pnlAcc=data;}
+  }
+  // Journal entries for sell:
+  if(pnl>=0){
+    // Profit: Dr Destination (sale proceeds), Cr Investment (cost), Cr P&L (profit)
+    await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:cost,currency,
+      account_id:acc.id,debit_account_id:destId,credit_account_id:acc.id,
+      category:'Investment Sell',description:`Sell: ${acc.name} (cost recovery)`});
+    if(pnl>0&&pnlAcc){
+      await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:pnl,currency,
+        account_id:acc.id,debit_account_id:destId,credit_account_id:pnlAcc.id,
+        category:'Investment P&L',description:`Profit: ${acc.name}`});
+    }
+  } else {
+    // Loss: Dr Destination (sale proceeds), Dr P&L (loss), Cr Investment (cost)
+    await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:saleAmt,currency,
+      account_id:acc.id,debit_account_id:destId,credit_account_id:acc.id,
+      category:'Investment Sell',description:`Sell: ${acc.name}`});
+    if(pnlAcc){
+      await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:Math.abs(pnl),currency,
+        account_id:acc.id,debit_account_id:pnlAcc.id,credit_account_id:acc.id,
+        category:'Investment P&L',description:`Loss: ${acc.name}`});
+    }
+  }
+  // Commission
+  if(commission>0){
+    const commId=commAccId||(await ensureCommissionAccount(currency,date))?.id;
+    if(commId){
+      await sb.from('transactions').insert({user_id:currentUser.id,type:'journal',date,amount:commission,currency,
+        account_id:acc.id,debit_account_id:commId,credit_account_id:destId,
+        category:'Commission',description:`Commission: ${acc.name}`});
+    }
+  }
+  closeModal('portfolio-sell-modal');
+  if(attachAfter){
+    showToast('Sell recorded! Opening for attachment... 📎');
+    const{data:recentTxn}=await sb.from('transactions').select('id').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).single();
+    if(recentTxn?.id)await openAttachAfterSave(recentTxn.id);
+    else{await loadAllData();renderPortfolio();}
+  } else {
+    showToast(`Sell recorded! P&L: ${pnl>=0?'+':''}${fmt(pnl,currency)} ✅`);
+    await loadAllData();renderPortfolio();
+  }
 }
 
 // ═══════════════════════════════
@@ -2487,7 +2854,7 @@ function openDepositWithdraw(accId,mode){
   openModal('deposit-withdraw-modal');
 }
 
-async function submitDepositWithdraw(){
+async function submitDepositWithdraw(attachAfter=false){
   const acc=accounts.find(a=>a.id===dwAccountId);if(!acc)return;
   const otherAccId=document.getElementById('dw-other-account').value;
   const otherAcc=accounts.find(a=>a.id===otherAccId);
@@ -2509,13 +2876,19 @@ async function submitDepositWithdraw(){
     txn.account_id=acc.id;txn.to_account_id=otherAcc.id;
     txn.credit_account_id=acc.id;txn.debit_account_id=otherAcc.id;
   }
-  const{error}=await sb.from('transactions').insert(txn);
+  const{data:dwData,error}=await sb.from('transactions').insert(txn).select().single();
   if(error){showToast('Error: '+error.message);return;}
   closeModal('deposit-withdraw-modal');
-  showToast(`${dwMode==='deposit'?'Deposit':'Withdrawal'} recorded! ✅`);
-  await loadAllData();
-  renderTradingAccounts();
-  renderTrading();
+  if(attachAfter&&dwData?.id){
+    showToast(`${dwMode==='deposit'?'Deposit':'Withdrawal'} recorded! Opening for attachment... 📎`);
+    await openAttachAfterSave(dwData.id);
+    renderTradingAccounts();
+  } else {
+    showToast(`${dwMode==='deposit'?'Deposit':'Withdrawal'} recorded! ✅`);
+    await loadAllData();
+    renderTradingAccounts();
+    renderTrading();
+  }
 }
 
 function renderTrading(){
@@ -3091,16 +3464,20 @@ function openAccountLedger(accId, fromDate='', toDate=''){
     const fromAcc=t.debit_account_id&&t.debit_account_id!==acc.id?accounts.find(a=>a.id===t.debit_account_id):null;
     // Show opening balance journal entry as a special highlighted row
     const isOpening=t.category==='Opening Balance';
-    rows.push(`<tr style="${isOpening?'background:var(--bg2);':''}">
-      <td style="white-space:nowrap">${formatDate(t.date)}</td>
-      <td>${isOpening?'<b>Opening Balance</b>':(t.description||t.category||'—')}
-        ${toAcc&&t.account_id===acc.id?`<div style="font-size:0.7rem;color:var(--text3)">→ ${toAcc.name}</div>`:''}
-        ${fromAcc&&!isOpening?`<div style="font-size:0.7rem;color:var(--text3)">← ${fromAcc.name}</div>`:''}
-      </td>
-      <td style="text-align:right;color:var(--red)">${debit>0?fmt(debit,acc.currency):''}</td>
-      <td style="text-align:right;color:var(--green)">${credit>0?fmt(credit,acc.currency):''}</td>
-      <td style="text-align:right;font-weight:600;color:${balance>=0?'var(--text)':'var(--red)'}">${fmt(balance,acc.currency)}</td>
-    </tr>`);
+    const hasAtt=attachments.some(a=>a.transaction_id===t.id);
+    rows.push(`<div onclick="window.showTxnDetail('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;${isOpening?'background:var(--bg2);':''}">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:0.83rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">${isOpening?'Opening Balance':(t.description||t.category||'—')}${hasAtt?' <span style="font-size:0.7rem">📎</span>':''}</div>
+          <div style="font-weight:700;font-size:0.85rem;color:${debit>0?'var(--red)':'var(--green)'}">${debit>0?'-'+fmt(debit,acc.currency):'+'+fmt(credit,acc.currency)}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:2px">
+          <div style="font-size:0.7rem;color:var(--text3)">${formatDate(t.date)}${toAcc&&t.account_id===acc.id?' → '+toAcc.name:fromAcc&&!isOpening?' ← '+fromAcc.name:''}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">Bal: ${fmt(balance,acc.currency)}</div>
+        </div>
+      </div>
+      <div style="color:var(--text3);font-size:0.8rem;flex-shrink:0">›</div>
+    </div>`);
   });
 
   const ledgerHTML=`
@@ -3131,15 +3508,12 @@ function openAccountLedger(accId, fromDate='', toDate=''){
         <button class="btn-outline" onclick="openAccountLedger('${accId}','','')">All</button>
       </div>
     </div>
-    <div class="card">
-      <table class="data-table">
-        <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th style="text-align:right">Balance</th></tr></thead>
-        <tbody>${rows.join('')}
-        <tr class="total-row"><td colspan="2"><b>Closing Balance</b></td><td></td><td></td>
-          <td style="text-align:right;color:${balance>=0?'var(--accent)':'var(--red)'}"><b>${fmt(balance,acc.currency)}</b></td>
-        </tr>
-        </tbody>
-      </table>
+    <div class="card" style="padding:0;overflow:hidden">
+      ${rows.length?rows.join(''):'<div class="empty-state" style="padding:20px"><div class="empty-text">No transactions found.</div></div>'}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--bg2);border-top:2px solid var(--border)">
+        <span style="font-size:0.85rem;font-weight:700">Closing Balance</span>
+        <span style="font-size:1rem;font-weight:700;color:${balance>=0?'var(--accent)':'var(--red)'}">${fmt(balance,acc.currency)}</span>
+      </div>
     </div>`;
   document.getElementById('accounts-list').innerHTML=ledgerHTML;
 }
@@ -3153,7 +3527,7 @@ function selectTxnType(type,btn){
   if(wrap)wrap.style.display=type==='transfer'?'block':'none';
 }
 
-async function saveTxn(){
+async function saveTxn(attachAfter=false){
   if(editingTxnId){await updateTxn();return;}
   if(!currentUser){showToast('Not logged in.');return;}
   const amount=parseFloat(document.getElementById('txn-amount').value);
@@ -3198,9 +3572,14 @@ async function saveTxn(){
     if(error){showToast('Error: '+error.message);return;}
     }
   closeModal('add-txn-modal');
-  showToast('Transaction saved! ✅');
-  await loadAllData();
-  renderDashboard();
+  if(attachAfter&&data?.id){
+    showToast('Transaction saved! Opening for attachment... 📎');
+    await openAttachAfterSave(data.id);
+  } else {
+    showToast('Transaction saved! ✅');
+    await loadAllData();
+    renderDashboard();
+  }
 }
 
 async function saveAccount(){
@@ -3380,6 +3759,8 @@ function openModal(id){
     editingTxnId=null;
     const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
     ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(el=>{const e=document.getElementById(el);if(e)e.innerHTML=opts;});
+    // Clear search inputs
+    ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(id=>{const e=document.getElementById(id+'-search');if(e)e.value='';});
     ['txn-amount','txn-desc'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
     const td=document.getElementById('txn-date');if(td)td.value=todayISO();
     const tw=document.getElementById('txn-to-account-wrap');if(tw)tw.style.display='none';
