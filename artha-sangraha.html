@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v59</title>
+<title>Artha-Sangraha v60</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1023,6 +1023,13 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <input class="form-input" id="sell-comm-acc-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sell-comm-acc')" onfocus="openAccountSearch('sell-comm-acc')" onblur="setTimeout(()=>closeAccountSearch('sell-comm-acc'),200)"/>
         <select class="form-select" id="sell-comm-acc" style="display:none"></select>
         <div class="search-select-dropdown" id="sell-comm-acc-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">P&L Account * <span style="font-size:0.72rem;color:var(--text2)">(Long Term / Short Term)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="sell-pnl-search" placeholder="Search P&L account..." autocomplete="off" oninput="filterAccountSearch('sell-pnl')" onfocus="openAccountSearch('sell-pnl')" onblur="setTimeout(()=>closeAccountSearch('sell-pnl'),200)"/>
+        <select class="form-select" id="sell-pnl" style="display:none"></select>
+        <div class="search-select-dropdown" id="sell-pnl-dropdown"></div>
       </div>
     </div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="sell-notes" placeholder="Optional"/></div>
@@ -2709,14 +2716,24 @@ let portfolioInvestAccId=null;
 function populatePortfolioAccOptions(){
   const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
   const expOpts=accounts.filter(a=>a.classification==='expense').map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
-  ['buy-source','buy-comm-acc','sell-dest','sell-comm-acc'].forEach(id=>{
+  const pnlOpts=accounts.filter(a=>a.classification==='income').map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  ['buy-source','sell-dest'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el){
-      el.innerHTML=id.includes('comm')?expOpts:opts;
-      const inp=document.getElementById(id+'-search');
-      if(inp)inp.value='';
-    }
+    if(el){el.innerHTML=opts;const inp=document.getElementById(id+'-search');if(inp)inp.value='';}
   });
+  ['buy-comm-acc','sell-comm-acc'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.innerHTML=expOpts;const inp=document.getElementById(id+'-search');if(inp)inp.value='';}
+  });
+  // P&L account - show income accounts (Long Term P&L, Short Term P&L etc.)
+  const pnlEl=document.getElementById('sell-pnl');
+  if(pnlEl){
+    pnlEl.innerHTML=pnlOpts||opts;
+    const inp=document.getElementById('sell-pnl-search');if(inp)inp.value='';
+    // Pre-select if only one or auto-select Investment P&L related account
+    const defaultPnl=accounts.find(a=>a.classification==='income'&&a.category_account==='Investment P&L');
+    if(defaultPnl)pnlEl.value=defaultPnl.id;
+  }
 }
 
 function openPortfolioBuy(accId){
@@ -2787,7 +2804,7 @@ function openPortfolioSell(accId){
   const title=document.getElementById('sell-modal-title');
   if(title)title.textContent=`Sell — ${acc.name}`;
   ['sell-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=todayISO();});
-  ['sell-amount','sell-commission','sell-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['sell-amount','sell-commission','sell-notes','sell-pnl-search'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   // Pre-fill cost with current balance
   const costEl=document.getElementById('sell-cost');
   if(costEl)costEl.value=bal>0?bal.toFixed(2):'';
@@ -2803,15 +2820,11 @@ async function submitSell(attachAfter=false){
   const date=document.getElementById('sell-date').value;
   const destId=document.getElementById('sell-dest').value;
   const commAccId=document.getElementById('sell-comm-acc').value;
+  const pnlAccId=document.getElementById('sell-pnl').value;
+  if(!pnlAccId){showToast('Please select a P&L account (Long Term / Short Term).');return;}
+  const pnlAcc=accounts.find(a=>a.id===pnlAccId);
   if(!saleAmt||!date||!destId){showToast('Please fill sale amount, date and destination account.');return;}
   const pnl=saleAmt-cost;
-  const currency=acc.currency;
-  // Ensure P&L account
-  let pnlAcc=accounts.find(a=>a.name==='Investment P&L');
-  if(!pnlAcc){
-    const{data}=await sb.from('accounts').insert({user_id:currentUser.id,name:'Investment P&L',type:'custom-income',classification:'income',opening_balance:0,currency,opening_date:date,notes:'Auto-created',category_account:'Investment P&L'}).select().single();
-    if(data){accounts.push(data);pnlAcc=data;}
-  }
   // Journal entries for sell:
   if(pnl>=0){
     // Profit: Dr Destination (sale proceeds), Cr Investment (cost), Cr P&L (profit)
