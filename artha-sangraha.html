@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v63</title>
+<title>Artha-Sangraha v65</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -89,6 +89,8 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);}
 .stat-label{font-size:0.72rem;color:var(--text2);margin-bottom:4px;font-weight:500;}
 .stat-val{font-size:1.15rem;font-weight:700;color:var(--text);}
+.nw-val,.nw-box-val,.stat-val,.account-bal-val{transition:filter 0.3s;}
+.figures-hidden .nw-val,.figures-hidden .nw-box-val,.figures-hidden .stat-val,.figures-hidden .account-bal-val{filter:blur(8px);}
 .stat-change{font-size:0.72rem;margin-top:3px;}
 .stat-change.up{color:var(--green);}
 .stat-change.down{color:var(--red);}
@@ -167,6 +169,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .divider{height:1px;background:var(--border);margin:16px 0;}
 
 .txn-row:hover{background:var(--bg2);}
+/* EYE BUTTON - Hide figures */
+.eye-toggle{background:none;border:none;cursor:pointer;font-size:1rem;padding:4px;opacity:0.6;transition:opacity 0.2s;}
+.eye-toggle:hover{opacity:1;}
+.figures-hidden .hide-figure{filter:blur(6px);user-select:none;pointer-events:none;}
 /* SEARCHABLE SELECT */
 .search-select-wrap{position:relative;}
 .search-select-input{width:100%;}
@@ -310,6 +316,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
     </div>
     <div class="topbar-right">
+      <button class="eye-toggle" id="eye-toggle-btn" onclick="toggleFigures()" title="Show/Hide figures">👁</button>
       <div style="position:relative">
         <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn" style="padding:4px 10px 4px 4px">
           <div class="user-avatar" id="user-avatar">U</div>
@@ -355,6 +362,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="sidebar-section">
         <div class="sidebar-label">Other</div>
         <button class="nav-item" onclick="switchSection('loans',this)"><span class="nav-icon">🏛️</span>Loans & EMI</button>
+        <button class="nav-item" onclick="switchSection('scheduler',this)"><span class="nav-icon">📅</span>Scheduler</button>
         <button class="nav-item" onclick="switchSection('settings',this)"><span class="nav-icon">⚙️</span>Settings</button>
       </div>
     </div>
@@ -501,6 +509,24 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="btn-sm" onclick="openModal('add-loan-modal')">+ Add Loan</button>
         </div>
         <div id="loans-content"></div>
+      </div>
+
+      <!-- SCHEDULER -->
+      <div class="section" id="sec-scheduler">
+        <div class="page-header">
+          <div><div class="page-title">📅 Scheduler</div><div class="page-sub">EMI, SIP, SWP & recurring entries</div></div>
+          <button class="btn-sm" onclick="openModal('add-schedule-modal')">+ New Schedule</button>
+        </div>
+        <!-- Pending Due Entries -->
+        <div id="scheduler-due" style="margin-bottom:16px"></div>
+        <!-- Tabs -->
+        <div class="tabs" style="flex-wrap:wrap;gap:4px;margin-bottom:16px">
+          <button class="tab-btn active" onclick="switchSchedulerTab('emi',this)">🏛️ EMI</button>
+          <button class="tab-btn" onclick="switchSchedulerTab('sip',this)">📈 SIP</button>
+          <button class="tab-btn" onclick="switchSchedulerTab('swp',this)">📉 SWP</button>
+          <button class="tab-btn" onclick="switchSchedulerTab('recurring',this)">🔄 Recurring</button>
+        </div>
+        <div id="scheduler-content"></div>
       </div>
 
       <!-- REPORTS (consolidated) -->
@@ -1062,6 +1088,137 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 </div>
 
+<!-- ADD SCHEDULE MODAL -->
+<div class="modal-overlay" id="add-schedule-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="schedule-modal-title">New Schedule</div>
+      <button class="btn-close" onclick="closeModal('add-schedule-modal')">✕</button>
+    </div>
+    <!-- Type selector -->
+    <div class="form-group">
+      <label class="form-label">Schedule Type *</label>
+      <select class="form-select" id="sch-type" onchange="onScheduleTypeChange()">
+        <option value="emi">🏛️ EMI (Loan repayment)</option>
+        <option value="emi-upload">📊 EMI (Upload schedule)</option>
+        <option value="sip">📈 SIP (Systematic Investment)</option>
+        <option value="swp">📉 SWP (Systematic Withdrawal)</option>
+        <option value="recurring">🔄 Recurring Entry</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Name *</label>
+      <input class="form-input" id="sch-name" placeholder="e.g. Home Loan EMI, Nifty SIP"/>
+    </div>
+    <!-- EMI fields -->
+    <div id="sch-emi-fields">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Principal Amount *</label><input class="form-input" type="number" id="sch-principal" placeholder="0.00" oninput="calcEMIPreview()"/></div>
+        <div class="form-group"><label class="form-label">Annual Interest Rate % *</label><input class="form-input" type="number" id="sch-rate" placeholder="8.5" step="0.01" oninput="calcEMIPreview()"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Tenure (months) *</label><input class="form-input" type="number" id="sch-tenure" placeholder="120" oninput="calcEMIPreview()"/></div>
+        <div class="form-group"><label class="form-label">Start Date *</label><input class="form-input" type="date" id="sch-start-date" oninput="calcEMIPreview()"/></div>
+      </div>
+      <div id="sch-emi-preview" style="background:var(--accent-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+          <div><div style="font-size:0.7rem;color:var(--text2)">Monthly EMI</div><div style="font-weight:700;color:var(--accent)" id="prev-emi">—</div></div>
+          <div><div style="font-size:0.7rem;color:var(--text2)">Total Interest</div><div style="font-weight:700;color:var(--red)" id="prev-interest">—</div></div>
+          <div><div style="font-size:0.7rem;color:var(--text2)">Total Payment</div><div style="font-weight:700" id="prev-total">—</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- EMI Upload fields -->
+    <div id="sch-emi-upload-fields" style="display:none">
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px">📥 Download Template First</div>
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px">Fill the Excel template with your EMI schedule and upload it back.</div>
+        <button class="btn-outline" onclick="downloadEMITemplate()" style="width:100%">⬇️ Download EMI Template (.csv)</button>
+      </div>
+      <div class="form-group"><label class="form-label">Upload Filled Schedule *</label>
+        <input type="file" class="form-input" id="sch-emi-file" accept=".csv,.xlsx" style="padding:8px"/>
+      </div>
+      <div id="sch-upload-preview" style="display:none"></div>
+    </div>
+    <!-- SIP/SWP fields -->
+    <div id="sch-sip-swp-fields" style="display:none">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="sch-amount" placeholder="0.00"/></div>
+        <div class="form-group"><label class="form-label">Frequency</label>
+          <select class="form-select" id="sch-frequency">
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="weekly">Weekly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start Date *</label><input class="form-input" type="date" id="sch-sip-start"/></div>
+        <div class="form-group"><label class="form-label">End Date (optional)</label><input class="form-input" type="date" id="sch-sip-end"/></div>
+      </div>
+    </div>
+    <!-- Recurring fields -->
+    <div id="sch-recurring-fields" style="display:none">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="sch-rec-amount" placeholder="0.00"/></div>
+        <div class="form-group"><label class="form-label">Frequency</label>
+          <select class="form-select" id="sch-rec-frequency">
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="weekly">Weekly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start Date *</label><input class="form-input" type="date" id="sch-rec-start"/></div>
+        <div class="form-group"><label class="form-label">Transaction Type</label>
+          <select class="form-select" id="sch-rec-txn-type">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="transfer">Transfer</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- Common fields -->
+    <div class="form-group"><label class="form-label">From Account * <span style="font-size:0.72rem;color:var(--text2)">(debit/source)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="sch-from-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-from')" onfocus="openAccountSearch('sch-from')" onblur="setTimeout(()=>closeAccountSearch('sch-from'),200)"/>
+        <select class="form-select" id="sch-from" style="display:none"></select>
+        <div class="search-select-dropdown" id="sch-from-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group" id="sch-to-wrap"><label class="form-label">To Account <span style="font-size:0.72rem;color:var(--text2)">(credit/destination)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="sch-to-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-to')" onfocus="openAccountSearch('sch-to')" onblur="setTimeout(()=>closeAccountSearch('sch-to'),200)"/>
+        <select class="form-select" id="sch-to" style="display:none"></select>
+        <div class="search-select-dropdown" id="sch-to-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Category</label>
+      <select class="form-select" id="sch-category"><option value="">— Select —</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="sch-notes" placeholder="Optional"/></div>
+    <button class="btn-primary" onclick="saveSchedule()">Create Schedule</button>
+  </div>
+</div>
+
+<!-- TOPUP SIP MODAL -->
+<div class="modal-overlay" id="topup-sip-modal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <div class="modal-title" id="topup-modal-title">Top-up SIP</div>
+      <button class="btn-close" onclick="closeModal('topup-sip-modal')">✕</button>
+    </div>
+    <div id="topup-info" style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px;margin-bottom:14px;font-size:0.85rem"></div>
+    <div class="form-group"><label class="form-label">New Amount *</label><input class="form-input" type="number" id="topup-amount" placeholder="0.00"/></div>
+    <div class="form-group"><label class="form-label">Effective From Date *</label><input class="form-input" type="date" id="topup-date"/></div>
+    <button class="btn-primary" onclick="confirmTopup()">Confirm Top-up</button>
+  </div>
+</div>
+
 <!-- ADD CATEGORY MODAL -->
 <div class="modal-overlay" id="add-category-modal">
   <div class="modal" style="max-width:380px">
@@ -1138,7 +1295,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 //  STATE
 // ═══════════════════════════════
 let currentUser=null,currentProfile=null;
-let accounts=[],transactions=[],trades=[],loans=[],budgets=[],groups=[],categories=[],attachments=[];
+let accounts=[],transactions=[],trades=[],loans=[],budgets=[],groups=[],categories=[],attachments=[],schedules=[];
 let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null,currentLedgerAccId=null;
 let currentReportTab='monthly';
 
@@ -1253,7 +1410,9 @@ async function initApp(user){
   }catch(e){console.warn('Profile error:',e);}
   await loadAllData();
   updateCategoryDropdowns();
+  initFiguresState();
   renderDashboard();
+  renderDueBadge();
 }
 
 // Auth listener
@@ -1474,6 +1633,40 @@ async function deleteCategory(id){
   updateCategoryDropdowns();
   renderCategories();
   showToast('Category deleted.');
+}
+
+// ═══════════════════════════════
+//  HIDE/SHOW FIGURES
+// ═══════════════════════════════
+let figuresHidden=true; // default hidden
+
+function toggleFigures(){
+  figuresHidden=!figuresHidden;
+  const btn=document.getElementById('eye-toggle-btn');
+  const app=document.getElementById('app');
+  if(figuresHidden){
+    app.classList.add('figures-hidden');
+    if(btn)btn.textContent='🙈';
+  } else {
+    app.classList.remove('figures-hidden');
+    if(btn)btn.textContent='👁';
+  }
+  localStorage.setItem('as-figures-hidden',figuresHidden?'1':'0');
+}
+
+function initFiguresState(){
+  const saved=localStorage.getItem('as-figures-hidden');
+  // Default hidden if not set
+  figuresHidden=saved===null?true:saved==='1';
+  const app=document.getElementById('app');
+  const btn=document.getElementById('eye-toggle-btn');
+  if(figuresHidden){
+    app?.classList.add('figures-hidden');
+    if(btn)btn.textContent='🙈';
+  } else {
+    app?.classList.remove('figures-hidden');
+    if(btn)btn.textContent='👁';
+  }
 }
 
 // ═══════════════════════════════
@@ -1892,7 +2085,7 @@ async function ensureCategoryAccount(category, type){
 }
 async function loadAllData(){
   const uid=currentUser.id;
-  const[a,t,tr,l,b,g,cat,att]=await Promise.all([
+  const[a,t,tr,l,b,g,cat,att,sch]=await Promise.all([
     sb.from('accounts').select('*').eq('user_id',uid).order('created_at'),
     sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:true}),
     sb.from('trades').select('*').eq('user_id',uid).order('date',{ascending:false}),
@@ -1900,7 +2093,8 @@ async function loadAllData(){
     sb.from('budgets').select('*').eq('user_id',uid).order('month',{ascending:false}),
     sb.from('account_groups').select('*').eq('user_id',uid).order('created_at').throwOnError().then(r=>r).catch(()=>({data:[]})),
     sb.from('categories').select('*').eq('user_id',uid).order('name'),
-    sb.from('transaction_attachments').select('*').eq('user_id',uid).throwOnError().then(r=>r).catch(()=>({data:[]}))
+    sb.from('transaction_attachments').select('*').eq('user_id',uid).throwOnError().then(r=>r).catch(()=>({data:[]})),
+    sb.from('schedules').select('*').eq('user_id',uid).order('next_date').throwOnError().then(r=>r).catch(()=>({data:[]}))
   ]);
   accounts=a.data||[];
   transactions=t.data||[];
@@ -1909,6 +2103,7 @@ async function loadAllData(){
   budgets=b.data||[];
   groups=g.data||[];
   attachments=att?.data||[];
+  schedules=sch?.data||[];
   // Merge DB categories with defaults
   const defaultCats=[
     {name:'Salary',type:'income'},{name:'Rental',type:'income'},{name:'Dividends',type:'income'},
@@ -1994,6 +2189,7 @@ function switchSection(name,btn){
   if(name==='profile')renderProfile();
   if(name==='balance-sheet'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
   if(name==='pnl'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
+  if(name==='scheduler'){renderScheduler();}
   if(name==='settings'){renderSettings();}
   if(name==='categories')renderCategories();
   if(name==='family')renderFamily();
@@ -2063,6 +2259,7 @@ function renderDashboard(){
       {icon:'🏛️',label:'Loans & EMI',fn:"switchSection('loans',null)"},
       {icon:'🎯',label:'Budget',fn:"switchSection('budget',null)"},
       {icon:'💼',label:'Portfolio',fn:"switchSection('portfolio',null)"},
+      {icon:'📅',label:'Scheduler',fn:"switchSection('scheduler',null)"},
       {icon:'⚙️',label:'Settings',fn:"switchSection('settings',null)"},
     ];
     tileMenu.innerHTML=tiles.map(t=>`<button class="tile-btn" onclick="${t.fn}">
@@ -2241,12 +2438,12 @@ function renderAccounts(groupId=null){
     html+=`<div style="margin-bottom:16px">
       <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;padding:4px 0">
         <div style="display:flex;align-items:center;gap:6px">
-          <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▴</span>
+          <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           <div style="font-size:0.88rem;font-weight:700">${label} <span style="font-size:0.72rem;color:var(--text3);font-weight:400">(${accs.length})</span></div>
         </div>
         <div style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
       </div>
-      <div id="${colId}" style="display:block">`;
+      <div id="${colId}" style="display:none">`;
 
     // Find groups in this classification
     const clsGroups=groups.filter(g=>g.classification===cls);
@@ -2667,7 +2864,10 @@ function renderBudget(){
 // ═══════════════════════════════
 function renderPortfolio(){
   const investTypes=['indian-stock','us-stock','fd','pf','gold','crypto','etf'];
-  const investments=accounts.filter(a=>investTypes.includes(a.type));
+  // Exclude accounts that belong to Trading Account group
+  const tradingGrp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
+  const tradingAccIds=tradingGrp?accounts.filter(a=>a.group_id===tradingGrp.id).map(a=>a.id):[];
+  const investments=accounts.filter(a=>investTypes.includes(a.type)&&!tradingAccIds.includes(a.id));
   const totalINR=investments.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
   const totalUSD=investments.filter(a=>a.currency==='USD').reduce((s,a)=>s+calcBalance(a),0);
   const isMobile=window.innerWidth<=768;
@@ -2881,7 +3081,330 @@ async function submitSell(attachAfter=false){
 //  TRADING JOURNAL
 // ═══════════════════════════════
 // ═══════════════════════════════
-//  TRADING SUB-ACCOUNTS
+//  SCHEDULER
+// ═══════════════════════════════
+let currentSchedulerTab='emi';
+let editingScheduleId=null;
+let topupScheduleId=null;
+let parsedEMISchedule=[];
+
+function switchSchedulerTab(tab,btn){
+  currentSchedulerTab=tab;
+  document.querySelectorAll('#sec-scheduler .tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderScheduler();
+}
+
+function onScheduleTypeChange(){
+  const type=document.getElementById('sch-type').value;
+  document.getElementById('sch-emi-fields').style.display=type==='emi'?'block':'none';
+  document.getElementById('sch-emi-upload-fields').style.display=type==='emi-upload'?'block':'none';
+  document.getElementById('sch-sip-swp-fields').style.display=(type==='sip'||type==='swp')?'block':'none';
+  document.getElementById('sch-recurring-fields').style.display=type==='recurring'?'block':'none';
+}
+
+function calcEMIPreview(){
+  const p=parseFloat(document.getElementById('sch-principal').value||0);
+  const r=parseFloat(document.getElementById('sch-rate').value||0)/12/100;
+  const n=parseInt(document.getElementById('sch-tenure').value||0);
+  const prev=document.getElementById('sch-emi-preview');
+  if(!p||!r||!n){if(prev)prev.style.display='none';return;}
+  const emi=p*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+  const total=emi*n;
+  const interest=total-p;
+  if(prev){
+    prev.style.display='block';
+    document.getElementById('prev-emi').textContent=fmt(emi,'INR');
+    document.getElementById('prev-interest').textContent=fmt(interest,'INR');
+    document.getElementById('prev-total').textContent=fmt(total,'INR');
+  }
+}
+
+function downloadEMITemplate(){
+  const csv='Month,Date,EMI Amount,Principal,Interest,Outstanding Balance\n1,2026-04-01,10000,8000,2000,90000\n2,2026-05-01,10000,8100,1900,81900\n';
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='EMI_Schedule_Template.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseEMIFile(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').filter(l=>l.trim());
+    const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+    parsedEMISchedule=lines.slice(1).map(line=>{
+      const cols=line.split(',');
+      return{
+        month:cols[0]?.trim(),
+        date:cols[1]?.trim(),
+        emi:parseFloat(cols[2])||0,
+        principal:parseFloat(cols[3])||0,
+        interest:parseFloat(cols[4])||0,
+        balance:parseFloat(cols[5])||0
+      };
+    }).filter(r=>r.date&&r.emi>0);
+    const prev=document.getElementById('sch-upload-preview');
+    if(prev){
+      prev.style.display='block';
+      prev.innerHTML=`<div style="background:var(--green-light);border-radius:var(--radius-sm);padding:10px;font-size:0.82rem">
+        ✅ <b>${parsedEMISchedule.length} EMI entries</b> parsed successfully!<br>
+        First: ${parsedEMISchedule[0]?.date} → ${fmt(parsedEMISchedule[0]?.emi,'INR')}<br>
+        Last: ${parsedEMISchedule[parsedEMISchedule.length-1]?.date} → ${fmt(parsedEMISchedule[parsedEMISchedule.length-1]?.emi,'INR')}
+      </div>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function getNextDate(fromDate,frequency){
+  const d=new Date(fromDate);
+  if(frequency==='weekly')d.setDate(d.getDate()+7);
+  else if(frequency==='monthly')d.setMonth(d.getMonth()+1);
+  else if(frequency==='quarterly')d.setMonth(d.getMonth()+3);
+  else if(frequency==='yearly')d.setFullYear(d.getFullYear()+1);
+  return d.toISOString().split('T')[0];
+}
+
+function generateEMIScheduleRows(principal,annualRate,tenureMonths,startDate){
+  const r=annualRate/12/100;
+  const emi=principal*r*Math.pow(1+r,tenureMonths)/(Math.pow(1+r,tenureMonths)-1);
+  const rows=[];
+  let balance=principal;
+  let date=startDate;
+  for(let i=1;i<=tenureMonths;i++){
+    const interest=balance*r;
+    const princ=emi-interest;
+    balance-=princ;
+    rows.push({month:i,date,emi,principal:princ,interest,balance:Math.max(0,balance)});
+    date=getNextDate(date,'monthly');
+  }
+  return rows;
+}
+
+async function saveSchedule(){
+  const type=document.getElementById('sch-type').value;
+  const name=document.getElementById('sch-name').value.trim();
+  const fromAccId=document.getElementById('sch-from').value;
+  const toAccId=document.getElementById('sch-to').value;
+  const category=document.getElementById('sch-category').value;
+  const notes=document.getElementById('sch-notes').value.trim();
+  if(!name){showToast('Please enter a schedule name.');return;}
+  if(!fromAccId){showToast('Please select a from/debit account.');return;}
+
+  let scheduleData={
+    user_id:currentUser.id,name,type:type==='emi-upload'?'emi':type,
+    from_account_id:fromAccId,to_account_id:toAccId||null,
+    category:category||null,notes,status:'active'
+  };
+
+  if(type==='emi'){
+    const principal=parseFloat(document.getElementById('sch-principal').value||0);
+    const rate=parseFloat(document.getElementById('sch-rate').value||0);
+    const tenure=parseInt(document.getElementById('sch-tenure').value||0);
+    const startDate=document.getElementById('sch-start-date').value;
+    if(!principal||!rate||!tenure||!startDate){showToast('Please fill all EMI parameters.');return;}
+    const r=rate/12/100;
+    const emi=principal*r*Math.pow(1+r,tenure)/(Math.pow(1+r,tenure)-1);
+    scheduleData={...scheduleData,
+      principal,annual_rate:rate,tenure_months:tenure,
+      amount:Math.round(emi*100)/100,
+      start_date:startDate,next_date:startDate,
+      end_date:getNextDate(startDate,'monthly').split('T')[0], // will be updated
+      schedule_rows:JSON.stringify(generateEMIScheduleRows(principal,rate,tenure,startDate))
+    };
+    // Set end date properly
+    const endDate=new Date(startDate);endDate.setMonth(endDate.getMonth()+tenure);
+    scheduleData.end_date=endDate.toISOString().split('T')[0];
+  } else if(type==='emi-upload'){
+    if(!parsedEMISchedule.length){showToast('Please upload an EMI schedule file.');return;}
+    scheduleData={...scheduleData,
+      start_date:parsedEMISchedule[0].date,
+      next_date:parsedEMISchedule[0].date,
+      amount:parsedEMISchedule[0].emi,
+      end_date:parsedEMISchedule[parsedEMISchedule.length-1].date,
+      schedule_rows:JSON.stringify(parsedEMISchedule)
+    };
+  } else if(type==='sip'||type==='swp'){
+    const amount=parseFloat(document.getElementById('sch-amount').value||0);
+    const frequency=document.getElementById('sch-frequency').value;
+    const startDate=document.getElementById('sch-sip-start').value;
+    const endDate=document.getElementById('sch-sip-end').value;
+    if(!amount||!startDate){showToast('Please fill amount and start date.');return;}
+    scheduleData={...scheduleData,amount,frequency,start_date:startDate,next_date:startDate,end_date:endDate||null};
+  } else if(type==='recurring'){
+    const amount=parseFloat(document.getElementById('sch-rec-amount').value||0);
+    const frequency=document.getElementById('sch-rec-frequency').value;
+    const startDate=document.getElementById('sch-rec-start').value;
+    if(!amount||!startDate){showToast('Please fill amount and start date.');return;}
+    scheduleData={...scheduleData,amount,frequency,start_date:startDate,next_date:startDate};
+  }
+
+  const{error}=await sb.from('schedules').insert(scheduleData);
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('add-schedule-modal');
+  showToast('Schedule created! ✅');
+  await loadAllData();
+  renderScheduler();
+  renderDueBadge();
+}
+
+async function confirmScheduleEntry(schedId){
+  const sch=schedules.find(s=>s.id===schedId);if(!sch)return;
+  // Create the transaction
+  const txn={
+    user_id:currentUser.id,type:'journal',
+    date:sch.next_date,amount:sch.amount,currency:'INR',
+    account_id:sch.from_account_id,
+    debit_account_id:sch.from_account_id,
+    credit_account_id:sch.to_account_id||sch.from_account_id,
+    category:sch.category||sch.name,
+    description:`${sch.name} (${sch.type.toUpperCase()})`
+  };
+  const{error:txnErr}=await sb.from('transactions').insert(txn);
+  if(txnErr){showToast('Error posting entry: '+txnErr.message);return;}
+  // Advance next date
+  const nextDate=getNextDate(sch.next_date,sch.frequency||'monthly');
+  const isLastEntry=sch.end_date&&nextDate>sch.end_date;
+  const{error:updErr}=await sb.from('schedules').update({
+    next_date:nextDate,
+    status:isLastEntry?'completed':'active',
+    last_posted:sch.next_date
+  }).eq('id',schedId);
+  if(updErr){showToast('Error updating schedule: '+updErr.message);return;}
+  showToast(`${sch.name} entry posted! ✅`);
+  await loadAllData();
+  renderScheduler();
+  renderDashboard();
+  renderDueBadge();
+}
+
+async function pauseSchedule(id){
+  const sch=schedules.find(s=>s.id===id);if(!sch)return;
+  const newStatus=sch.status==='paused'?'active':'paused';
+  await sb.from('schedules').update({status:newStatus}).eq('id',id);
+  showToast(newStatus==='paused'?'Schedule paused.':'Schedule resumed.');
+  await loadAllData();renderScheduler();
+}
+
+async function stopSchedule(id){
+  if(!confirm('Stop this schedule permanently? It cannot be restarted.'))return;
+  await sb.from('schedules').update({status:'stopped'}).eq('id',id);
+  showToast('Schedule stopped.');
+  await loadAllData();renderScheduler();
+}
+
+async function deleteSchedule(id){
+  if(!confirm('Delete this schedule?'))return;
+  await sb.from('schedules').delete().eq('id',id);
+  showToast('Schedule deleted.');
+  await loadAllData();renderScheduler();
+}
+
+function openTopup(id){
+  const sch=schedules.find(s=>s.id===id);if(!sch)return;
+  topupScheduleId=id;
+  const info=document.getElementById('topup-info');
+  if(info)info.innerHTML=`<b>${sch.name}</b><br>Current amount: <b>${fmt(sch.amount,'INR')}</b> (${sch.frequency})`;
+  const amt=document.getElementById('topup-amount');if(amt)amt.value='';
+  const dt=document.getElementById('topup-date');if(dt)dt.value=todayISO();
+  const title=document.getElementById('topup-modal-title');
+  if(title)title.textContent=`Top-up — ${sch.name}`;
+  openModal('topup-sip-modal');
+}
+
+async function confirmTopup(){
+  const sch=schedules.find(s=>s.id===topupScheduleId);if(!sch)return;
+  const newAmt=parseFloat(document.getElementById('topup-amount').value||0);
+  const fromDate=document.getElementById('topup-date').value;
+  if(!newAmt||!fromDate){showToast('Please fill new amount and date.');return;}
+  // Save topup history in notes
+  const history=`[Top-up: ${fmt(sch.amount,'INR')} → ${fmt(newAmt,'INR')} from ${fromDate}]`;
+  await sb.from('schedules').update({
+    amount:newAmt,
+    notes:(sch.notes||'')+' '+history
+  }).eq('id',topupScheduleId);
+  closeModal('topup-sip-modal');
+  showToast(`Top-up applied! New amount: ${fmt(newAmt,'INR')} ✅`);
+  await loadAllData();renderScheduler();
+}
+
+function renderDueBadge(){
+  const today=todayISO();
+  const due=schedules.filter(s=>s.status==='active'&&s.next_date<=today);
+  // Update dashboard notification
+  const badge=document.getElementById('due-entries-badge');
+  if(badge){badge.textContent=due.length;badge.style.display=due.length?'inline':'none';}
+}
+
+function renderScheduler(){
+  // Due entries notification
+  const today=todayISO();
+  const due=schedules.filter(s=>s.status==='active'&&s.next_date<=today);
+  const dueEl=document.getElementById('scheduler-due');
+  if(dueEl){
+    dueEl.innerHTML=due.length?`<div class="card" style="border-color:var(--yellow);background:var(--yellow-light);margin-bottom:14px">
+      <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${due.length} Entry/Entries Due</div>
+      ${due.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:0.85rem;font-weight:600">${s.name}</div>
+          <div style="font-size:0.72rem;color:var(--text2)">${formatDate(s.next_date)} · ${fmt(s.amount,'INR')}</div>
+        </div>
+        <button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post</button>
+      </div>`).join('')}
+    </div>`:'';
+  }
+  // Filter by tab
+  const filtered=schedules.filter(s=>{
+    if(currentSchedulerTab==='emi')return s.type==='emi';
+    if(currentSchedulerTab==='sip')return s.type==='sip';
+    if(currentSchedulerTab==='swp')return s.type==='swp';
+    if(currentSchedulerTab==='recurring')return s.type==='recurring';
+    return true;
+  });
+  const el=document.getElementById('scheduler-content');
+  if(!el)return;
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">No ${currentSchedulerTab.toUpperCase()} schedules yet.</div><button class="btn-sm" onclick="openModal('add-schedule-modal')">+ Create Schedule</button></div>`;
+    return;
+  }
+  el.innerHTML=filtered.map(s=>{
+    const isActive=s.status==='active';
+    const isPaused=s.status==='paused';
+    const isStopped=s.status==='stopped'||s.status==='completed';
+    const isDue=isActive&&s.next_date<=today;
+    const fromAcc=accounts.find(a=>a.id===s.from_account_id);
+    const toAcc=accounts.find(a=>a.id===s.to_account_id);
+    return`<div class="card" style="margin-bottom:10px;${isDue?'border-color:var(--yellow)':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:0.9rem;font-weight:700">${s.name}</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:2px">
+            ${fmt(s.amount,'INR')} · ${s.frequency||'monthly'} · 
+            ${fromAcc?fromAcc.name:'?'}${toAcc?' → '+toAcc.name:''}
+          </div>
+          <div style="font-size:0.72rem;color:var(--text3);margin-top:2px">
+            Next: <b>${formatDate(s.next_date)}</b>
+            ${s.end_date?' · Ends: '+formatDate(s.end_date):''}
+          </div>
+        </div>
+        <span class="badge ${isActive?'badge-green':isPaused?'badge-yellow':'badge-red'}" style="font-size:0.7rem">${s.status}</span>
+      </div>
+      ${isDue?`<div style="background:var(--yellow-light);border-radius:var(--radius-sm);padding:8px;margin-bottom:10px;font-size:0.8rem;font-weight:600">⏰ Entry due for ${formatDate(s.next_date)}</div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${isDue?`<button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post Entry</button>`:''}
+        ${!isStopped?`<button class="btn-outline" style="font-size:0.75rem;padding:5px 10px" onclick="pauseSchedule('${s.id}')">${isPaused?'▶ Resume':'⏸ Pause'}</button>`:''}
+        ${(s.type==='sip'||s.type==='swp')&&!isStopped?`<button class="btn-outline" style="font-size:0.75rem;padding:5px 10px" onclick="openTopup('${s.id}')">📈 Top-up</button>`:''}
+        ${!isStopped?`<button class="btn-outline" style="font-size:0.75rem;padding:5px 10px;color:var(--red);border-color:var(--red)" onclick="stopSchedule('${s.id}')">⏹ Stop</button>`:''}
+        <button class="btn-danger" style="font-size:0.72rem;padding:5px 8px;margin-left:auto" onclick="deleteSchedule('${s.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
 // ═══════════════════════════════
 async function ensureTradingGroup(){
   let grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
@@ -3972,6 +4495,25 @@ function openModal(id){
       const tAccs=grp?accounts.filter(a=>a.group_id===grp.id):[];
       taSel.innerHTML=tAccs.length?tAccs.map(a=>`<option value="${a.id}">${a.name}</option>`).join(''):'<option value="">No trading accounts — add one first</option>';
     }
+  }
+  else if(id==='add-schedule-modal'){
+    editingScheduleId=null;parsedEMISchedule=[];
+    ['sch-name','sch-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    ['sch-from-search','sch-to-search'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    ['sch-from','sch-to'].forEach(id2=>{const e=document.getElementById(id2);if(e)e.innerHTML=opts;});
+    const catEl=document.getElementById('sch-category');
+    if(catEl)catEl.innerHTML='<option value="">— Select —</option>'+getCategoryOptions('all');
+    const schType=document.getElementById('sch-type');if(schType)schType.value='emi';
+    onScheduleTypeChange();
+    const sd=document.getElementById('sch-start-date');if(sd)sd.value=todayISO();
+    const ss=document.getElementById('sch-sip-start');if(ss)ss.value=todayISO();
+    const sr=document.getElementById('sch-rec-start');if(sr)sr.value=todayISO();
+    document.getElementById('sch-emi-preview')?.style && (document.getElementById('sch-emi-preview').style.display='none');
+    const up=document.getElementById('sch-upload-preview');if(up)up.style.display='none';
+    // Add file input event
+    const fi=document.getElementById('sch-emi-file');
+    if(fi)fi.onchange=function(){parseEMIFile(this);};
   }
   else if(id==='add-loan-modal'){
     editingLoanId=null;
