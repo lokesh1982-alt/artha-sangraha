@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v62</title>
+<title>Artha-Sangraha v63</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2251,7 +2251,12 @@ function renderAccounts(groupId=null){
     // Find groups in this classification
     const clsGroups=groups.filter(g=>g.classification===cls);
     // Ungrouped accounts
-    const ungrouped=accs.filter(a=>!a.group_id||!groups.find(g=>g.id===a.group_id));
+    // Ungrouped = no group_id OR group belongs to different classification
+    const ungrouped=accs.filter(a=>{
+      if(!a.group_id)return true;
+      const grp=groups.find(g=>g.id===a.group_id);
+      return !grp||grp.classification!==cls;
+    });
 
     if(isMobile){
       // Show groups as tiles
