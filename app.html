@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v79';
+const CURRENT_VERSION = 'v81';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v79</title>
+<title>Artha-Sangraha v81</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -335,6 +335,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="topbar-right">
       <button class="eye-toggle" id="eye-toggle-btn" onclick="toggleFigures()" title="Show/Hide figures">👁</button>
+      <select id="display-currency-select" onchange="changeDisplayCurrency(this.value)"
+        style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:0.78rem;color:var(--text);cursor:pointer">
+        <option value="INR">₹ INR</option>
+        <option value="USD">$ USD</option>
+        <option value="EUR">€ EUR</option>
+        <option value="GBP">£ GBP</option>
+        <option value="AED">د AED</option>
+        <option value="SGD">S$ SGD</option>
+      </select>
       <div style="position:relative">
         <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn" style="padding:4px 10px 4px 4px">
           <div class="user-avatar" id="user-avatar">U</div>
@@ -395,6 +404,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <div><div class="page-title">Dashboard</div><div class="page-sub" id="dash-date"></div></div>
           <button class="btn-sm" onclick="openModal('add-txn-modal')">+ Add Transaction</button>
         </div>
+        <div id="rates-notification" style="display:none"></div>
         <div id="nw-banner-wrap"></div>
         <div class="card-grid card-grid-4" id="dash-stats"></div>
         <!-- Tile Navigation Menu (mobile only) -->
@@ -669,6 +679,28 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
             <button class="btn-outline" onclick="switchSection('profile',null)">Edit →</button>
           </div>
           <div id="settings-profile-preview" style="margin-top:10px;font-size:0.82rem;color:var(--text2)"></div>
+        </div>
+
+        <!-- Exchange Rates -->
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">💱</div>
+              <div><div style="font-weight:600;font-size:0.9rem">Exchange Rates</div>
+              <div style="font-size:0.72rem;color:var(--text2)">Current rates vs INR · Auto-updated daily</div></div>
+            </div>
+            <button class="btn-sm" onclick="openManualRatesModal()">✏️ Update</button>
+          </div>
+          <!-- Current Rates -->
+          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="settings-current-rates"></div>
+          <!-- History -->
+          <div style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer" onclick="toggleSettingsSection('exchange-rate-history')">
+              <div style="font-size:0.82rem;font-weight:600">📈 Rate History (last 90 days)</div>
+              <span id="exchange-rate-history-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
+            </div>
+            <div id="exchange-rate-history" style="display:none"></div>
+          </div>
         </div>
 
         <!-- Sign Out -->
@@ -1107,6 +1139,22 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 </div>
 
+<!-- MANUAL EXCHANGE RATES MODAL -->
+<div class="modal-overlay" id="manual-rates-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">💱 Update Exchange Rates</div>
+      <button class="btn-close" onclick="closeModal('manual-rates-modal')">✕</button>
+    </div>
+    <div style="font-size:0.78rem;color:var(--text2);margin-bottom:12px">Enter rates as: 1 foreign currency = X INR</div>
+    <div id="manual-rates-content"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button class="btn-outline" style="flex:1" onclick="closeModal('manual-rates-modal')">Cancel</button>
+      <button class="btn-primary" style="flex:1" onclick="saveManualRates()">💾 Save Rates</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD FD MODAL -->
 <div class="modal-overlay" id="add-fd-modal">
   <div class="modal" style="max-width:480px">
@@ -1121,6 +1169,20 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <div class="form-row">
       <div class="form-group"><label class="form-label">Principal Amount *</label>
         <input class="form-input" type="number" id="fd-principal" placeholder="0.00" oninput="calcFDPreview()"/></div>
+      <div class="form-group"><label class="form-label">Currency</label>
+        <select class="form-select" id="fd-currency">
+          <option value="INR">🇮🇳 INR — Indian Rupee</option>
+          <option value="USD">🇺🇸 USD — US Dollar</option>
+          <option value="EUR">🇪🇺 EUR — Euro</option>
+          <option value="GBP">🇬🇧 GBP — British Pound</option>
+          <option value="AED">🇦🇪 AED — UAE Dirham</option>
+          <option value="SGD">🇸🇬 SGD — Singapore Dollar</option>
+          <option value="CAD">🇨🇦 CAD — Canadian Dollar</option>
+          <option value="AUD">🇦🇺 AUD — Australian Dollar</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Annual Rate % *</label>
         <input class="form-input" type="number" id="fd-rate" placeholder="7.5" step="0.01" oninput="calcFDPreview()"/></div>
     </div>
@@ -1645,6 +1707,10 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 // ═══════════════════════════════
 let currentUser=null,currentProfile=null;
 let accounts=[],transactions=[],trades=[],loans=[],budgets=[],groups=[],categories=[],attachments=[],schedules=[];
+let exchangeRates={USD:83.5,EUR:90.2,GBP:105.5,AED:22.7,SGD:62.1,CAD:61.5,AUD:54.8}; // fallback rates
+let exchangeRatesHistory=[];
+let ratesApiError=false;
+let displayCurrency='INR'; // current display currency
 let selectedTxnType='income',editingTxnId=null,editingTradeId=null,editingAccId=null,editingLoanId=null,editingBudgetId=null,currentLedgerAccId=null;
 let currentReportTab='monthly';
 
@@ -1760,8 +1826,17 @@ async function initApp(user){
   await loadAllData();
   updateCategoryDropdowns();
   initFiguresState();
+  // Restore display currency preference
+  const savedCurrency=localStorage.getItem('as-display-currency');
+  if(savedCurrency){
+    displayCurrency=savedCurrency;
+    const sel=document.getElementById('display-currency-select');
+    if(sel)sel.value=savedCurrency;
+  }
   renderDashboard();
   renderDueBadge();
+  // Fetch exchange rates in background
+  fetchExchangeRates();
 }
 
 // Auth listener
@@ -1873,6 +1948,22 @@ function renderSettings(){
       ?`<span>📧 ${saved.email||'—'} &nbsp; 📞 ${saved.phone||'—'}</span>`
       :`<span style="color:var(--text3)">No profile set yet.</span>`;
   }
+  // Exchange rates current display
+  const ratesEl=document.getElementById('settings-current-rates');
+  if(ratesEl){
+    const currencies=['USD','EUR','GBP','AED','SGD','CAD','AUD'];
+    const lastUpdate=exchangeRatesHistory[0];
+    ratesEl.innerHTML=`<div style="grid-column:span 3;font-size:0.72rem;color:var(--text3);margin-bottom:4px">
+      Last updated: ${lastUpdate?formatDate(lastUpdate.date):'Not yet'} · Source: ${lastUpdate?.source||'—'}
+      ${ratesApiError?'<span style="color:var(--red)"> · ⚠️ API offline</span>':'<span style="color:var(--green)"> · ✅ Live</span>'}
+    </div>`+
+    currencies.map(c=>`<div style="background:var(--bg2);border-radius:var(--radius-sm);padding:8px;text-align:center">
+      <div style="font-size:0.7rem;color:var(--text2)">1 ${c}</div>
+      <div style="font-size:0.88rem;font-weight:700;color:var(--accent)">₹${exchangeRates[c]||'—'}</div>
+    </div>`).join('');
+  }
+  // Exchange rate history
+  renderExchangeRateHistory();
 }
 
 function editGroup(id){
@@ -1983,6 +2074,167 @@ async function deleteCategory(id){
   updateCategoryDropdowns();
   renderCategories();
   showToast('Category deleted.');
+}
+
+// ═══════════════════════════════
+//  EXCHANGE RATES
+// ═══════════════════════════════
+
+function toINR(amount, currency){
+  if(!amount)return 0;
+  if(currency==='INR')return amount;
+  const rate=exchangeRates[currency];
+  if(!rate)return amount;
+  return amount*rate;
+}
+
+function fromINR(amount, currency){
+  if(!amount)return 0;
+  if(currency==='INR')return amount;
+  const rate=exchangeRates[currency];
+  if(!rate)return amount;
+  return amount/rate;
+}
+
+function fmtInDisplayCurrency(amountINR){
+  if(displayCurrency==='INR')return fmt(amountINR,'INR');
+  return fmt(fromINR(amountINR,displayCurrency),displayCurrency);
+}
+
+function changeDisplayCurrency(currency){
+  displayCurrency=currency;
+  localStorage.setItem('as-display-currency',currency);
+  renderDashboard();
+  // Re-render current section
+  const activeSec=document.querySelector('.section.active');
+  if(activeSec){
+    const id=activeSec.id.replace('sec-','');
+    if(id==='portfolio')renderPortfolio();
+    if(id==='accounts')renderAccounts();
+    if(id==='reports')renderReports();
+  }
+  showToast(`Displaying in ${currency} 💱`);
+}
+
+async function fetchExchangeRates(){
+  ratesApiError=false;
+  const today=todayISO();
+  // Check if we already have today's rates
+  const todayRates=exchangeRatesHistory.find(r=>r.date===today);
+  if(todayRates){
+    exchangeRates={...exchangeRates,...todayRates.rates};
+    return;
+  }
+  try{
+    const response=await fetch('https://api.frankfurter.app/latest?from=INR&to=USD,EUR,GBP,AED,SGD,CAD,AUD',{signal:AbortSignal.timeout(5000)});
+    if(!response.ok)throw new Error('API error');
+    const data=await response.json();
+    if(data.rates){
+      // frankfurter returns rates FROM INR, so USD rate = how many USD per 1 INR
+      // We need INR per 1 USD/EUR etc. → invert
+      const rates={};
+      Object.entries(data.rates).forEach(([cur,rate])=>{
+        rates[cur]=Math.round((1/rate)*100)/100; // INR per 1 unit of foreign currency
+      });
+      exchangeRates={...exchangeRates,...rates};
+      // Save to DB
+      await sb.from('exchange_rates').upsert({
+        user_id:currentUser.id,date:today,
+        base_currency:'INR',rates,source:'frankfurter'
+      },{onConflict:'user_id,date,base_currency'});
+      // Reload history
+      const{data:hist}=await sb.from('exchange_rates').select('*').eq('user_id',currentUser.id).order('date',{ascending:false}).limit(90);
+      if(hist)exchangeRatesHistory=hist;
+      showRatesNotification(false,rates);
+    }
+  } catch(err){
+    console.warn('Exchange rate fetch failed:',err);
+    ratesApiError=true;
+    showRatesNotification(true,null);
+  }
+}
+
+function showRatesNotification(isError,rates){
+  const el=document.getElementById('rates-notification');
+  if(!el)return;
+  if(isError){
+    el.innerHTML=`<div class="card" style="border-color:var(--red);background:var(--red-light);margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:0.85rem;font-weight:700;color:var(--red)">⚠️ Exchange Rate API Unavailable</div>
+          <div style="font-size:0.75rem;color:var(--text2)">Using last saved rates. Update manually if needed.</div>
+        </div>
+        <button class="btn-outline" style="font-size:0.75rem;white-space:nowrap" onclick="openManualRatesModal()">✏️ Update Rates</button>
+      </div>
+    </div>`;
+    el.style.display='block';
+  } else {
+    el.style.display='none';
+    // Show brief success
+    if(rates)console.log('Exchange rates updated:',rates);
+  }
+}
+
+function openManualRatesModal(){
+  const currencies=['USD','EUR','GBP','AED','SGD','CAD','AUD'];
+  const content=document.getElementById('manual-rates-content');
+  if(content){
+    content.innerHTML=currencies.map(c=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <label style="font-size:0.85rem;font-weight:600;width:80px">1 ${c} =</label>
+        <div style="display:flex;align-items:center;gap:6px;flex:1">
+          <input type="number" id="rate-${c}" value="${exchangeRates[c]||''}" step="0.01" placeholder="INR rate"
+            style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-size:0.85rem"/>
+          <span style="font-size:0.82rem;color:var(--text2)">INR</span>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('manual-rates-modal').classList.add('open');
+}
+
+async function saveManualRates(){
+  const currencies=['USD','EUR','GBP','AED','SGD','CAD','AUD'];
+  const rates={};
+  currencies.forEach(c=>{
+    const val=parseFloat(document.getElementById(`rate-${c}`)?.value||0);
+    if(val>0)rates[c]=val;
+  });
+  if(!Object.keys(rates).length){showToast('Please enter at least one rate.');return;}
+  exchangeRates={...exchangeRates,...rates};
+  const today=todayISO();
+  await sb.from('exchange_rates').upsert({
+    user_id:currentUser.id,date:today,
+    base_currency:'INR',rates,source:'manual'
+  },{onConflict:'user_id,date,base_currency'});
+  const{data:hist}=await sb.from('exchange_rates').select('*').eq('user_id',currentUser.id).order('date',{ascending:false}).limit(90);
+  if(hist)exchangeRatesHistory=hist;
+  closeModal('manual-rates-modal');
+  ratesApiError=false;
+  const notif=document.getElementById('rates-notification');
+  if(notif)notif.style.display='none';
+  showToast('Exchange rates updated! ✅');
+  renderDashboard();
+}
+
+function renderExchangeRateHistory(){
+  const el=document.getElementById('exchange-rate-history');
+  if(!el)return;
+  if(!exchangeRatesHistory.length){
+    el.innerHTML=`<div style="font-size:0.82rem;color:var(--text3);padding:10px 0">No exchange rate history yet.</div>`;
+    return;
+  }
+  const currencies=['USD','EUR','GBP','AED','SGD'];
+  el.innerHTML=`<div style="overflow-x:auto">
+    <table class="data-table" style="min-width:500px">
+      <thead><tr><th>Date</th><th>Source</th>${currencies.map(c=>`<th style="text-align:right">1 ${c}</th>`).join('')}</tr></thead>
+      <tbody>${exchangeRatesHistory.map(r=>`<tr>
+        <td style="font-size:0.78rem">${formatDate(r.date)}</td>
+        <td><span class="badge ${r.source==='manual'?'badge-yellow':'badge-green'}" style="font-size:0.68rem">${r.source}</span></td>
+        ${currencies.map(c=>`<td style="text-align:right;font-size:0.78rem">${r.rates[c]?'₹'+r.rates[c]:'—'}</td>`).join('')}
+      </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
 }
 
 // ═══════════════════════════════
@@ -2540,7 +2792,7 @@ async function ensureCategoryAccount(category, type){
 }
 async function loadAllData(){
   const uid=currentUser.id;
-  const[a,t,tr,l,b,g,cat,att,sch]=await Promise.all([
+  const[a,t,tr,l,b,g,cat,att,sch,exr]=await Promise.all([
     sb.from('accounts').select('*').eq('user_id',uid).order('created_at'),
     sb.from('transactions').select('*').eq('user_id',uid).order('date',{ascending:true}),
     sb.from('trades').select('*').eq('user_id',uid).order('date',{ascending:false}),
@@ -2549,7 +2801,8 @@ async function loadAllData(){
     sb.from('account_groups').select('*').eq('user_id',uid).order('created_at').throwOnError().then(r=>r).catch(()=>({data:[]})),
     sb.from('categories').select('*').eq('user_id',uid).order('name'),
     sb.from('transaction_attachments').select('*').eq('user_id',uid).throwOnError().then(r=>r).catch(()=>({data:[]})),
-    sb.from('schedules').select('*').eq('user_id',uid).order('next_date').throwOnError().then(r=>r).catch(()=>({data:[]}))
+    sb.from('schedules').select('*').eq('user_id',uid).order('next_date').throwOnError().then(r=>r).catch(()=>({data:[]})),
+    sb.from('exchange_rates').select('*').eq('user_id',uid).order('date',{ascending:false}).limit(90).throwOnError().then(r=>r).catch(()=>({data:[]}))
   ]);
   accounts=a.data||[];
   transactions=t.data||[];
@@ -2559,6 +2812,12 @@ async function loadAllData(){
   groups=g.data||[];
   attachments=att?.data||[];
   schedules=sch?.data||[];
+  exchangeRatesHistory=exr?.data||[];
+  // Use latest rates from DB if available
+  if(exchangeRatesHistory.length){
+    const latest=exchangeRatesHistory[0];
+    if(latest.rates)exchangeRates={...exchangeRates,...latest.rates};
+  }
   // Merge DB categories with defaults
   const defaultCats=[
     {name:'Salary',type:'income'},{name:'Rental',type:'income'},{name:'Dividends',type:'income'},
@@ -2679,9 +2938,14 @@ function calcIncomeExpense(txnList){
 }
 
 function renderDashboard(){
-  const totalAssets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
-  const totalLiabilities=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
-  const netWorth=totalAssets-totalLiabilities;
+  // Calculate totals including foreign currency converted to INR
+  const totalAssetsINR=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>{
+    const bal=calcBalance(a);
+    return s+(a.currency==='INR'?bal:toINR(bal,a.currency));
+  },0);
+  const totalLiabilities=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+
+    accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  const netWorthINR=totalAssetsINR-totalLiabilities;
   const fy=getFinancialYear();
   const fyTxns=transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end);
   const{income:fyIncome,expenses:fyExp}=calcIncomeExpense(fyTxns);
@@ -2689,13 +2953,19 @@ function renderDashboard(){
   const monthTxns=transactions.filter(t=>t.date.startsWith(monthStr));
   const{income:mIncome,expenses:mExp}=calcIncomeExpense(monthTxns);
 
+  // Convert to display currency
+  const netWorthDisplay=displayCurrency==='INR'?netWorthINR:fromINR(netWorthINR,displayCurrency);
+  const assetsDisplay=displayCurrency==='INR'?totalAssetsINR:fromINR(totalAssetsINR,displayCurrency);
+  const liabDisplay=displayCurrency==='INR'?totalLiabilities:fromINR(totalLiabilities,displayCurrency);
+  const currSymbol={'INR':'₹','USD':'$','EUR':'€','GBP':'£','AED':'د.إ','SGD':'S$','CAD':'C$','AUD':'A$'}[displayCurrency]||displayCurrency;
+
   document.getElementById('nw-banner-wrap').innerHTML=`
   <div class="nw-banner">
-    <div class="nw-label">Total Net Worth · ${fy.label}</div>
-    <div class="nw-val">${fmt(netWorth,'INR')}</div>
+    <div class="nw-label">Total Net Worth · ${fy.label} · <span style="font-size:0.8rem;opacity:0.8">${displayCurrency}</span></div>
+    <div class="nw-val">${fmt(netWorthDisplay,displayCurrency)}</div>
     <div class="nw-grid">
-      <div class="nw-box"><div class="nw-box-label">Total Assets</div><div class="nw-box-val">${fmt(totalAssets,'INR')}</div></div>
-      <div class="nw-box"><div class="nw-box-label">Total Liabilities</div><div class="nw-box-val">${fmt(totalLiabilities,'INR')}</div></div>
+      <div class="nw-box"><div class="nw-box-label">Total Assets</div><div class="nw-box-val">${fmt(assetsDisplay,displayCurrency)}</div></div>
+      <div class="nw-box"><div class="nw-box-label">Total Liabilities</div><div class="nw-box-val">${fmt(liabDisplay,displayCurrency)}</div></div>
     </div>
   </div>`;
 
@@ -4345,9 +4615,10 @@ function calcFDPreview(){
   const interest=maturityAmt-p;
   if(prev){
     prev.style.display='block';
-    document.getElementById('fd-prev-interest').textContent=fmt(interest,'INR');
+    const currency=document.getElementById('fd-currency')?.value||'INR';
+    document.getElementById('fd-prev-interest').textContent=fmt(interest,currency);
     document.getElementById('fd-prev-tenure').textContent=months+'m ('+days+'d)';
-    document.getElementById('fd-prev-maturity').textContent=fmt(maturityAmt,'INR');
+    document.getElementById('fd-prev-maturity').textContent=fmt(maturityAmt,currency);
   }
   const matAmt=document.getElementById('fd-maturity-amount');
   if(matAmt&&!fdMaturityEdited)matAmt.value=Math.round(maturityAmt*100)/100;
@@ -4391,6 +4662,7 @@ async function saveFD(){
   const startDate=document.getElementById('fd-start').value;
   const maturityDate=document.getElementById('fd-maturity').value;
   const maturityAmt=parseFloat(document.getElementById('fd-maturity-amount').value||0)||principal*(1+rate/100*((new Date(maturityDate)-new Date(startDate))/31536000000));
+  const currency=document.getElementById('fd-currency')?.value||'INR';
   const fdAccId=document.getElementById('fd-acc').value;
   const intAccId=document.getElementById('fd-int-acc').value;
   const srcAccId=document.getElementById('fd-src-acc').value;
@@ -4403,14 +4675,14 @@ async function saveFD(){
     principal,annual_rate:rate,amount:Math.round(maturityAmt*100)/100,
     start_date:startDate,next_date:maturityDate,end_date:maturityDate,frequency:'once',
     from_account_id:srcAccId||null,to_account_id:fdAccId,interest_account_id:intAccId,
-    notes:`Bank: ${bank}${notes?' | '+notes:''}`,
-    schedule_rows:JSON.stringify({principal,maturityAmt:Math.round(maturityAmt*100)/100,interest:Math.round((maturityAmt-principal)*100)/100,bank,rate,startDate,maturityDate})
+    notes:`Bank: ${bank} | Currency: ${currency}${notes?' | '+notes:''}`,
+    schedule_rows:JSON.stringify({principal,maturityAmt:Math.round(maturityAmt*100)/100,interest:Math.round((maturityAmt-principal)*100)/100,bank,rate,currency,startDate,maturityDate})
   };
   const{data:fdRec,error}=await sb.from('schedules').insert(fdData).select().single();
   if(error){showToast('Error: '+error.message);return;}
   if(srcAccId&&fdAccId){
     await sb.from('transactions').insert({
-      user_id:currentUser.id,type:'journal',date:startDate,amount:principal,currency:'INR',
+      user_id:currentUser.id,type:'journal',date:startDate,amount:principal,currency,
       debit_account_id:fdAccId,credit_account_id:srcAccId,
       category:'Fixed Deposit',description:`FD Created: ${name}`
     });
@@ -4580,6 +4852,7 @@ function renderFD(){
     html+=activeFDs.map(fd=>{
       const rows=fd.schedule_rows?JSON.parse(fd.schedule_rows):{};
       const bank=rows.bank||fd.notes?.split('|')[0]?.replace('Bank:','').trim()||'';
+      const currency=rows.currency||'INR';
       const interest=(fd.amount||0)-(fd.principal||0);
       const isDue=fd.end_date&&fd.end_date<=today;
       const daysLeft=fd.end_date?Math.round((new Date(fd.end_date)-new Date())/86400000):null;
@@ -4588,15 +4861,15 @@ function renderFD(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1">
             <div style="font-size:0.9rem;font-weight:700">${fd.name} ${hasCert?'<span style="font-size:0.75rem">📄</span>':''}</div>
-            <div style="font-size:0.75rem;color:var(--text2);margin-top:3px">${bank}${bank?' · ':''}${fd.annual_rate}% p.a.</div>
+            <div style="font-size:0.75rem;color:var(--text2);margin-top:3px">${bank}${bank?' · ':''}${fd.annual_rate}% p.a. · ${currency}</div>
             <div style="font-size:0.72rem;color:var(--text3);margin-top:2px">
               ${formatDate(fd.start_date)} → ${formatDate(fd.end_date)}
               ${daysLeft!==null?` · <b style="color:${daysLeft<=30?'var(--red)':'inherit'}">${daysLeft>0?daysLeft+'d left':'Matured'}</b>`:''}
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:10px">
-            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(fd.amount,'INR')}</div>
-            <div style="font-size:0.72rem;color:var(--green)">+${fmt(interest,'INR')}</div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(fd.amount,currency)}</div>
+            <div style="font-size:0.72rem;color:var(--green)">+${fmt(interest,currency)}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -5700,7 +5973,8 @@ function openModal(id){
     fdMaturityEdited=false;
     ['fd-name','fd-bank','fd-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
     ['fd-principal','fd-rate','fd-maturity-amount'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
-    ['fd-acc-search','fd-int-acc-search','fd-src-acc-search'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const fc=document.getElementById('fd-currency');if(fc)fc.value='INR';
+    ['fd-acc-search','fd-int-acc-search','fd-src-acc-search'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';}); 
     const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
     ['fd-acc','fd-int-acc','fd-src-acc'].forEach(id2=>{const e=document.getElementById(id2);if(e)e.innerHTML=opts;});
     const sd=document.getElementById('fd-start');if(sd)sd.value=todayISO();
