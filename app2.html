@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v88';
+const CURRENT_VERSION = 'v89';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v88</title>
+<title>Artha-Sangraha v89</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -5316,31 +5316,37 @@ function buildPnLHTML(){
 
 function buildTrialBalanceHTML(){
   const groups={asset:'Assets',liability:'Liabilities',equity:'Equity',income:'Income',expense:'Expenses'};
-  let totalDr=0,totalCr=0,rows='';
+  let totalDr=0,totalCr=0,totalDrINR=0,totalCrINR=0,rows='';
   Object.entries(groups).forEach(([cls,label])=>{
     const accs=accounts.filter(a=>a.classification===cls);
     if(!accs.length)return;
     rows+=`<tr class="group-row"><td colspan="3">${label}</td></tr>`;
     accs.forEach(a=>{
       const bal=calcBalance(a);
+      const balINR=toINR(bal,a.currency||'INR');
       const balD=convertToDisplay(bal,a.currency||'INR');
       const isDebitNormal=['asset','expense'].includes(cls);
       const dr=isDebitNormal&&balD>0?balD:(!isDebitNormal&&balD<0?Math.abs(balD):0);
       const cr=!isDebitNormal&&balD>0?balD:(isDebitNormal&&balD<0?Math.abs(balD):0);
-      totalDr+=dr;totalCr+=cr;
+      const drINR=isDebitNormal&&balINR>0?balINR:0;
+      const crINR=!isDebitNormal&&balINR>0?balINR:0;
+      totalDr+=dr;totalCr+=cr;totalDrINR+=drINR;totalCrINR+=crINR;
       rows+=`<tr><td style="padding-left:20px">${a.name}${a.currency!==displayCurrency?` <span style="font-size:0.7em;opacity:0.6">(${a.currency})</span>`:''}</td><td style="text-align:right;color:var(--green)">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent)">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
     });
   });
-  const balanced=Math.abs(totalDr-totalCr)<1;
+  // Use INR totals for balance check to avoid currency conversion rounding errors
+  const balanced=Math.abs(totalDrINR-totalCrINR)<1;
   return`<div class="card" style="margin-bottom:14px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
-      <div><div class="stat-label">Total Debits (Dr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(totalDr,displayCurrency)}</div></div>
-      <div><div class="stat-label">Total Credits (Cr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalCr,displayCurrency)}</div></div>
+      <div><div class="stat-label">Total Debits (Assets + Expenses)</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(totalDr,displayCurrency)}</div></div>
+      <div><div class="stat-label">Total Credits (Liabilities + Income + Equity)</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalCr,displayCurrency)}</div></div>
     </div>
-    <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDr-totalCr),displayCurrency)}</div>
+    <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">
+      ${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDrINR-totalCrINR),'INR')+' (INR basis)'}
+    </div>
   </div>
   <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:320px">
-    <thead><tr><th>Account</th><th style="text-align:right">Dr</th><th style="text-align:right">Cr</th></tr></thead>
+    <thead><tr><th>Account</th><th style="text-align:right">Dr (${displayCurrency})</th><th style="text-align:right">Cr (${displayCurrency})</th></tr></thead>
     <tbody>${rows}<tr class="total-row"><td><b>Total</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalDr,displayCurrency)}</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(totalCr,displayCurrency)}</b></td></tr></tbody>
   </table></div></div>`;
 }
