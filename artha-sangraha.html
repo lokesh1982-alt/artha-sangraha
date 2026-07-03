@@ -20,7 +20,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v68</title>
+<title>Artha-Sangraha v69</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -370,6 +370,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="sidebar-label">Investments</div>
         <button class="nav-item" onclick="switchSection('portfolio',this)"><span class="nav-icon">💼</span>Portfolio</button>
         <button class="nav-item" onclick="switchSection('fd',this)"><span class="nav-icon">🔒</span>Fixed Deposits</button>
+        <button class="nav-item" onclick="switchSection('wallets',this)"><span class="nav-icon">👛</span>Digital Wallets</button>
         <button class="nav-item" onclick="switchSection('trading',this)"><span class="nav-icon">📓</span>Trading Journal</button>
       </div>
       <div class="sidebar-section">
@@ -498,6 +499,16 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
         <div id="fd-due" style="margin-bottom:12px"></div>
         <div id="fd-content"></div>
+      </div>
+
+      <!-- DIGITAL WALLETS -->
+      <div class="section" id="sec-wallets">
+        <div class="page-header">
+          <div><div class="page-title">👛 Digital Wallets</div><div class="page-sub">Paytm, PhonePe, Amazon Pay & more</div></div>
+          <button class="btn-sm" onclick="openAddWalletModal()">+ Add Wallet</button>
+        </div>
+        <div id="wallets-due" style="margin-bottom:12px"></div>
+        <div id="wallets-content"></div>
       </div>
 
       <!-- TRADING JOURNAL -->
@@ -996,6 +1007,97 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px" id="txn-detail-actions"></div>
+  </div>
+</div>
+
+<!-- ADD WALLET MODAL -->
+<div class="modal-overlay" id="add-wallet-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="wallet-modal-title">Add Digital Wallet</div>
+      <button class="btn-close" onclick="closeModal('add-wallet-modal')">✕</button>
+    </div>
+    <div class="form-group"><label class="form-label">Wallet Name *</label>
+      <input class="form-input" id="wallet-name" placeholder="e.g. Paytm, PhonePe, Amazon Pay"/></div>
+    <div class="form-group"><label class="form-label">Wallet Type</label>
+      <select class="form-select" id="wallet-type">
+        <option value="paytm">Paytm</option>
+        <option value="phonepe">PhonePe</option>
+        <option value="amazonpay">Amazon Pay</option>
+        <option value="googlepay">Google Pay</option>
+        <option value="mobikwik">MobiKwik</option>
+        <option value="freecharge">FreeCharge</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Opening Balance</label>
+      <input class="form-input" type="number" id="wallet-balance" placeholder="0.00"/></div>
+    <div class="form-group"><label class="form-label">Opening Date</label>
+      <input class="form-input" type="date" id="wallet-date"/></div>
+    <div class="form-group"><label class="form-label">Notes</label>
+      <input class="form-input" id="wallet-notes" placeholder="Mobile number linked, etc."/></div>
+    <button class="btn-primary" onclick="saveWallet()">✅ Add Wallet</button>
+  </div>
+</div>
+
+<!-- WALLET ADD MONEY MODAL -->
+<div class="modal-overlay" id="wallet-addmoney-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="wallet-addmoney-title">Add Money</div>
+      <button class="btn-close" onclick="closeModal('wallet-addmoney-modal')">✕</button>
+    </div>
+    <div id="wallet-addmoney-info" style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px;margin-bottom:14px;font-size:0.85rem"></div>
+    <div class="form-group"><label class="form-label">Amount *</label>
+      <input class="form-input" type="number" id="wallet-addmoney-amount" placeholder="0.00"/></div>
+    <div class="form-group"><label class="form-label">Date *</label>
+      <input class="form-input" type="date" id="wallet-addmoney-date"/></div>
+    <div class="form-group"><label class="form-label">Source Account * <span style="font-size:0.72rem;color:var(--text2)">(bank/UPI account)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="wallet-src-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('wallet-src')" onfocus="openAccountSearch('wallet-src')" onblur="setTimeout(()=>closeAccountSearch('wallet-src'),200)"/>
+        <select class="form-select" id="wallet-src" style="display:none"></select>
+        <div class="search-select-dropdown" id="wallet-src-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label>
+      <input class="form-input" id="wallet-addmoney-notes" placeholder="Optional"/></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1;background:var(--green)" onclick="walletAddMoney(false)">💚 Add Money</button>
+      <button class="btn-outline" style="flex:1" onclick="walletAddMoney(true)">Add & Attach 📎</button>
+    </div>
+  </div>
+</div>
+
+<!-- WALLET SPEND MODAL -->
+<div class="modal-overlay" id="wallet-spend-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="wallet-spend-title">Spend from Wallet</div>
+      <button class="btn-close" onclick="closeModal('wallet-spend-modal')">✕</button>
+    </div>
+    <div id="wallet-spend-info" style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px;margin-bottom:14px;font-size:0.85rem"></div>
+    <div class="form-group"><label class="form-label">Amount *</label>
+      <input class="form-input" type="number" id="wallet-spend-amount" placeholder="0.00"/></div>
+    <div class="form-group"><label class="form-label">Date *</label>
+      <input class="form-input" type="date" id="wallet-spend-date"/></div>
+    <div class="form-group"><label class="form-label">Category *</label>
+      <select class="form-select" id="wallet-spend-category">
+        <option value="">— Select Category —</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Expense Account * <span style="font-size:0.72rem;color:var(--text2)">(what you paid for)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="wallet-exp-search" placeholder="Search expense account..." autocomplete="off" oninput="filterAccountSearch('wallet-exp')" onfocus="openAccountSearch('wallet-exp')" onblur="setTimeout(()=>closeAccountSearch('wallet-exp'),200)"/>
+        <select class="form-select" id="wallet-exp" style="display:none"></select>
+        <div class="search-select-dropdown" id="wallet-exp-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label>
+      <input class="form-input" id="wallet-spend-desc" placeholder="What did you pay for?"/></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1;background:var(--red)" onclick="walletSpend(false)">💸 Record Spend</button>
+      <button class="btn-outline" style="flex:1" onclick="walletSpend(true)">Spend & Attach 📎</button>
+    </div>
   </div>
 </div>
 
@@ -2463,6 +2565,7 @@ function switchSection(name,btn){
   if(name==='pnl'){currentReportTab='pnl';switchSection('reports',null);return;}
   if(name==='budget')renderBudget();
   if(name==='portfolio')renderPortfolio();
+  if(name==='wallets'){renderWallets();}
   if(name==='fd'){renderFD();}
   if(name==='trading')renderTrading();
   if(name==='loans'){switchSection('scheduler',null);return;}
@@ -2536,6 +2639,7 @@ function renderDashboard(){
       {icon:'🏦',label:'Accounts',fn:"switchSection('accounts',null)"},
       {icon:'💳',label:'Transactions',fn:"switchSection('transactions',null)"},
       {icon:'📊',label:'Reports',fn:"switchSection('reports',null)"},
+      {icon:'👛',label:'Wallets',fn:"switchSection('wallets',null)"},
       {icon:'📓',label:'Trading',fn:"switchSection('trading',null)"},
       {icon:'🎯',label:'Budget',fn:"switchSection('budget',null)"},
       {icon:'💼',label:'Portfolio',fn:"switchSection('portfolio',null)"},
@@ -3770,6 +3874,230 @@ function renderScheduleDetail(schedId){
       </div>
     </div>
     ${tableHTML}`;
+}
+
+// ═══════════════════════════════
+//  DIGITAL WALLETS
+// ═══════════════════════════════
+let currentWalletId=null;
+
+const walletIcons={
+  paytm:'💙',phonepe:'💜',amazonpay:'🧡',googlepay:'🔵',
+  mobikwik:'🟢',freecharge:'🟠',other:'👛'
+};
+
+function openAddWalletModal(){
+  ['wallet-name','wallet-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const bal=document.getElementById('wallet-balance');if(bal)bal.value='';
+  const dt=document.getElementById('wallet-date');if(dt)dt.value=todayISO();
+  const t=document.getElementById('wallet-type');if(t)t.value='paytm';
+  document.getElementById('wallet-modal-title').textContent='Add Digital Wallet';
+  openModal('add-wallet-modal');
+}
+
+async function saveWallet(){
+  const name=document.getElementById('wallet-name').value.trim();
+  const type=document.getElementById('wallet-type').value;
+  const balance=parseFloat(document.getElementById('wallet-balance').value||0);
+  const date=document.getElementById('wallet-date').value||todayISO();
+  const notes=document.getElementById('wallet-notes').value.trim();
+  if(!name){showToast('Please enter wallet name.');return;}
+  // Create as a cash-type asset account with wallet group
+  const{data,error}=await sb.from('accounts').insert({
+    user_id:currentUser.id,name,type:'cash',classification:'asset',
+    opening_balance:balance,currency:'INR',opening_date:date,
+    notes:`wallet:${type}${notes?' | '+notes:''}`,
+    group_id:null
+  }).select().single();
+  if(error){showToast('Error: '+error.message);return;}
+  accounts.push(data);
+  if(balance>0){
+    await ensureOpeningBalanceJournal({id:data.id,classification:'asset',opening_balance:balance,currency:'INR',opening_date:date});
+  }
+  closeModal('add-wallet-modal');
+  showToast(`${name} wallet added! ✅`);
+  await loadAllData();renderWallets();renderDashboard();
+}
+
+function openWalletAddMoney(accId){
+  currentWalletId=accId;
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  const bal=calcBalance(acc);
+  const info=document.getElementById('wallet-addmoney-info');
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b style="color:var(--accent)">${fmt(bal,'INR')}</b>`;
+  const title=document.getElementById('wallet-addmoney-title');
+  if(title)title.textContent=`Add Money — ${acc.name}`;
+  ['wallet-addmoney-amount','wallet-addmoney-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const dt=document.getElementById('wallet-addmoney-date');if(dt)dt.value=todayISO();
+  const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  const src=document.getElementById('wallet-src');if(src)src.innerHTML=opts;
+  const ss=document.getElementById('wallet-src-search');if(ss)ss.value='';
+  document.getElementById('wallet-addmoney-modal').classList.add('open');
+}
+
+async function walletAddMoney(attachAfter=false){
+  const acc=accounts.find(a=>a.id===currentWalletId);if(!acc)return;
+  const amount=parseFloat(document.getElementById('wallet-addmoney-amount').value||0);
+  const date=document.getElementById('wallet-addmoney-date').value;
+  const srcId=document.getElementById('wallet-src').value;
+  const notes=document.getElementById('wallet-addmoney-notes').value.trim();
+  if(!amount||!date||!srcId){showToast('Please fill amount, date and source account.');return;}
+  const{data,error}=await sb.from('transactions').insert({
+    user_id:currentUser.id,type:'transfer',date,amount,currency:'INR',
+    account_id:srcId,to_account_id:currentWalletId,
+    debit_account_id:currentWalletId,credit_account_id:srcId,
+    category:'Wallet Top-up',description:notes||`Add Money to ${acc.name}`
+  }).select().single();
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('wallet-addmoney-modal');
+  if(attachAfter&&data?.id){
+    showToast('Money added! Opening for attachment... 📎');
+    await openAttachAfterSave(data.id);
+  } else {
+    showToast(`₹${amount} added to ${acc.name} ✅`);
+    await loadAllData();
+  }
+  renderWallets();renderDashboard();
+}
+
+function openWalletSpend(accId){
+  currentWalletId=accId;
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  const bal=calcBalance(acc);
+  const info=document.getElementById('wallet-spend-info');
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Available Balance: <b style="color:var(--accent)">${fmt(bal,'INR')}</b>`;
+  const title=document.getElementById('wallet-spend-title');
+  if(title)title.textContent=`Spend — ${acc.name}`;
+  ['wallet-spend-amount','wallet-spend-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const dt=document.getElementById('wallet-spend-date');if(dt)dt.value=todayISO();
+  // Populate category dropdown
+  const catEl=document.getElementById('wallet-spend-category');
+  if(catEl)catEl.innerHTML='<option value="">— Select Category —</option>'+categories.filter(c=>c.type==='expense').map(c=>`<option value="${c.name}">${c.icon||''} ${c.name}</option>`).join('');
+  // Populate expense account dropdown
+  const opts=accounts.filter(a=>a.classification==='expense').map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  const exp=document.getElementById('wallet-exp');if(exp)exp.innerHTML=opts;
+  const es=document.getElementById('wallet-exp-search');if(es)es.value='';
+  document.getElementById('wallet-spend-modal').classList.add('open');
+}
+
+async function walletSpend(attachAfter=false){
+  const acc=accounts.find(a=>a.id===currentWalletId);if(!acc)return;
+  const amount=parseFloat(document.getElementById('wallet-spend-amount').value||0);
+  const date=document.getElementById('wallet-spend-date').value;
+  const category=document.getElementById('wallet-spend-category').value;
+  const expAccId=document.getElementById('wallet-exp').value;
+  const desc=document.getElementById('wallet-spend-desc').value.trim();
+  if(!amount||!date){showToast('Please fill amount and date.');return;}
+  const bal=calcBalance(acc);
+  if(amount>bal){showToast(`Insufficient balance! Available: ${fmt(bal,'INR')}`);return;}
+  // Journal: Dr Expense Account, Cr Wallet Account
+  const txnData={
+    user_id:currentUser.id,type:'expense',date,amount,currency:'INR',
+    account_id:currentWalletId,
+    debit_account_id:expAccId||currentWalletId,
+    credit_account_id:currentWalletId,
+    category:category||'Other',
+    description:desc||`${acc.name} Payment`
+  };
+  const{data,error}=await sb.from('transactions').insert(txnData).select().single();
+  if(error){showToast('Error: '+error.message);return;}
+  closeModal('wallet-spend-modal');
+  if(attachAfter&&data?.id){
+    showToast('Spend recorded! Opening for attachment... 📎');
+    await openAttachAfterSave(data.id);
+  } else {
+    showToast(`₹${amount} spend recorded ✅`);
+    await loadAllData();
+  }
+  renderWallets();renderDashboard();
+}
+
+async function deleteWallet(id){
+  if(!confirm('Delete this wallet? Transactions will remain.'))return;
+  await sb.from('accounts').delete().eq('id',id);
+  showToast('Wallet deleted.');
+  await loadAllData();renderWallets();renderDashboard();
+}
+
+function renderWallets(){
+  // Get all wallet accounts (cash type with wallet: in notes)
+  const walletAccs=accounts.filter(a=>a.type==='cash'&&a.notes?.startsWith('wallet:'));
+  const el=document.getElementById('wallets-content');if(!el)return;
+
+  if(!walletAccs.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">👛</div>
+      <div class="empty-text">No digital wallets yet.</div>
+      <button class="btn-sm" onclick="openAddWalletModal()">+ Add Wallet</button></div>`;
+    return;
+  }
+
+  const totalBal=walletAccs.reduce((s,a)=>s+calcBalance(a),0);
+  let html=`<div class="stat-card" style="margin-bottom:16px">
+    <div class="stat-label">Total Wallet Balance</div>
+    <div class="stat-val hide-figure" style="color:var(--accent)">${fmt(totalBal,'INR')}</div>
+  </div>`;
+
+  html+=walletAccs.map(acc=>{
+    const bal=calcBalance(acc);
+    const walletType=acc.notes?.split(':')[1]?.split('|')[0]?.trim()||'other';
+    const icon=walletIcons[walletType]||'👛';
+    // Recent transactions for this wallet
+    const recentTxns=transactions.filter(t=>
+      t.account_id===acc.id||t.to_account_id===acc.id||
+      t.debit_account_id===acc.id||t.credit_account_id===acc.id
+    ).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+    const hasAtt=recentTxns.some(t=>attachments.some(a=>a.transaction_id===t.id));
+
+    return`<div class="card" style="margin-bottom:12px">
+      <!-- Wallet Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:42px;height:42px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:1.4rem">${icon}</div>
+          <div>
+            <div style="font-size:0.95rem;font-weight:700">${acc.name}</div>
+            <div style="font-size:0.72rem;color:var(--text2)">${acc.notes?.split('|')[1]?.trim()||capitalize(walletType)}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(bal,'INR')}</div>
+          <div style="font-size:0.68rem;color:var(--text3)">Available</div>
+        </div>
+      </div>
+      <!-- Action Buttons -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button class="btn-sm" style="background:var(--green);padding:10px" onclick="openWalletAddMoney('${acc.id}')">
+          ➕ Add Money
+        </button>
+        <button class="btn-sm" style="background:var(--red);padding:10px" onclick="openWalletSpend('${acc.id}')">
+          💸 Spend
+        </button>
+      </div>
+      <!-- Recent Transactions -->
+      ${recentTxns.length?`<div style="border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:0.75rem;color:var(--text2);font-weight:600;margin-bottom:6px">Recent Transactions</div>
+        ${recentTxns.map(t=>{
+          const isCredit=t.debit_account_id===acc.id||t.to_account_id===acc.id;
+          const hasAttachment=attachments.some(a=>a.transaction_id===t.id);
+          return`<div onclick="window.showTxnDetail('${t.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.8rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description||t.category||'—'}${hasAttachment?' 📎':''}</div>
+              <div style="font-size:0.68rem;color:var(--text3)">${formatDate(t.date)} · ${t.category||''}</div>
+            </div>
+            <div style="font-size:0.85rem;font-weight:700;color:${isCredit?'var(--green)':'var(--red)'}">
+              ${isCredit?'+':'-'}${fmt(t.amount,'INR')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`:''}
+      <!-- Footer actions -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <button class="btn-outline" style="font-size:0.75rem" onclick="openAccountLedger('${acc.id}')">📋 Full Ledger</button>
+        <button class="btn-danger" style="font-size:0.72rem;padding:4px 8px" onclick="deleteWallet('${acc.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=html;
 }
 
 // ═══════════════════════════════
