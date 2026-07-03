@@ -20,7 +20,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v71</title>
+<title>Artha-Sangraha v72</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -999,7 +999,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div style="font-size:0.82rem;font-weight:600">📎 Attachments</div>
         <label style="cursor:pointer">
           <span class="btn-outline" style="padding:4px 10px;font-size:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);display:inline-block">+ Attach</span>
-          <input type="file" id="attachment-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="uploadAttachment(this)"/>
+          <input type="file" id="attachment-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" multiple onchange="uploadAttachment(this)"/>
         </label>
       </div>
       <div id="attachments-list" style="min-height:20px">
@@ -1220,7 +1220,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div style="font-size:0.82rem;font-weight:600">📎 Documents</div>
       <label style="cursor:pointer">
         <span class="btn-outline" style="padding:4px 10px;font-size:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);display:inline-block">+ Attach</span>
-        <input type="file" id="acc-attachment-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="uploadAccountAttachment(this)"/>
+        <input type="file" id="acc-attachment-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" multiple onchange="uploadAccountAttachment(this)"/>
       </label>
     </div>
     <div id="acc-attachments-list">
@@ -2310,27 +2310,29 @@ function renderAccAttachmentsList(accId){
 }
 
 async function uploadAccountAttachment(input){
-  const file=input.files[0];
-  if(!file)return;
-  if(file.size>5242880){showToast('File too large! Max 5MB.');input.value='';return;}
+  const files=Array.from(input.files);
+  if(!files.length)return;
   const accId=currentAccAttachId;
   if(!accId)return;
-  showToast('Uploading... ⏳');
-  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const filePath=`${currentUser.id}/acc_${accId}/${Date.now()}_${safeName}`;
-  const{error:upErr}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
-  if(upErr){showToast('Upload failed: '+upErr.message);input.value='';return;}
-  // Store with 'acc_' prefix in transaction_id to distinguish from txn attachments
-  const{error:dbErr}=await sb.from('transaction_attachments').insert({
-    user_id:currentUser.id,transaction_id:'acc_'+accId,
-    file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
-  });
-  if(dbErr){showToast('Error saving: '+dbErr.message);input.value='';return;}
+  let uploaded=0;
+  for(const file of files){
+    if(file.size>5242880){showToast(`${file.name} too large! Skipped.`);continue;}
+    showToast(`Uploading ${uploaded+1}/${files.length}... ⏳`);
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const filePath=`${currentUser.id}/acc_${accId}/${Date.now()}_${safeName}`;
+    const{error:upErr}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
+    if(upErr){showToast(`Failed: ${file.name}`);continue;}
+    const{error:dbErr}=await sb.from('transaction_attachments').insert({
+      user_id:currentUser.id,transaction_id:'acc_'+accId,
+      file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
+    });
+    if(!dbErr)uploaded++;
+  }
   input.value='';
   const{data}=await sb.from('transaction_attachments').select('*').eq('user_id',currentUser.id).throwOnError().then(r=>r).catch(()=>({data:[]}));
   attachments=data||[];
   renderAccAttachmentsList(accId);
-  showToast('Document uploaded! ✅');
+  showToast(`${uploaded} file${uploaded!==1?'s':''} uploaded! ✅`);
 }
 
 async function deleteAccAttachment(attId,filePath){
@@ -3057,26 +3059,29 @@ function renderAttachmentsList(txnId){
 }
 
 async function uploadAttachment(input){
-  const file=input.files[0];
-  if(!file)return;
-  if(file.size>5242880){showToast('File too large! Max 5MB.');input.value='';return;}
+  const files=Array.from(input.files);
+  if(!files.length)return;
   const txnId=window._currentTxnId;
   if(!txnId){showToast('No transaction selected.');return;}
-  showToast('Uploading... ⏳');
-  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const filePath=`${currentUser.id}/${txnId}/${Date.now()}_${safeName}`;
-  const{error:upErr}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
-  if(upErr){showToast('Upload failed: '+upErr.message);input.value='';return;}
-  const{error:dbErr}=await sb.from('transaction_attachments').insert({
-    user_id:currentUser.id,transaction_id:txnId,
-    file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
-  });
-  if(dbErr){showToast('Error saving: '+dbErr.message);input.value='';return;}
+  let uploaded=0;
+  for(const file of files){
+    if(file.size>5242880){showToast(`${file.name} too large! Max 5MB. Skipped.`);continue;}
+    showToast(`Uploading ${uploaded+1}/${files.length}... ⏳`);
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const filePath=`${currentUser.id}/${txnId}/${Date.now()}_${safeName}`;
+    const{error:upErr}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
+    if(upErr){showToast(`Failed: ${file.name} — ${upErr.message}`);continue;}
+    const{error:dbErr}=await sb.from('transaction_attachments').insert({
+      user_id:currentUser.id,transaction_id:txnId,
+      file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
+    });
+    if(!dbErr)uploaded++;
+  }
   input.value='';
   const{data}=await sb.from('transaction_attachments').select('*').eq('user_id',currentUser.id).throwOnError().then(r=>r).catch(()=>({data:[]}));
   attachments=data||[];
   renderAttachmentsList(txnId);
-  showToast('Attachment uploaded! ✅');
+  showToast(`${uploaded} file${uploaded!==1?'s':''} uploaded! ✅`);
 }
 
 async function viewAttachment(filePath){
