@@ -2,12 +2,18 @@
 <html lang="en">
 <head>
 <script>
-// Aggressive cache buster - runs before anything else
+// Version check - forces reload if cached version doesn't match
+const CURRENT_VERSION = 'v73';
+if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
+  sessionStorage.setItem('version_checked','1');
+  location.reload(true);
+}
+// Aggressive cache buster
 (function(){
   if('serviceWorker' in navigator){
     navigator.serviceWorker.getRegistrations().then(regs=>{
       regs.forEach(r=>r.unregister());
-      if(regs.length>0)location.reload();
+      if(regs.length>0){sessionStorage.removeItem('version_checked');location.reload(true);}
     });
   }
   caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
@@ -20,7 +26,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v72</title>
+<title>Artha-Sangraha v73</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
