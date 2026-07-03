@@ -8,7 +8,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v65</title>
+<title>Artha-Sangraha v68</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -357,11 +357,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="sidebar-section">
         <div class="sidebar-label">Investments</div>
         <button class="nav-item" onclick="switchSection('portfolio',this)"><span class="nav-icon">💼</span>Portfolio</button>
+        <button class="nav-item" onclick="switchSection('fd',this)"><span class="nav-icon">🔒</span>Fixed Deposits</button>
         <button class="nav-item" onclick="switchSection('trading',this)"><span class="nav-icon">📓</span>Trading Journal</button>
       </div>
       <div class="sidebar-section">
         <div class="sidebar-label">Other</div>
-        <button class="nav-item" onclick="switchSection('loans',this)"><span class="nav-icon">🏛️</span>Loans & EMI</button>
         <button class="nav-item" onclick="switchSection('scheduler',this)"><span class="nav-icon">📅</span>Scheduler</button>
         <button class="nav-item" onclick="switchSection('settings',this)"><span class="nav-icon">⚙️</span>Settings</button>
       </div>
@@ -478,7 +478,18 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div id="portfolio-content"></div>
       </div>
 
+      <!-- FIXED DEPOSITS -->
+      <div class="section" id="sec-fd">
+        <div class="page-header">
+          <div><div class="page-title">🔒 Fixed Deposits</div><div class="page-sub">Track FDs, maturity & interest</div></div>
+          <button class="btn-sm" onclick="openModal('add-fd-modal')">+ Add FD</button>
+        </div>
+        <div id="fd-due" style="margin-bottom:12px"></div>
+        <div id="fd-content"></div>
+      </div>
+
       <!-- TRADING JOURNAL -->
+
       <div class="section" id="sec-trading">
         <div class="page-header">
           <div><div class="page-title">Trading Journal</div><div class="page-sub">Track your trading accounts & trades</div></div>
@@ -503,14 +514,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
 
       <!-- LOANS -->
-      <div class="section" id="sec-loans">
-        <div class="page-header">
-          <div><div class="page-title">Loans & EMI</div></div>
-          <button class="btn-sm" onclick="openModal('add-loan-modal')">+ Add Loan</button>
-        </div>
-        <div id="loans-content"></div>
-      </div>
-
       <!-- SCHEDULER -->
       <div class="section" id="sec-scheduler">
         <div class="page-header">
@@ -759,8 +762,8 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="txn-desc" placeholder="What was this for?"/></div>
     <div style="display:flex;gap:8px">
-      <button class="btn-primary" style="flex:1" onclick="saveTxn(false)">Save</button>
-      <button class="btn-outline" style="flex:1" onclick="saveTxn(true)">Save & Attach 📎</button>
+      <button class="btn-primary" style="flex:1" onclick="saveTxn(false)">💾 Save</button>
+      <button class="btn-outline" style="flex:1" onclick="saveTxn(true)">💾 Save & Attach 📎</button>
     </div>
   </div>
 </div>
@@ -830,7 +833,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </select>
     </div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="acc-notes" placeholder="Bank name, account number, etc."/></div>
-    <button class="btn-primary" onclick="saveAccount()">Save Account</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1" onclick="saveAccount(false)">Save Account</button>
+      <button class="btn-outline" style="flex:1" onclick="saveAccount(true)">Save & Attach 📎</button>
+    </div>
   </div>
 </div>
 
@@ -981,6 +987,137 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 </div>
 
+<!-- ADD FD MODAL -->
+<div class="modal-overlay" id="add-fd-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="fd-modal-title">Add Fixed Deposit</div>
+      <button class="btn-close" onclick="closeModal('add-fd-modal')">✕</button>
+    </div>
+    <div class="form-group"><label class="form-label">FD Name *</label>
+      <input class="form-input" id="fd-name" placeholder="e.g. SBI FD - April 2026"/></div>
+    <div class="form-group"><label class="form-label">Bank / Institution *</label>
+      <input class="form-input" id="fd-bank" placeholder="e.g. SBI, HDFC, Post Office"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Principal Amount *</label>
+        <input class="form-input" type="number" id="fd-principal" placeholder="0.00" oninput="calcFDPreview()"/></div>
+      <div class="form-group"><label class="form-label">Annual Rate % *</label>
+        <input class="form-input" type="number" id="fd-rate" placeholder="7.5" step="0.01" oninput="calcFDPreview()"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date *</label>
+        <input class="form-input" type="date" id="fd-start" oninput="calcFDPreview()"/></div>
+      <div class="form-group"><label class="form-label">Maturity Date *</label>
+        <input class="form-input" type="date" id="fd-maturity" oninput="calcFDPreview()"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Maturity Amount</label>
+      <input class="form-input" type="number" id="fd-maturity-amount" placeholder="Auto-calculated or enter manually"/></div>
+    <div id="fd-preview" style="background:var(--accent-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div><div style="font-size:0.7rem;color:var(--text2)">Interest</div><div style="font-weight:700;color:var(--green)" id="fd-prev-interest">—</div></div>
+        <div><div style="font-size:0.7rem;color:var(--text2)">Tenure</div><div style="font-weight:700" id="fd-prev-tenure">—</div></div>
+        <div><div style="font-size:0.7rem;color:var(--text2)">Maturity</div><div style="font-weight:700;color:var(--accent)" id="fd-prev-maturity">—</div></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">FD Account * <span style="font-size:0.72rem;color:var(--text2)">(asset account for this FD)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="fd-acc-search" placeholder="Search FD account..." autocomplete="off" oninput="filterAccountSearch('fd-acc')" onfocus="openAccountSearch('fd-acc')" onblur="setTimeout(()=>closeAccountSearch('fd-acc'),200)"/>
+        <select class="form-select" id="fd-acc" style="display:none"></select>
+        <div class="search-select-dropdown" id="fd-acc-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Interest Account * <span style="font-size:0.72rem;color:var(--text2)">(income account)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="fd-int-acc-search" placeholder="Search interest account..." autocomplete="off" oninput="filterAccountSearch('fd-int-acc')" onfocus="openAccountSearch('fd-int-acc')" onblur="setTimeout(()=>closeAccountSearch('fd-int-acc'),200)"/>
+        <select class="form-select" id="fd-int-acc" style="display:none"></select>
+        <div class="search-select-dropdown" id="fd-int-acc-dropdown"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Source Account <span style="font-size:0.72rem;color:var(--text2)">(where FD funds came from)</span></label>
+      <div class="search-select-wrap">
+        <input class="form-input" id="fd-src-acc-search" placeholder="Search source account..." autocomplete="off" oninput="filterAccountSearch('fd-src-acc')" onfocus="openAccountSearch('fd-src-acc')" onblur="setTimeout(()=>closeAccountSearch('fd-src-acc'),200)"/>
+        <select class="form-select" id="fd-src-acc" style="display:none"></select>
+        <div class="search-select-dropdown" id="fd-src-acc-dropdown"></div>
+      </div>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+      <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px">📄 FD Certificate (optional)</div>
+      <input type="file" class="form-input" id="fd-cert-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:8px"/>
+      <div id="fd-cert-preview" style="display:none;margin-top:6px;font-size:0.78rem;color:var(--green)"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label>
+      <input class="form-input" id="fd-notes" placeholder="FD number, branch, etc."/></div>
+    <button class="btn-primary" onclick="saveFD()">✅ Create FD</button>
+  </div>
+</div>
+
+<!-- FD MATURITY MODAL -->
+<div class="modal-overlay" id="fd-maturity-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title">FD Maturity Action</div>
+      <button class="btn-close" onclick="closeModal('fd-maturity-modal')">✕</button>
+    </div>
+    <div id="fd-maturity-info" style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:0.85rem"></div>
+    <div class="form-group"><label class="form-label">Actual Maturity Amount *</label>
+      <input class="form-input" type="number" id="fd-actual-maturity" placeholder="0.00"/></div>
+    <div class="form-group"><label class="form-label">Maturity Date</label>
+      <input class="form-input" type="date" id="fd-actual-date"/></div>
+    <div class="form-group"><label class="form-label">Action *</label>
+      <select class="form-select" id="fd-maturity-action" onchange="onFDMaturityActionChange()">
+        <option value="">— Select Action —</option>
+        <option value="close">🔓 Close FD — Transfer to bank account</option>
+        <option value="renew">🔄 Renew FD — Reinvest for another term</option>
+      </select>
+    </div>
+    <div id="fd-close-fields" style="display:none">
+      <div class="form-group"><label class="form-label">Destination Account * <span style="font-size:0.72rem;color:var(--text2)">(where maturity amount goes)</span></label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="fd-dest-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('fd-dest')" onfocus="openAccountSearch('fd-dest')" onblur="setTimeout(()=>closeAccountSearch('fd-dest'),200)"/>
+          <select class="form-select" id="fd-dest" style="display:none"></select>
+          <div class="search-select-dropdown" id="fd-dest-dropdown"></div>
+        </div>
+      </div>
+    </div>
+    <div id="fd-renew-fields" style="display:none">
+      <div style="background:var(--accent-light);border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;font-size:0.8rem">
+        🔄 Renewal: Posts interest income for current term and sets new maturity details.
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">New Maturity Date *</label>
+          <input class="form-input" type="date" id="fd-new-maturity"/></div>
+        <div class="form-group"><label class="form-label">New Maturity Amount *</label>
+          <input class="form-input" type="number" id="fd-new-maturity-amount" placeholder="0.00"/></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="confirmFDMaturity()">✅ Confirm</button>
+  </div>
+</div>
+
+<!-- ACCOUNT ATTACHMENT MODAL -->
+<div class="modal-overlay" id="account-attach-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="acc-attach-modal-title">Account Documents</div>
+      <button class="btn-close" onclick="closeModal('account-attach-modal')">✕</button>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem" id="acc-attach-info"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:0.82rem;font-weight:600">📎 Documents</div>
+      <label style="cursor:pointer">
+        <span class="btn-outline" style="padding:4px 10px;font-size:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);display:inline-block">+ Attach</span>
+        <input type="file" id="acc-attachment-input" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="display:none" onchange="uploadAccountAttachment(this)"/>
+      </label>
+    </div>
+    <div id="acc-attachments-list">
+      <div style="font-size:0.78rem;color:var(--text3)">No documents yet.</div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn-outline" style="width:100%" onclick="closeModal('account-attach-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- ACCOUNT LEDGER MODAL -->
 <div class="modal-overlay" id="account-ledger-modal">
   <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
@@ -1090,35 +1227,65 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 
 <!-- ADD SCHEDULE MODAL -->
 <div class="modal-overlay" id="add-schedule-modal">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:500px">
     <div class="modal-header">
       <div class="modal-title" id="schedule-modal-title">New Schedule</div>
-      <button class="btn-close" onclick="closeModal('add-schedule-modal')">✕</button>
+      <button class="btn-close" onclick="closeModal('add-schedule-modal')">&#10005;</button>
     </div>
-    <!-- Type selector -->
     <div class="form-group">
       <label class="form-label">Schedule Type *</label>
       <select class="form-select" id="sch-type" onchange="onScheduleTypeChange()">
-        <option value="emi">🏛️ EMI (Loan repayment)</option>
-        <option value="emi-upload">📊 EMI (Upload schedule)</option>
-        <option value="sip">📈 SIP (Systematic Investment)</option>
-        <option value="swp">📉 SWP (Systematic Withdrawal)</option>
-        <option value="recurring">🔄 Recurring Entry</option>
+        <option value="emi">&#127963; EMI — Auto Calculate</option>
+        <option value="emi-upload">&#128202; EMI — Upload Schedule</option>
+        <option value="sip">&#128200; SIP (Systematic Investment Plan)</option>
+        <option value="swp">&#128201; SWP (Systematic Withdrawal Plan)</option>
+        <option value="recurring">&#128260; Recurring Entry</option>
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Name *</label>
-      <input class="form-input" id="sch-name" placeholder="e.g. Home Loan EMI, Nifty SIP"/>
+      <input class="form-input" id="sch-name" placeholder="e.g. Home Loan, Nifty50 SIP"/>
     </div>
-    <!-- EMI fields -->
+    <!-- EMI AUTO -->
     <div id="sch-emi-fields">
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;font-size:0.78rem;color:var(--text2)">
+        &#128161; First create the Loan Account in Accounts section, then set up EMI here.
+      </div>
+      <div class="form-group"><label class="form-label">Loan Account * <span style="font-size:0.72rem;color:var(--text2)">(liability account)</span></label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-loan-acc-search" placeholder="Search loan account..." autocomplete="off" oninput="filterAccountSearch('sch-loan-acc')" onfocus="openAccountSearch('sch-loan-acc')" onblur="setTimeout(()=>closeAccountSearch('sch-loan-acc'),200)"/>
+          <select class="form-select" id="sch-loan-acc" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-loan-acc-dropdown"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Source Account * <span style="font-size:0.72rem;color:var(--text2)">(bank account EMI debited from)</span></label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-src-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-src')" onfocus="openAccountSearch('sch-src')" onblur="setTimeout(()=>closeAccountSearch('sch-src'),200)"/>
+          <select class="form-select" id="sch-src" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-src-dropdown"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Interest Account * <span style="font-size:0.72rem;color:var(--text2)">(expense account)</span></label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-int-search" placeholder="Search interest account..." autocomplete="off" oninput="filterAccountSearch('sch-int')" onfocus="openAccountSearch('sch-int')" onblur="setTimeout(()=>closeAccountSearch('sch-int'),200)"/>
+          <select class="form-select" id="sch-int" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-int-dropdown"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Commission Account <span style="font-size:0.72rem;color:var(--text2)">(optional)</span></label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-comm-search" placeholder="Optional..." autocomplete="off" oninput="filterAccountSearch('sch-comm')" onfocus="openAccountSearch('sch-comm')" onblur="setTimeout(()=>closeAccountSearch('sch-comm'),200)"/>
+          <select class="form-select" id="sch-comm" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-comm-dropdown"></div>
+        </div>
+      </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Principal Amount *</label><input class="form-input" type="number" id="sch-principal" placeholder="0.00" oninput="calcEMIPreview()"/></div>
-        <div class="form-group"><label class="form-label">Annual Interest Rate % *</label><input class="form-input" type="number" id="sch-rate" placeholder="8.5" step="0.01" oninput="calcEMIPreview()"/></div>
+        <div class="form-group"><label class="form-label">Principal *</label><input class="form-input" type="number" id="sch-principal" placeholder="0.00" oninput="calcEMIPreview()"/></div>
+        <div class="form-group"><label class="form-label">Annual Rate % *</label><input class="form-input" type="number" id="sch-rate" placeholder="8.5" step="0.01" oninput="calcEMIPreview()"/></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Tenure (months) *</label><input class="form-input" type="number" id="sch-tenure" placeholder="120" oninput="calcEMIPreview()"/></div>
-        <div class="form-group"><label class="form-label">Start Date *</label><input class="form-input" type="date" id="sch-start-date" oninput="calcEMIPreview()"/></div>
+        <div class="form-group"><label class="form-label">First EMI Date *</label><input class="form-input" type="date" id="sch-start-date" oninput="calcEMIPreview()"/></div>
       </div>
       <div id="sch-emi-preview" style="background:var(--accent-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
@@ -1128,20 +1295,55 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
       </div>
     </div>
-    <!-- EMI Upload fields -->
+    <!-- EMI UPLOAD -->
     <div id="sch-emi-upload-fields" style="display:none">
-      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-        <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px">📥 Download Template First</div>
-        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px">Fill the Excel template with your EMI schedule and upload it back.</div>
-        <button class="btn-outline" onclick="downloadEMITemplate()" style="width:100%">⬇️ Download EMI Template (.csv)</button>
+      <div class="form-group"><label class="form-label">Loan Account *</label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-loan2-search" placeholder="Search loan account..." autocomplete="off" oninput="filterAccountSearch('sch-loan2')" onfocus="openAccountSearch('sch-loan2')" onblur="setTimeout(()=>closeAccountSearch('sch-loan2'),200)"/>
+          <select class="form-select" id="sch-loan2" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-loan2-dropdown"></div>
+        </div>
       </div>
-      <div class="form-group"><label class="form-label">Upload Filled Schedule *</label>
-        <input type="file" class="form-input" id="sch-emi-file" accept=".csv,.xlsx" style="padding:8px"/>
+      <div class="form-group"><label class="form-label">Source Account *</label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-src2-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-src2')" onfocus="openAccountSearch('sch-src2')" onblur="setTimeout(()=>closeAccountSearch('sch-src2'),200)"/>
+          <select class="form-select" id="sch-src2" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-src2-dropdown"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Interest Account *</label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-int2-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-int2')" onfocus="openAccountSearch('sch-int2')" onblur="setTimeout(()=>closeAccountSearch('sch-int2'),200)"/>
+          <select class="form-select" id="sch-int2" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-int2-dropdown"></div>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px">&#8681; Step 1: Download Template</div>
+        <button class="btn-outline" onclick="downloadEMITemplate()" style="width:100%;margin-bottom:6px">&#8595; Download EMI Template (.csv)</button>
+        <div style="font-size:0.72rem;color:var(--text2)">Columns: Month, Date, EMI Amount, Principal, Interest, Outstanding Balance</div>
+      </div>
+      <div class="form-group"><label class="form-label">Step 2: Upload Filled Schedule *</label>
+        <input type="file" class="form-input" id="sch-emi-file" accept=".csv" style="padding:8px" onchange="parseEMIFile(this)"/>
       </div>
       <div id="sch-upload-preview" style="display:none"></div>
     </div>
-    <!-- SIP/SWP fields -->
+    <!-- SIP/SWP -->
     <div id="sch-sip-swp-fields" style="display:none">
+      <div class="form-group"><label class="form-label" id="sch-inv-label">Investment Account *</label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-inv-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-inv')" onfocus="openAccountSearch('sch-inv')" onblur="setTimeout(()=>closeAccountSearch('sch-inv'),200)"/>
+          <select class="form-select" id="sch-inv" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-inv-dropdown"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Source/Destination Account *</label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-sipfrom-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-sipfrom')" onfocus="openAccountSearch('sch-sipfrom')" onblur="setTimeout(()=>closeAccountSearch('sch-sipfrom'),200)"/>
+          <select class="form-select" id="sch-sipfrom" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-sipfrom-dropdown"></div>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="sch-amount" placeholder="0.00"/></div>
         <div class="form-group"><label class="form-label">Frequency</label>
@@ -1158,8 +1360,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="form-group"><label class="form-label">End Date (optional)</label><input class="form-input" type="date" id="sch-sip-end"/></div>
       </div>
     </div>
-    <!-- Recurring fields -->
+    <!-- RECURRING -->
     <div id="sch-recurring-fields" style="display:none">
+      <div class="form-group"><label class="form-label">From Account *</label>
+        <div class="search-select-wrap">
+          <input class="form-input" id="sch-recfrom-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-recfrom')" onfocus="openAccountSearch('sch-recfrom')" onblur="setTimeout(()=>closeAccountSearch('sch-recfrom'),200)"/>
+          <select class="form-select" id="sch-recfrom" style="display:none"></select>
+          <div class="search-select-dropdown" id="sch-recfrom-dropdown"></div>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Amount *</label><input class="form-input" type="number" id="sch-rec-amount" placeholder="0.00"/></div>
         <div class="form-group"><label class="form-label">Frequency</label>
@@ -1173,35 +1382,19 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Start Date *</label><input class="form-input" type="date" id="sch-rec-start"/></div>
-        <div class="form-group"><label class="form-label">Transaction Type</label>
+        <div class="form-group"><label class="form-label">Type</label>
           <select class="form-select" id="sch-rec-txn-type">
             <option value="expense">Expense</option>
             <option value="income">Income</option>
-            <option value="transfer">Transfer</option>
           </select>
         </div>
-      </div>
-    </div>
-    <!-- Common fields -->
-    <div class="form-group"><label class="form-label">From Account * <span style="font-size:0.72rem;color:var(--text2)">(debit/source)</span></label>
-      <div class="search-select-wrap">
-        <input class="form-input" id="sch-from-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-from')" onfocus="openAccountSearch('sch-from')" onblur="setTimeout(()=>closeAccountSearch('sch-from'),200)"/>
-        <select class="form-select" id="sch-from" style="display:none"></select>
-        <div class="search-select-dropdown" id="sch-from-dropdown"></div>
-      </div>
-    </div>
-    <div class="form-group" id="sch-to-wrap"><label class="form-label">To Account <span style="font-size:0.72rem;color:var(--text2)">(credit/destination)</span></label>
-      <div class="search-select-wrap">
-        <input class="form-input" id="sch-to-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('sch-to')" onfocus="openAccountSearch('sch-to')" onblur="setTimeout(()=>closeAccountSearch('sch-to'),200)"/>
-        <select class="form-select" id="sch-to" style="display:none"></select>
-        <div class="search-select-dropdown" id="sch-to-dropdown"></div>
       </div>
     </div>
     <div class="form-group"><label class="form-label">Category</label>
       <select class="form-select" id="sch-category"><option value="">— Select —</option></select>
     </div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="sch-notes" placeholder="Optional"/></div>
-    <button class="btn-primary" onclick="saveSchedule()">Create Schedule</button>
+    <button class="btn-primary" onclick="saveSchedule()">&#10003; Create Schedule</button>
   </div>
 </div>
 
@@ -1841,7 +2034,7 @@ function editLoan(id){
   document.getElementById('loan-currency').value=l.currency||'INR';
 }
 
-async function updateAccount(){
+async function updateAccount(attachAfter=false){
   const a=accounts.find(x=>x.id===editingAccId);if(!a)return;
   const classification=document.getElementById('acc-classification').value;
   const isPnL=classification==='income'||classification==='expense';
@@ -1877,10 +2070,19 @@ async function updateAccount(){
     }
   }
   closeModal('add-account-modal');
+  const accId=editingAccId;
+  const accName=accounts.find(a=>a.id===editingAccId)?.name||'Account';
   editingAccId=null;
-  showToast('Account updated! ✅');
-  await loadAllData();renderAccounts();renderDashboard();
-  if(document.getElementById('sec-settings')?.classList.contains('active'))renderSettings();
+  if(attachAfter){
+    showToast('Account updated! Opening for documents... 📎');
+    await loadAllData();renderAccounts();renderDashboard();
+    if(document.getElementById('sec-settings')?.classList.contains('active'))renderSettings();
+    openAccountAttachModal(accId,accName);
+  } else {
+    showToast('Account updated! ✅');
+    await loadAllData();renderAccounts();renderDashboard();
+    if(document.getElementById('sec-settings')?.classList.contains('active'))renderSettings();
+  }
 }
 
 async function updateTxn(){
@@ -1910,6 +2112,7 @@ async function updateTxn(){
   };
   const{error}=await sb.from('transactions').update(updates).eq('id',editingTxnId).eq('user_id',currentUser.id);
   if(error){showToast('Error: '+error.message);return;}
+  const savedTxnId=editingTxnId;
   closeModal('add-txn-modal');
   editingTxnId=null;
   document.querySelector('#add-txn-modal .modal-title').textContent='Add Transaction';
@@ -1917,8 +2120,9 @@ async function updateTxn(){
   await loadAllData();
   renderTransactions();
   renderDashboard();
-  // If ledger is currently open, refresh it
-  if(currentLedgerAccId) openAccountLedger(currentLedgerAccId);
+  if(currentLedgerAccId)openAccountLedger(currentLedgerAccId);
+  // Reopen detail popup so user can attach documents
+  window.showTxnDetail(savedTxnId);
 }
 
 async function updateTrade(){
@@ -1957,8 +2161,72 @@ async function updateLoan(){
   showToast('Loan updated! ✅');
   await loadAllData();renderLoans();
 }
-// ═══════════════════════════════
-//  SEARCHABLE ACCOUNT SELECT
+// Account attachment functions
+let currentAccAttachId=null;
+
+function openAccountAttachModal(accId,accName){
+  currentAccAttachId=accId;
+  const info=document.getElementById('acc-attach-info');
+  if(info)info.innerHTML=`<b>${accName}</b>`;
+  const title=document.getElementById('acc-attach-modal-title');
+  if(title)title.textContent=`Documents — ${accName}`;
+  renderAccAttachmentsList(accId);
+  document.getElementById('account-attach-modal').classList.add('open');
+}
+
+function renderAccAttachmentsList(accId){
+  // Use transaction_attachments table with account_id as transaction_id field
+  const accAtts=attachments.filter(a=>a.transaction_id===('acc_'+accId));
+  const el=document.getElementById('acc-attachments-list');
+  if(!el)return;
+  if(!accAtts.length){el.innerHTML=`<div style="font-size:0.78rem;color:var(--text3)">No documents yet. Click + Attach to upload.</div>`;return;}
+  el.innerHTML=accAtts.map(att=>{
+    const icon=att.mime_type?.startsWith('image/')?'🖼️':att.mime_type==='application/pdf'?'📄':'📎';
+    const sizeKB=att.file_size?Math.round(att.file_size/1024)+'KB':'';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span>${icon}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:0.8rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${att.file_name}</div>
+      <div style="font-size:0.68rem;color:var(--text3)">${sizeKB}</div></div>
+      <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="viewAttachment('${att.file_path}')">👁 View</button>
+      <button class="btn-danger" style="padding:3px 7px;font-size:0.72rem" onclick="deleteAccAttachment('${att.id}','${att.file_path}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+async function uploadAccountAttachment(input){
+  const file=input.files[0];
+  if(!file)return;
+  if(file.size>5242880){showToast('File too large! Max 5MB.');input.value='';return;}
+  const accId=currentAccAttachId;
+  if(!accId)return;
+  showToast('Uploading... ⏳');
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const filePath=`${currentUser.id}/acc_${accId}/${Date.now()}_${safeName}`;
+  const{error:upErr}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
+  if(upErr){showToast('Upload failed: '+upErr.message);input.value='';return;}
+  // Store with 'acc_' prefix in transaction_id to distinguish from txn attachments
+  const{error:dbErr}=await sb.from('transaction_attachments').insert({
+    user_id:currentUser.id,transaction_id:'acc_'+accId,
+    file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
+  });
+  if(dbErr){showToast('Error saving: '+dbErr.message);input.value='';return;}
+  input.value='';
+  const{data}=await sb.from('transaction_attachments').select('*').eq('user_id',currentUser.id).throwOnError().then(r=>r).catch(()=>({data:[]}));
+  attachments=data||[];
+  renderAccAttachmentsList(accId);
+  showToast('Document uploaded! ✅');
+}
+
+async function deleteAccAttachment(attId,filePath){
+  if(!confirm('Delete this document?'))return;
+  await sb.storage.from('attachments').remove([filePath]);
+  await sb.from('transaction_attachments').delete().eq('id',attId);
+  attachments=attachments.filter(a=>a.id!==attId);
+  renderAccAttachmentsList(currentAccAttachId);
+  showToast('Deleted.');
+}
+
+
 // ═══════════════════════════════
 function buildAccountDropdown(selectId){
   const sel=document.getElementById(selectId);
@@ -2183,8 +2451,9 @@ function switchSection(name,btn){
   if(name==='pnl'){currentReportTab='pnl';switchSection('reports',null);return;}
   if(name==='budget')renderBudget();
   if(name==='portfolio')renderPortfolio();
+  if(name==='fd'){renderFD();}
   if(name==='trading')renderTrading();
-  if(name==='loans')renderLoans();
+  if(name==='loans'){switchSection('scheduler',null);return;}
   if(name==='reports'){currentReportTab='bs';renderReports();}
   if(name==='profile')renderProfile();
   if(name==='balance-sheet'){switchSection('reports',document.querySelector('.nav-item[onclick*="reports"]'));return;}
@@ -2256,9 +2525,9 @@ function renderDashboard(){
       {icon:'💳',label:'Transactions',fn:"switchSection('transactions',null)"},
       {icon:'📊',label:'Reports',fn:"switchSection('reports',null)"},
       {icon:'📓',label:'Trading',fn:"switchSection('trading',null)"},
-      {icon:'🏛️',label:'Loans & EMI',fn:"switchSection('loans',null)"},
       {icon:'🎯',label:'Budget',fn:"switchSection('budget',null)"},
       {icon:'💼',label:'Portfolio',fn:"switchSection('portfolio',null)"},
+      {icon:'🔒',label:'Fixed Deposits',fn:"switchSection('fd',null)"},
       {icon:'📅',label:'Scheduler',fn:"switchSection('scheduler',null)"},
       {icon:'⚙️',label:'Settings',fn:"switchSection('settings',null)"},
     ];
@@ -3087,9 +3356,11 @@ let currentSchedulerTab='emi';
 let editingScheduleId=null;
 let topupScheduleId=null;
 let parsedEMISchedule=[];
+let viewingScheduleId=null;
 
 function switchSchedulerTab(tab,btn){
   currentSchedulerTab=tab;
+  viewingScheduleId=null;
   document.querySelectorAll('#sec-scheduler .tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   renderScheduler();
@@ -3101,6 +3372,9 @@ function onScheduleTypeChange(){
   document.getElementById('sch-emi-upload-fields').style.display=type==='emi-upload'?'block':'none';
   document.getElementById('sch-sip-swp-fields').style.display=(type==='sip'||type==='swp')?'block':'none';
   document.getElementById('sch-recurring-fields').style.display=type==='recurring'?'block':'none';
+  // Update label for SIP vs SWP
+  const invLabel=document.getElementById('sch-inv-label');
+  if(invLabel)invLabel.textContent=type==='swp'?'Withdrawal Account *':'Investment Account *';
 }
 
 function calcEMIPreview(){
@@ -3110,8 +3384,7 @@ function calcEMIPreview(){
   const prev=document.getElementById('sch-emi-preview');
   if(!p||!r||!n){if(prev)prev.style.display='none';return;}
   const emi=p*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
-  const total=emi*n;
-  const interest=total-p;
+  const total=emi*n;const interest=total-p;
   if(prev){
     prev.style.display='block';
     document.getElementById('prev-emi').textContent=fmt(emi,'INR');
@@ -3121,38 +3394,32 @@ function calcEMIPreview(){
 }
 
 function downloadEMITemplate(){
-  const csv='Month,Date,EMI Amount,Principal,Interest,Outstanding Balance\n1,2026-04-01,10000,8000,2000,90000\n2,2026-05-01,10000,8100,1900,81900\n';
+  const csv='Month,Date,EMI Amount,Principal,Interest,Outstanding Balance\n1,2026-04-01,10000,8000,2000,92000\n2,2026-05-01,10000,8067,1933,83933\n3,2026-06-01,10000,8134,1866,75799\n';
   const blob=new Blob([csv],{type:'text/csv'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download='EMI_Schedule_Template.csv';a.click();
   URL.revokeObjectURL(url);
+  showToast('Template downloaded! Fill and upload back.');
 }
 
 function parseEMIFile(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    const lines=e.target.result.split('\n').filter(l=>l.trim());
-    const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
-    parsedEMISchedule=lines.slice(1).map(line=>{
+    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim()&&!l.toLowerCase().startsWith('month'));
+    parsedEMISchedule=lines.map(line=>{
       const cols=line.split(',');
-      return{
-        month:cols[0]?.trim(),
-        date:cols[1]?.trim(),
-        emi:parseFloat(cols[2])||0,
-        principal:parseFloat(cols[3])||0,
-        interest:parseFloat(cols[4])||0,
-        balance:parseFloat(cols[5])||0
-      };
+      return{month:parseInt(cols[0])||0,date:cols[1]?.trim(),emi:parseFloat(cols[2])||0,
+        principal:parseFloat(cols[3])||0,interest:parseFloat(cols[4])||0,balance:parseFloat(cols[5])||0};
     }).filter(r=>r.date&&r.emi>0);
     const prev=document.getElementById('sch-upload-preview');
     if(prev){
       prev.style.display='block';
       prev.innerHTML=`<div style="background:var(--green-light);border-radius:var(--radius-sm);padding:10px;font-size:0.82rem">
-        ✅ <b>${parsedEMISchedule.length} EMI entries</b> parsed successfully!<br>
-        First: ${parsedEMISchedule[0]?.date} → ${fmt(parsedEMISchedule[0]?.emi,'INR')}<br>
-        Last: ${parsedEMISchedule[parsedEMISchedule.length-1]?.date} → ${fmt(parsedEMISchedule[parsedEMISchedule.length-1]?.emi,'INR')}
+        ${parsedEMISchedule.length} EMI entries parsed!<br>
+        First: ${parsedEMISchedule[0]?.date} — ${fmt(parsedEMISchedule[0]?.emi,'INR')}<br>
+        Last: ${parsedEMISchedule[parsedEMISchedule.length-1]?.date} — ${fmt(parsedEMISchedule[parsedEMISchedule.length-1]?.emi,'INR')}
       </div>`;
     }
   };
@@ -3168,17 +3435,15 @@ function getNextDate(fromDate,frequency){
   return d.toISOString().split('T')[0];
 }
 
-function generateEMIScheduleRows(principal,annualRate,tenureMonths,startDate){
+function generateEMIRows(principal,annualRate,tenureMonths,startDate){
   const r=annualRate/12/100;
   const emi=principal*r*Math.pow(1+r,tenureMonths)/(Math.pow(1+r,tenureMonths)-1);
-  const rows=[];
-  let balance=principal;
-  let date=startDate;
+  const rows=[];let balance=principal;let date=startDate;
   for(let i=1;i<=tenureMonths;i++){
-    const interest=balance*r;
-    const princ=emi-interest;
-    balance-=princ;
-    rows.push({month:i,date,emi,principal:princ,interest,balance:Math.max(0,balance)});
+    const interest=balance*r;const princ=emi-interest;balance-=princ;
+    rows.push({month:i,date,emi:Math.round(emi*100)/100,
+      principal:Math.round(princ*100)/100,interest:Math.round(interest*100)/100,
+      balance:Math.max(0,Math.round(balance*100)/100)});
     date=getNextDate(date,'monthly');
   }
   return rows;
@@ -3187,110 +3452,141 @@ function generateEMIScheduleRows(principal,annualRate,tenureMonths,startDate){
 async function saveSchedule(){
   const type=document.getElementById('sch-type').value;
   const name=document.getElementById('sch-name').value.trim();
-  const fromAccId=document.getElementById('sch-from').value;
-  const toAccId=document.getElementById('sch-to').value;
   const category=document.getElementById('sch-category').value;
   const notes=document.getElementById('sch-notes').value.trim();
-  if(!name){showToast('Please enter a schedule name.');return;}
-  if(!fromAccId){showToast('Please select a from/debit account.');return;}
+  if(!name){showToast('Please enter a name.');return;}
 
-  let scheduleData={
-    user_id:currentUser.id,name,type:type==='emi-upload'?'emi':type,
-    from_account_id:fromAccId,to_account_id:toAccId||null,
-    category:category||null,notes,status:'active'
-  };
+  let scheduleData={user_id:currentUser.id,name,type:type==='emi-upload'?'emi':type,
+    category:category||null,notes,status:'active'};
 
   if(type==='emi'){
+    const loanAccId=document.getElementById('sch-loan-acc').value;
+    const srcAccId=document.getElementById('sch-src').value;
+    const intAccId=document.getElementById('sch-int').value;
+    const commAccId=document.getElementById('sch-comm').value;
     const principal=parseFloat(document.getElementById('sch-principal').value||0);
     const rate=parseFloat(document.getElementById('sch-rate').value||0);
     const tenure=parseInt(document.getElementById('sch-tenure').value||0);
     const startDate=document.getElementById('sch-start-date').value;
-    if(!principal||!rate||!tenure||!startDate){showToast('Please fill all EMI parameters.');return;}
-    const r=rate/12/100;
-    const emi=principal*r*Math.pow(1+r,tenure)/(Math.pow(1+r,tenure)-1);
-    scheduleData={...scheduleData,
-      principal,annual_rate:rate,tenure_months:tenure,
-      amount:Math.round(emi*100)/100,
-      start_date:startDate,next_date:startDate,
-      end_date:getNextDate(startDate,'monthly').split('T')[0], // will be updated
-      schedule_rows:JSON.stringify(generateEMIScheduleRows(principal,rate,tenure,startDate))
-    };
-    // Set end date properly
-    const endDate=new Date(startDate);endDate.setMonth(endDate.getMonth()+tenure);
-    scheduleData.end_date=endDate.toISOString().split('T')[0];
+    if(!loanAccId||!srcAccId||!intAccId||!principal||!rate||!tenure||!startDate){
+      showToast('Please fill all required EMI fields.');return;}
+    const rows=generateEMIRows(principal,rate,tenure,startDate);
+    scheduleData={...scheduleData,principal,annual_rate:rate,tenure_months:tenure,
+      amount:rows[0]?.emi||0,frequency:'monthly',
+      start_date:startDate,next_date:startDate,end_date:rows[rows.length-1]?.date||startDate,
+      from_account_id:srcAccId,to_account_id:loanAccId,
+      interest_account_id:intAccId,commission_account_id:commAccId||null,
+      schedule_rows:JSON.stringify(rows)};
+
   } else if(type==='emi-upload'){
     if(!parsedEMISchedule.length){showToast('Please upload an EMI schedule file.');return;}
+    const loanAccId=document.getElementById('sch-loan2').value;
+    const srcAccId=document.getElementById('sch-src2').value;
+    const intAccId=document.getElementById('sch-int2').value;
+    if(!loanAccId||!srcAccId||!intAccId){showToast('Please select Loan, Source and Interest accounts.');return;}
+    const today=todayISO();
+    const nextEntry=parsedEMISchedule.find(r=>r.date>=today)||parsedEMISchedule[0];
     scheduleData={...scheduleData,
-      start_date:parsedEMISchedule[0].date,
-      next_date:parsedEMISchedule[0].date,
-      amount:parsedEMISchedule[0].emi,
+      start_date:parsedEMISchedule[0].date,next_date:nextEntry.date,
+      amount:parsedEMISchedule[0].emi,frequency:'monthly',
       end_date:parsedEMISchedule[parsedEMISchedule.length-1].date,
-      schedule_rows:JSON.stringify(parsedEMISchedule)
-    };
+      from_account_id:srcAccId,to_account_id:loanAccId,
+      interest_account_id:intAccId,
+      schedule_rows:JSON.stringify(parsedEMISchedule)};
+
   } else if(type==='sip'||type==='swp'){
+    const invAccId=document.getElementById('sch-inv').value;
+    const fromAccId=document.getElementById('sch-sipfrom').value;
     const amount=parseFloat(document.getElementById('sch-amount').value||0);
     const frequency=document.getElementById('sch-frequency').value;
     const startDate=document.getElementById('sch-sip-start').value;
     const endDate=document.getElementById('sch-sip-end').value;
-    if(!amount||!startDate){showToast('Please fill amount and start date.');return;}
-    scheduleData={...scheduleData,amount,frequency,start_date:startDate,next_date:startDate,end_date:endDate||null};
+    if(!invAccId||!fromAccId||!amount||!startDate){showToast('Please fill all required fields.');return;}
+    scheduleData={...scheduleData,amount,frequency,start_date:startDate,next_date:startDate,
+      end_date:endDate||null,from_account_id:fromAccId,to_account_id:invAccId};
+
   } else if(type==='recurring'){
+    const fromAccId=document.getElementById('sch-recfrom').value;
     const amount=parseFloat(document.getElementById('sch-rec-amount').value||0);
     const frequency=document.getElementById('sch-rec-frequency').value;
     const startDate=document.getElementById('sch-rec-start').value;
-    if(!amount||!startDate){showToast('Please fill amount and start date.');return;}
-    scheduleData={...scheduleData,amount,frequency,start_date:startDate,next_date:startDate};
+    if(!fromAccId||!amount||!startDate){showToast('Please fill all required fields.');return;}
+    scheduleData={...scheduleData,amount,frequency,start_date:startDate,next_date:startDate,
+      from_account_id:fromAccId};
   }
 
   const{error}=await sb.from('schedules').insert(scheduleData);
   if(error){showToast('Error: '+error.message);return;}
   closeModal('add-schedule-modal');
   showToast('Schedule created! ✅');
-  await loadAllData();
-  renderScheduler();
-  renderDueBadge();
+  await loadAllData();renderScheduler();renderDueBadge();renderDashboard();
 }
 
 async function confirmScheduleEntry(schedId){
   const sch=schedules.find(s=>s.id===schedId);if(!sch)return;
-  // Create the transaction
-  const txn={
-    user_id:currentUser.id,type:'journal',
-    date:sch.next_date,amount:sch.amount,currency:'INR',
-    account_id:sch.from_account_id,
-    debit_account_id:sch.from_account_id,
-    credit_account_id:sch.to_account_id||sch.from_account_id,
-    category:sch.category||sch.name,
-    description:`${sch.name} (${sch.type.toUpperCase()})`
-  };
-  const{error:txnErr}=await sb.from('transactions').insert(txn);
-  if(txnErr){showToast('Error posting entry: '+txnErr.message);return;}
+  const postDate=sch.next_date;
+
+  if(sch.type==='emi'){
+    const rows=JSON.parse(sch.schedule_rows||'[]');
+    const row=rows.find(r=>r.date===postDate)||rows.find(r=>r.date>=postDate);
+    if(!row){showToast('No EMI row found for this date.');return;}
+    const promises=[];
+    // Principal: Dr Loan Account, Cr Source
+    if(row.principal>0&&sch.to_account_id){
+      promises.push(sb.from('transactions').insert({
+        user_id:currentUser.id,type:'journal',date:postDate,
+        amount:Math.round(row.principal*100)/100,currency:'INR',
+        debit_account_id:sch.to_account_id,credit_account_id:sch.from_account_id,
+        category:'EMI Principal',description:`${sch.name} — Principal`}));
+    }
+    // Interest: Dr Interest Account, Cr Source
+    if(row.interest>0&&sch.interest_account_id){
+      promises.push(sb.from('transactions').insert({
+        user_id:currentUser.id,type:'journal',date:postDate,
+        amount:Math.round(row.interest*100)/100,currency:'INR',
+        debit_account_id:sch.interest_account_id,credit_account_id:sch.from_account_id,
+        category:'Loan Interest',description:`${sch.name} — Interest`}));
+    }
+    const results=await Promise.all(promises);
+    const hasError=results.some(r=>r.error);
+    if(hasError){showToast('Error posting EMI entries.');return;}
+  } else {
+    const isSIP=sch.type==='sip';
+    const{error}=await sb.from('transactions').insert({
+      user_id:currentUser.id,type:'journal',date:postDate,amount:sch.amount,currency:'INR',
+      debit_account_id:isSIP?sch.to_account_id:sch.from_account_id,
+      credit_account_id:isSIP?sch.from_account_id:sch.to_account_id,
+      category:sch.category||sch.name,description:`${sch.name} (${sch.type.toUpperCase()})`});
+    if(error){showToast('Error: '+error.message);return;}
+  }
+
   // Advance next date
-  const nextDate=getNextDate(sch.next_date,sch.frequency||'monthly');
-  const isLastEntry=sch.end_date&&nextDate>sch.end_date;
-  const{error:updErr}=await sb.from('schedules').update({
-    next_date:nextDate,
-    status:isLastEntry?'completed':'active',
-    last_posted:sch.next_date
+  const rows=JSON.parse(sch.schedule_rows||'[]');
+  let nextDate;
+  if(rows.length){
+    const idx=rows.findIndex(r=>r.date===postDate);
+    nextDate=idx>=0&&idx<rows.length-1?rows[idx+1].date:null;
+  } else {
+    nextDate=getNextDate(postDate,sch.frequency||'monthly');
+  }
+  const isCompleted=!nextDate||(sch.end_date&&nextDate>sch.end_date);
+  await sb.from('schedules').update({
+    next_date:nextDate||postDate,status:isCompleted?'completed':'active',last_posted:postDate
   }).eq('id',schedId);
-  if(updErr){showToast('Error updating schedule: '+updErr.message);return;}
-  showToast(`${sch.name} entry posted! ✅`);
-  await loadAllData();
-  renderScheduler();
-  renderDashboard();
-  renderDueBadge();
+  showToast(`${sch.name} posted! ✅`);
+  await loadAllData();renderScheduler();renderDashboard();renderDueBadge();
 }
 
 async function pauseSchedule(id){
   const sch=schedules.find(s=>s.id===id);if(!sch)return;
   const newStatus=sch.status==='paused'?'active':'paused';
   await sb.from('schedules').update({status:newStatus}).eq('id',id);
-  showToast(newStatus==='paused'?'Schedule paused.':'Schedule resumed.');
+  showToast(newStatus==='paused'?'Paused.':'Resumed.');
   await loadAllData();renderScheduler();
 }
 
 async function stopSchedule(id){
-  if(!confirm('Stop this schedule permanently? It cannot be restarted.'))return;
+  if(!confirm('Stop this schedule permanently?'))return;
   await sb.from('schedules').update({status:'stopped'}).eq('id',id);
   showToast('Schedule stopped.');
   await loadAllData();renderScheduler();
@@ -3300,18 +3596,18 @@ async function deleteSchedule(id){
   if(!confirm('Delete this schedule?'))return;
   await sb.from('schedules').delete().eq('id',id);
   showToast('Schedule deleted.');
-  await loadAllData();renderScheduler();
+  viewingScheduleId=null;
+  await loadAllData();renderScheduler();renderDueBadge();
 }
 
 function openTopup(id){
   const sch=schedules.find(s=>s.id===id);if(!sch)return;
   topupScheduleId=id;
   const info=document.getElementById('topup-info');
-  if(info)info.innerHTML=`<b>${sch.name}</b><br>Current amount: <b>${fmt(sch.amount,'INR')}</b> (${sch.frequency})`;
+  if(info)info.innerHTML=`<b>${sch.name}</b><br>Current: <b>${fmt(sch.amount,'INR')}</b> · ${sch.frequency}`;
   const amt=document.getElementById('topup-amount');if(amt)amt.value='';
   const dt=document.getElementById('topup-date');if(dt)dt.value=todayISO();
-  const title=document.getElementById('topup-modal-title');
-  if(title)title.textContent=`Top-up — ${sch.name}`;
+  const title=document.getElementById('topup-modal-title');if(title)title.textContent=`Top-up — ${sch.name}`;
   openModal('topup-sip-modal');
 }
 
@@ -3320,114 +3616,430 @@ async function confirmTopup(){
   const newAmt=parseFloat(document.getElementById('topup-amount').value||0);
   const fromDate=document.getElementById('topup-date').value;
   if(!newAmt||!fromDate){showToast('Please fill new amount and date.');return;}
-  // Save topup history in notes
-  const history=`[Top-up: ${fmt(sch.amount,'INR')} → ${fmt(newAmt,'INR')} from ${fromDate}]`;
-  await sb.from('schedules').update({
-    amount:newAmt,
-    notes:(sch.notes||'')+' '+history
-  }).eq('id',topupScheduleId);
+  const history=` [Top-up ${formatDate(fromDate)}: ${fmt(sch.amount,'INR')}→${fmt(newAmt,'INR')}]`;
+  await sb.from('schedules').update({amount:newAmt,notes:(sch.notes||'')+history}).eq('id',topupScheduleId);
   closeModal('topup-sip-modal');
-  showToast(`Top-up applied! New amount: ${fmt(newAmt,'INR')} ✅`);
+  showToast(`Top-up applied! New: ${fmt(newAmt,'INR')} ✅`);
   await loadAllData();renderScheduler();
 }
 
 function renderDueBadge(){
   const today=todayISO();
-  const due=schedules.filter(s=>s.status==='active'&&s.next_date<=today);
-  // Update dashboard notification
+  const dueSchedules=schedules.filter(s=>s.status==='active'&&s.type!=='fd'&&s.next_date<=today);
+  const dueFDs=schedules.filter(s=>s.status==='active'&&s.type==='fd'&&s.end_date&&s.end_date<=today);
+  const total=dueSchedules.length+dueFDs.length;
   const badge=document.getElementById('due-entries-badge');
-  if(badge){badge.textContent=due.length;badge.style.display=due.length?'inline':'none';}
+  if(badge){badge.textContent=total;badge.style.display=total?'inline':'none';}
 }
 
 function renderScheduler(){
-  // Due entries notification
   const today=todayISO();
   const due=schedules.filter(s=>s.status==='active'&&s.next_date<=today);
+
+  // Due entries notification
   const dueEl=document.getElementById('scheduler-due');
   if(dueEl){
     dueEl.innerHTML=due.length?`<div class="card" style="border-color:var(--yellow);background:var(--yellow-light);margin-bottom:14px">
-      <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${due.length} Entry/Entries Due</div>
+      <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${due.length} Pending ${due.length===1?'Entry':'Entries'}</div>
       ${due.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:0.85rem;font-weight:600">${s.name}</div>
-          <div style="font-size:0.72rem;color:var(--text2)">${formatDate(s.next_date)} · ${fmt(s.amount,'INR')}</div>
-        </div>
+        <div><div style="font-size:0.85rem;font-weight:600">${s.name}</div>
+        <div style="font-size:0.72rem;color:var(--text2)">${formatDate(s.next_date)} · ${fmt(s.amount,'INR')} · ${s.type.toUpperCase()}</div></div>
         <button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post</button>
       </div>`).join('')}
     </div>`:'';
   }
-  // Filter by tab
+
+  if(viewingScheduleId){renderScheduleDetail(viewingScheduleId);return;}
+
   const filtered=schedules.filter(s=>{
     if(currentSchedulerTab==='emi')return s.type==='emi';
     if(currentSchedulerTab==='sip')return s.type==='sip';
     if(currentSchedulerTab==='swp')return s.type==='swp';
-    if(currentSchedulerTab==='recurring')return s.type==='recurring';
-    return true;
+    return s.type==='recurring';
   });
-  const el=document.getElementById('scheduler-content');
-  if(!el)return;
+
+  const el=document.getElementById('scheduler-content');if(!el)return;
   if(!filtered.length){
     el.innerHTML=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">No ${currentSchedulerTab.toUpperCase()} schedules yet.</div><button class="btn-sm" onclick="openModal('add-schedule-modal')">+ Create Schedule</button></div>`;
     return;
   }
+
   el.innerHTML=filtered.map(s=>{
-    const isActive=s.status==='active';
-    const isPaused=s.status==='paused';
-    const isStopped=s.status==='stopped'||s.status==='completed';
-    const isDue=isActive&&s.next_date<=today;
+    const isDue=s.status==='active'&&s.next_date<=today;
     const fromAcc=accounts.find(a=>a.id===s.from_account_id);
     const toAcc=accounts.find(a=>a.id===s.to_account_id);
-    return`<div class="card" style="margin-bottom:10px;${isDue?'border-color:var(--yellow)':''}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div>
+    const statusColor=s.status==='active'?'badge-green':s.status==='paused'?'badge-yellow':'badge-red';
+    return`<div class="card" style="margin-bottom:10px;cursor:pointer;${isDue?'border-color:var(--yellow)':''}" onclick="viewingScheduleId='${s.id}';renderScheduler()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1">
           <div style="font-size:0.9rem;font-weight:700">${s.name}</div>
-          <div style="font-size:0.75rem;color:var(--text2);margin-top:2px">
-            ${fmt(s.amount,'INR')} · ${s.frequency||'monthly'} · 
-            ${fromAcc?fromAcc.name:'?'}${toAcc?' → '+toAcc.name:''}
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:3px">
+            ${fmt(s.amount,'INR')} · ${s.frequency||'monthly'}${fromAcc?' · '+fromAcc.name:''}${toAcc?' → '+toAcc.name:''}
           </div>
           <div style="font-size:0.72rem;color:var(--text3);margin-top:2px">
-            Next: <b>${formatDate(s.next_date)}</b>
-            ${s.end_date?' · Ends: '+formatDate(s.end_date):''}
+            Next: <b style="color:${isDue?'var(--red)':'inherit'}">${formatDate(s.next_date)}</b>${s.end_date?' · Ends: '+formatDate(s.end_date):''}
           </div>
         </div>
-        <span class="badge ${isActive?'badge-green':isPaused?'badge-yellow':'badge-red'}" style="font-size:0.7rem">${s.status}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <span class="badge ${statusColor}" style="font-size:0.7rem">${s.status}</span>
+          <span style="font-size:0.7rem;color:var(--accent)">Details ›</span>
+        </div>
       </div>
-      ${isDue?`<div style="background:var(--yellow-light);border-radius:var(--radius-sm);padding:8px;margin-bottom:10px;font-size:0.8rem;font-weight:600">⏰ Entry due for ${formatDate(s.next_date)}</div>`:''}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${isDue?`<button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post Entry</button>`:''}
-        ${!isStopped?`<button class="btn-outline" style="font-size:0.75rem;padding:5px 10px" onclick="pauseSchedule('${s.id}')">${isPaused?'▶ Resume':'⏸ Pause'}</button>`:''}
-        ${(s.type==='sip'||s.type==='swp')&&!isStopped?`<button class="btn-outline" style="font-size:0.75rem;padding:5px 10px" onclick="openTopup('${s.id}')">📈 Top-up</button>`:''}
-        ${!isStopped?`<button class="btn-outline" style="font-size:0.75rem;padding:5px 10px;color:var(--red);border-color:var(--red)" onclick="stopSchedule('${s.id}')">⏹ Stop</button>`:''}
-        <button class="btn-danger" style="font-size:0.72rem;padding:5px 8px;margin-left:auto" onclick="deleteSchedule('${s.id}')">🗑</button>
-      </div>
+      ${isDue?`<div style="margin-top:10px"><button class="btn-sm" style="background:var(--green)" onclick="event.stopPropagation();confirmScheduleEntry('${s.id}')">✅ Post Entry</button></div>`:''}
     </div>`;
   }).join('');
 }
 
+function renderScheduleDetail(schedId){
+  const sch=schedules.find(s=>s.id===schedId);if(!sch)return;
+  const today=todayISO();
+  const el=document.getElementById('scheduler-content');if(!el)return;
+  const rows=JSON.parse(sch.schedule_rows||'[]');
+  const fromAcc=accounts.find(a=>a.id===sch.from_account_id);
+  const toAcc=accounts.find(a=>a.id===sch.to_account_id);
 
-// ═══════════════════════════════
-async function ensureTradingGroup(){
-  let grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
-  if(!grp){
-    const{data}=await sb.from('account_groups').insert({user_id:currentUser.id,name:'Trading Account',classification:'asset',icon:'💹'}).select().single();
-    if(data){groups.push(data);grp=data;}
+  let tableHTML='';
+  if(sch.type==='sip'||sch.type==='swp'||sch.type==='recurring'){
+    const upcoming=[];let d=sch.next_date;
+    for(let i=0;i<12;i++){
+      if(sch.end_date&&d>sch.end_date)break;
+      upcoming.push(d);d=getNextDate(d,sch.frequency||'monthly');
+    }
+    tableHTML=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px">Next 12 Scheduled Entries</div>
+    <div class="card" style="padding:0;overflow:hidden">
+    ${upcoming.map((date,i)=>`<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);${date<=today?'background:var(--yellow-light)':''}">
+      <div><div style="font-size:0.82rem;font-weight:500">#${i+1} · ${formatDate(date)}</div>
+      <div style="font-size:0.7rem;color:var(--text3)">${date<=today?'⏰ Due':'Upcoming'}</div></div>
+      <div style="font-weight:700;color:var(--accent)">${fmt(sch.amount,'INR')}</div>
+    </div>`).join('')}
+    </div>`;
+  } else if(rows.length){
+    tableHTML=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px">EMI Schedule (${rows.length} instalments)</div>
+    <div style="overflow-x:auto"><table class="data-table" style="min-width:400px">
+      <thead><tr><th>#</th><th>Date</th><th style="text-align:right">EMI</th><th style="text-align:right">Principal</th><th style="text-align:right">Interest</th><th style="text-align:right">Balance</th><th></th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const isPast=r.date<sch.next_date;
+        const isDueRow=r.date===sch.next_date;
+        return`<tr style="${isPast?'color:var(--text3)':''}${isDueRow?'background:var(--yellow-light);font-weight:600':''}">
+          <td>${r.month}</td><td>${formatDate(r.date)}</td>
+          <td style="text-align:right">${fmt(r.emi,'INR')}</td>
+          <td style="text-align:right">${fmt(r.principal,'INR')}</td>
+          <td style="text-align:right">${fmt(r.interest,'INR')}</td>
+          <td style="text-align:right">${fmt(r.balance,'INR')}</td>
+          <td>${isPast?'✅':isDueRow?'⏰':''}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
   }
-  return grp;
+
+  el.innerHTML=`
+    <button onclick="viewingScheduleId=null;renderScheduler()" style="background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;font-family:inherit;margin-bottom:16px;padding:0">← Back to list</button>
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:1.05rem;font-weight:700">${sch.name}</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:3px">${sch.type.toUpperCase()} · ${sch.frequency||'monthly'} · ${fmt(sch.amount,'INR')}</div>
+          ${fromAcc?`<div style="font-size:0.75rem;color:var(--text3);margin-top:2px">${fromAcc.name}${toAcc?' → '+toAcc.name:''}</div>`:''}
+        </div>
+        <span class="badge ${sch.status==='active'?'badge-green':sch.status==='paused'?'badge-yellow':'badge-red'}">${sch.status}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div><div style="font-size:0.7rem;color:var(--text2)">Next Due</div><div style="font-weight:600;color:${sch.next_date<=today?'var(--red)':'inherit'}">${formatDate(sch.next_date)}</div></div>
+        ${sch.end_date?`<div><div style="font-size:0.7rem;color:var(--text2)">End Date</div><div style="font-weight:600">${formatDate(sch.end_date)}</div></div>`:''}
+        ${sch.principal?`<div><div style="font-size:0.7rem;color:var(--text2)">Principal</div><div style="font-weight:600">${fmt(sch.principal,'INR')}</div></div>`:''}
+        ${sch.annual_rate?`<div><div style="font-size:0.7rem;color:var(--text2)">Rate</div><div style="font-weight:600">${sch.annual_rate}% p.a.</div></div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${sch.status==='active'&&sch.next_date<=today?`<button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${sch.id}')">✅ Post Entry</button>`:''}
+        ${sch.status!=='stopped'&&sch.status!=='completed'?`<button class="btn-outline" style="font-size:0.78rem" onclick="pauseSchedule('${sch.id}')">${sch.status==='paused'?'▶ Resume':'⏸ Pause'}</button>`:''}
+        ${(sch.type==='sip'||sch.type==='swp')&&sch.status==='active'?`<button class="btn-outline" style="font-size:0.78rem" onclick="openTopup('${sch.id}')">📈 Top-up</button>`:''}
+        ${sch.status!=='stopped'&&sch.status!=='completed'?`<button class="btn-outline" style="font-size:0.78rem;color:var(--red);border-color:var(--red)" onclick="stopSchedule('${sch.id}')">⏹ Stop</button>`:''}
+        <button class="btn-danger" style="font-size:0.72rem;margin-left:auto" onclick="deleteSchedule('${sch.id}')">🗑 Delete</button>
+      </div>
+    </div>
+    ${tableHTML}`;
 }
 
-async function presetTradingAccount(){
-  // Called right after opening add-account-modal to preselect Trading group
-  await ensureTradingGroup();
-  const grp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
-  const gs=document.getElementById('acc-group');
-  const cs=document.getElementById('acc-classification');
-  if(cs)cs.value='asset';
-  if(gs&&grp){
-    gs.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
-    gs.value=grp.id;
+// ═══════════════════════════════
+//  FIXED DEPOSITS
+// ═══════════════════════════════
+let currentFDId=null;
+let fdMaturityEdited=false;
+
+function calcFDPreview(){
+  const p=parseFloat(document.getElementById('fd-principal').value||0);
+  const r=parseFloat(document.getElementById('fd-rate').value||0)/100;
+  const start=document.getElementById('fd-start').value;
+  const maturity=document.getElementById('fd-maturity').value;
+  const prev=document.getElementById('fd-preview');
+  if(!p||!r||!start||!maturity){if(prev)prev.style.display='none';return;}
+  const days=(new Date(maturity)-new Date(start))/(1000*60*60*24);
+  const months=Math.round(days/30.44);
+  const years=days/365;
+  const maturityAmt=p*(1+r*years);
+  const interest=maturityAmt-p;
+  if(prev){
+    prev.style.display='block';
+    document.getElementById('fd-prev-interest').textContent=fmt(interest,'INR');
+    document.getElementById('fd-prev-tenure').textContent=months+'m ('+days+'d)';
+    document.getElementById('fd-prev-maturity').textContent=fmt(maturityAmt,'INR');
   }
-  const tm=document.querySelector('#add-account-modal .modal-title');
-  if(tm)tm.textContent='Add Trading Account';
+  const matAmt=document.getElementById('fd-maturity-amount');
+  if(matAmt&&!fdMaturityEdited)matAmt.value=Math.round(maturityAmt*100)/100;
+}
+
+function previewFDCert(input){
+  const file=input.files[0];
+  const prev=document.getElementById('fd-cert-preview');
+  if(file&&prev){prev.style.display='block';prev.textContent=`✅ ${file.name} (${Math.round(file.size/1024)}KB) ready`;}
+}
+
+function onFDMaturityActionChange(){
+  const action=document.getElementById('fd-maturity-action').value;
+  document.getElementById('fd-close-fields').style.display=action==='close'?'block':'none';
+  document.getElementById('fd-renew-fields').style.display=action==='renew'?'block':'none';
+}
+
+async function saveFD(){
+  const name=document.getElementById('fd-name').value.trim();
+  const bank=document.getElementById('fd-bank').value.trim();
+  const principal=parseFloat(document.getElementById('fd-principal').value||0);
+  const rate=parseFloat(document.getElementById('fd-rate').value||0);
+  const startDate=document.getElementById('fd-start').value;
+  const maturityDate=document.getElementById('fd-maturity').value;
+  const maturityAmt=parseFloat(document.getElementById('fd-maturity-amount').value||0)||principal*(1+rate/100*((new Date(maturityDate)-new Date(startDate))/31536000000));
+  const fdAccId=document.getElementById('fd-acc').value;
+  const intAccId=document.getElementById('fd-int-acc').value;
+  const srcAccId=document.getElementById('fd-src-acc').value;
+  const notes=document.getElementById('fd-notes').value.trim();
+  const certFile=document.getElementById('fd-cert-file').files[0];
+  if(!name||!bank||!principal||!startDate||!maturityDate||!fdAccId||!intAccId){
+    showToast('Please fill all required fields.');return;}
+  const fdData={
+    user_id:currentUser.id,name,type:'fd',status:'active',
+    principal,annual_rate:rate,amount:Math.round(maturityAmt*100)/100,
+    start_date:startDate,next_date:maturityDate,end_date:maturityDate,frequency:'once',
+    from_account_id:srcAccId||null,to_account_id:fdAccId,interest_account_id:intAccId,
+    notes:`Bank: ${bank}${notes?' | '+notes:''}`,
+    schedule_rows:JSON.stringify({principal,maturityAmt:Math.round(maturityAmt*100)/100,interest:Math.round((maturityAmt-principal)*100)/100,bank,rate,startDate,maturityDate})
+  };
+  const{data:fdRec,error}=await sb.from('schedules').insert(fdData).select().single();
+  if(error){showToast('Error: '+error.message);return;}
+  if(srcAccId&&fdAccId){
+    await sb.from('transactions').insert({
+      user_id:currentUser.id,type:'journal',date:startDate,amount:principal,currency:'INR',
+      debit_account_id:fdAccId,credit_account_id:srcAccId,
+      category:'Fixed Deposit',description:`FD Created: ${name}`
+    });
+  }
+  if(certFile&&fdRec){
+    const safeName=certFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const filePath=`${currentUser.id}/fd_${fdRec.id}/${Date.now()}_${safeName}`;
+    const{error:upErr}=await sb.storage.from('attachments').upload(filePath,certFile,{contentType:certFile.type});
+    if(!upErr){
+      await sb.from('transaction_attachments').insert({
+        user_id:currentUser.id,transaction_id:'fd_'+fdRec.id,
+        file_name:certFile.name,file_path:filePath,file_size:certFile.size,mime_type:certFile.type
+      });
+      const{data}=await sb.from('transaction_attachments').select('*').eq('user_id',currentUser.id).throwOnError().then(r=>r).catch(()=>({data:[]}));
+      attachments=data||[];
+    }
+  }
+  closeModal('add-fd-modal');
+  showToast(`FD "${name}" created! Matures on ${formatDate(maturityDate)} ✅`);
+  await loadAllData();renderFD();renderDueBadge();renderDashboard();
+}
+
+function openFDMaturityModal(fdId){
+  const fd=schedules.find(s=>s.id===fdId&&s.type==='fd');if(!fd)return;
+  currentFDId=fdId;
+  const rows=fd.schedule_rows?JSON.parse(fd.schedule_rows):{};
+  const bank=rows.bank||'';
+  const interest=(fd.amount||0)-(fd.principal||0);
+  document.getElementById('fd-maturity-info').innerHTML=
+    `<div style="font-weight:700;margin-bottom:6px">${fd.name}</div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:0.82rem">
+       <div><span style="color:var(--text2)">Bank: </span><b>${bank}</b></div>
+       <div><span style="color:var(--text2)">Principal: </span><b>${fmt(fd.principal,'INR')}</b></div>
+       <div><span style="color:var(--text2)">Rate: </span><b>${fd.annual_rate}%</b></div>
+       <div><span style="color:var(--text2)">Interest: </span><b style="color:var(--green)">${fmt(interest,'INR')}</b></div>
+       <div style="grid-column:span 2"><span style="color:var(--text2)">Maturity Amount: </span><b style="color:var(--accent)">${fmt(fd.amount,'INR')}</b></div>
+     </div>`;
+  const amt=document.getElementById('fd-actual-maturity');if(amt)amt.value=fd.amount||'';
+  const dt=document.getElementById('fd-actual-date');if(dt)dt.value=fd.end_date||todayISO();
+  const action=document.getElementById('fd-maturity-action');if(action)action.value='';
+  document.getElementById('fd-close-fields').style.display='none';
+  document.getElementById('fd-renew-fields').style.display='none';
+  const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  const dest=document.getElementById('fd-dest');if(dest)dest.innerHTML=opts;
+  const ds=document.getElementById('fd-dest-search');if(ds)ds.value='';
+  document.getElementById('fd-maturity-modal').classList.add('open');
+}
+
+async function confirmFDMaturity(){
+  const fd=schedules.find(s=>s.id===currentFDId);if(!fd)return;
+  const action=document.getElementById('fd-maturity-action').value;
+  const actualAmt=parseFloat(document.getElementById('fd-actual-maturity').value||0);
+  const actualDate=document.getElementById('fd-actual-date').value;
+  if(!action){showToast('Please select an action.');return;}
+  if(!actualAmt||!actualDate){showToast('Please fill maturity amount and date.');return;}
+  const interest=actualAmt-(fd.principal||0);
+  const fdAccId=fd.to_account_id;
+  const intAccId=fd.interest_account_id;
+  if(action==='close'){
+    const destId=document.getElementById('fd-dest').value;
+    if(!destId){showToast('Please select destination account.');return;}
+    if(fd.principal>0){
+      await sb.from('transactions').insert({
+        user_id:currentUser.id,type:'journal',date:actualDate,amount:fd.principal,currency:'INR',
+        debit_account_id:destId,credit_account_id:fdAccId,
+        category:'Fixed Deposit',description:`FD Closed: ${fd.name} — Principal`
+      });
+    }
+    if(interest>0&&intAccId){
+      await sb.from('transactions').insert({
+        user_id:currentUser.id,type:'journal',date:actualDate,amount:interest,currency:'INR',
+        debit_account_id:destId,credit_account_id:intAccId,
+        category:'Interest Income',description:`FD Closed: ${fd.name} — Interest`
+      });
+    }
+    await sb.from('schedules').update({status:'completed',last_posted:actualDate}).eq('id',currentFDId);
+    showToast(`FD closed! ${fmt(actualAmt,'INR')} transferred ✅`);
+  } else if(action==='renew'){
+    const newMatDate=document.getElementById('fd-new-maturity').value;
+    const newMatAmt=parseFloat(document.getElementById('fd-new-maturity-amount').value||0);
+    if(!newMatDate||!newMatAmt){showToast('Please fill new maturity date and amount.');return;}
+    if(interest>0&&intAccId&&fdAccId){
+      await sb.from('transactions').insert({
+        user_id:currentUser.id,type:'journal',date:actualDate,amount:interest,currency:'INR',
+        debit_account_id:fdAccId,credit_account_id:intAccId,
+        category:'Interest Income',description:`FD Renewed: ${fd.name} — Interest`
+      });
+    }
+    const updRows=JSON.stringify({...JSON.parse(fd.schedule_rows||'{}'),
+      maturityAmt:newMatAmt,maturityDate:newMatDate,
+      principal:actualAmt,interest:newMatAmt-actualAmt});
+    await sb.from('schedules').update({
+      principal:actualAmt,amount:newMatAmt,
+      start_date:actualDate,next_date:newMatDate,end_date:newMatDate,
+      last_posted:actualDate,schedule_rows:updRows
+    }).eq('id',currentFDId);
+    showToast(`FD renewed! New maturity: ${formatDate(newMatDate)} ✅`);
+  }
+  closeModal('fd-maturity-modal');
+  await loadAllData();renderFD();renderDashboard();renderDueBadge();
+}
+
+async function deleteFD(id){
+  if(!confirm('Delete this FD record?'))return;
+  await sb.from('schedules').delete().eq('id',id);
+  showToast('FD deleted.');
+  await loadAllData();renderFD();renderDueBadge();
+}
+
+async function viewFDCertificate(fdId){
+  const fdAtts=attachments.filter(a=>a.transaction_id==='fd_'+fdId);
+  if(!fdAtts.length){showToast('No certificate uploaded for this FD.');return;}
+  viewAttachment(fdAtts[0].file_path);
+}
+
+async function uploadFDCert(fdId,input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>5242880){showToast('File too large! Max 5MB.');return;}
+  showToast('Uploading... ⏳');
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const filePath=`${currentUser.id}/fd_${fdId}/${Date.now()}_${safeName}`;
+  const{error}=await sb.storage.from('attachments').upload(filePath,file,{contentType:file.type});
+  if(error){showToast('Upload failed: '+error.message);return;}
+  await sb.from('transaction_attachments').insert({
+    user_id:currentUser.id,transaction_id:'fd_'+fdId,
+    file_name:file.name,file_path:filePath,file_size:file.size,mime_type:file.type
+  });
+  const{data}=await sb.from('transaction_attachments').select('*').eq('user_id',currentUser.id).throwOnError().then(r=>r).catch(()=>({data:[]}));
+  attachments=data||[];
+  input.value='';
+  showToast('Certificate uploaded! ✅');
+  renderFD();
+}
+
+function renderFD(){
+  const today=todayISO();
+  const fds=schedules.filter(s=>s.type==='fd');
+  const activeFDs=fds.filter(s=>s.status==='active');
+  const completedFDs=fds.filter(s=>s.status==='completed');
+  const dueFDs=activeFDs.filter(s=>s.end_date&&s.end_date<=today);
+  const dueEl=document.getElementById('fd-due');
+  if(dueEl){
+    dueEl.innerHTML=dueFDs.length?`<div class="card" style="border-color:var(--yellow);background:var(--yellow-light)">
+      <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${dueFDs.length} FD${dueFDs.length>1?'s':''} Matured</div>
+      ${dueFDs.map(fd=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:0.85rem;font-weight:600">${fd.name}</div>
+        <div style="font-size:0.72rem;color:var(--text2)">Matured: ${formatDate(fd.end_date)} · ${fmt(fd.amount,'INR')}</div></div>
+        <button class="btn-sm" style="background:var(--accent)" onclick="openFDMaturityModal('${fd.id}')">🔓 Act Now</button>
+      </div>`).join('')}
+    </div>`:'';
+  }
+  const el=document.getElementById('fd-content');if(!el)return;
+  if(!fds.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">No Fixed Deposits yet.</div><button class="btn-sm" onclick="openModal('add-fd-modal')">+ Add FD</button></div>`;
+    return;
+  }
+  const totalInvested=activeFDs.reduce((s,fd)=>s+(fd.principal||0),0);
+  const totalMaturity=activeFDs.reduce((s,fd)=>s+(fd.amount||0),0);
+  const totalInterest=totalMaturity-totalInvested;
+  let html=`<div class="card-grid card-grid-3" style="margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Total Invested</div><div class="stat-val hide-figure">${fmt(totalInvested,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Expected Interest</div><div class="stat-val" style="color:var(--green)">${fmt(totalInterest,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total at Maturity</div><div class="stat-val" style="color:var(--accent)">${fmt(totalMaturity,'INR')}</div></div>
+  </div>`;
+  if(activeFDs.length){
+    html+=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px">🔒 Active FDs (${activeFDs.length})</div>`;
+    html+=activeFDs.map(fd=>{
+      const rows=fd.schedule_rows?JSON.parse(fd.schedule_rows):{};
+      const bank=rows.bank||fd.notes?.split('|')[0]?.replace('Bank:','').trim()||'';
+      const interest=(fd.amount||0)-(fd.principal||0);
+      const isDue=fd.end_date&&fd.end_date<=today;
+      const daysLeft=fd.end_date?Math.round((new Date(fd.end_date)-new Date())/86400000):null;
+      const hasCert=attachments.some(a=>a.transaction_id==='fd_'+fd.id);
+      return`<div class="card" style="margin-bottom:10px;${isDue?'border-color:var(--yellow)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div style="flex:1">
+            <div style="font-size:0.9rem;font-weight:700">${fd.name} ${hasCert?'<span style="font-size:0.75rem">📄</span>':''}</div>
+            <div style="font-size:0.75rem;color:var(--text2);margin-top:3px">${bank}${bank?' · ':''}${fd.annual_rate}% p.a.</div>
+            <div style="font-size:0.72rem;color:var(--text3);margin-top:2px">
+              ${formatDate(fd.start_date)} → ${formatDate(fd.end_date)}
+              ${daysLeft!==null?` · <b style="color:${daysLeft<=30?'var(--red)':'inherit'}">${daysLeft>0?daysLeft+'d left':'Matured'}</b>`:''}
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:10px">
+            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(fd.amount,'INR')}</div>
+            <div style="font-size:0.72rem;color:var(--green)">+${fmt(interest,'INR')}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${isDue?`<button class="btn-sm" style="background:var(--accent)" onclick="openFDMaturityModal('${fd.id}')">🔓 Maturity Action</button>`:''}
+          ${hasCert?`<button class="btn-outline" style="font-size:0.75rem" onclick="viewFDCertificate('${fd.id}')">📄 View Cert</button>`:''}
+          <label style="cursor:pointer">
+            <span class="btn-outline" style="padding:5px 10px;font-size:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);display:inline-block">📎 ${hasCert?'Replace':'Upload'} Cert</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="uploadFDCert('${fd.id}',this)"/>
+          </label>
+          <button class="btn-danger" style="font-size:0.72rem;padding:5px 8px;margin-left:auto" onclick="deleteFD('${fd.id}')">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if(completedFDs.length){
+    html+=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;margin-top:16px;color:var(--text2)">✅ Completed FDs (${completedFDs.length})</div>`;
+    html+=completedFDs.map(fd=>`<div class="card" style="margin-bottom:8px;opacity:0.7">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:0.85rem;font-weight:600">${fd.name}</div>
+        <div style="font-size:0.72rem;color:var(--text2)">${formatDate(fd.start_date)} → ${formatDate(fd.end_date)}</div></div>
+        <div style="text-align:right"><div style="font-size:0.88rem;font-weight:600">${fmt(fd.amount,'INR')}</div>
+          <button class="btn-danger" style="font-size:0.68rem;padding:3px 6px;margin-top:4px" onclick="deleteFD('${fd.id}')">🗑</button></div>
+      </div>
+    </div>`).join('');
+  }
+  el.innerHTML=html;
 }
 
 function renderTradingAccounts(){
@@ -4262,8 +4874,8 @@ async function saveTxn(attachAfter=false){
   }
 }
 
-async function saveAccount(){
-  if(editingAccId){await updateAccount();return;}
+async function saveAccount(attachAfter=false){
+  if(editingAccId){await updateAccount(attachAfter);return;}
   const name=document.getElementById('acc-name').value.trim();
   const opening_balance=parseFloat(document.getElementById('acc-balance').value)||0;
   if(!name){showToast('Please enter account name.');return;}
@@ -4328,10 +4940,14 @@ async function saveAccount(){
   }
 
   closeModal('add-account-modal');
-  showToast('Account saved! ✅');
-  await loadAllData();
-  renderAccounts();
-  renderDashboard();
+  if(attachAfter&&data?.id){
+    showToast('Account saved! Opening for documents... 📎');
+    await loadAllData();renderAccounts();renderDashboard();
+    openAccountAttachModal(data.id,data.name);
+  } else {
+    showToast('Account saved! ✅');
+    await loadAllData();renderAccounts();renderDashboard();
+  }
 }
 
 async function saveTrade(){
@@ -4496,12 +5112,29 @@ function openModal(id){
       taSel.innerHTML=tAccs.length?tAccs.map(a=>`<option value="${a.id}">${a.name}</option>`).join(''):'<option value="">No trading accounts — add one first</option>';
     }
   }
-  else if(id==='add-schedule-modal'){
-    editingScheduleId=null;parsedEMISchedule=[];
-    ['sch-name','sch-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
-    ['sch-from-search','sch-to-search'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+  else if(id==='add-fd-modal'){
+    fdMaturityEdited=false;
+    ['fd-name','fd-bank','fd-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    ['fd-principal','fd-rate','fd-maturity-amount'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    ['fd-acc-search','fd-int-acc-search','fd-src-acc-search'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
     const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
-    ['sch-from','sch-to'].forEach(id2=>{const e=document.getElementById(id2);if(e)e.innerHTML=opts;});
+    ['fd-acc','fd-int-acc','fd-src-acc'].forEach(id2=>{const e=document.getElementById(id2);if(e)e.innerHTML=opts;});
+    const sd=document.getElementById('fd-start');if(sd)sd.value=todayISO();
+    const md=document.getElementById('fd-maturity');if(md)md.value='';
+    const prev=document.getElementById('fd-preview');if(prev)prev.style.display='none';
+    const cp=document.getElementById('fd-cert-preview');if(cp)cp.style.display='none';
+    const cf=document.getElementById('fd-cert-file');if(cf)cf.value='';
+    document.getElementById('fd-modal-title').textContent='Add Fixed Deposit';
+  }
+  else if(id==='add-schedule-modal'){
+    editingScheduleId=null;parsedEMISchedule=[];viewingScheduleId=null;
+    ['sch-name','sch-notes'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    ['sch-loan-acc-search','sch-src-search','sch-int-search','sch-comm-search',
+     'sch-loan2-search','sch-src2-search','sch-int2-search',
+     'sch-inv-search','sch-sipfrom-search','sch-recfrom-search'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    ['sch-loan-acc','sch-src','sch-int','sch-comm','sch-loan2','sch-src2','sch-int2','sch-inv','sch-sipfrom','sch-recfrom']
+      .forEach(id2=>{const e=document.getElementById(id2);if(e)e.innerHTML=opts;});
     const catEl=document.getElementById('sch-category');
     if(catEl)catEl.innerHTML='<option value="">— Select —</option>'+getCategoryOptions('all');
     const schType=document.getElementById('sch-type');if(schType)schType.value='emi';
@@ -4509,11 +5142,8 @@ function openModal(id){
     const sd=document.getElementById('sch-start-date');if(sd)sd.value=todayISO();
     const ss=document.getElementById('sch-sip-start');if(ss)ss.value=todayISO();
     const sr=document.getElementById('sch-rec-start');if(sr)sr.value=todayISO();
-    document.getElementById('sch-emi-preview')?.style && (document.getElementById('sch-emi-preview').style.display='none');
+    const ep=document.getElementById('sch-emi-preview');if(ep)ep.style.display='none';
     const up=document.getElementById('sch-upload-preview');if(up)up.style.display='none';
-    // Add file input event
-    const fi=document.getElementById('sch-emi-file');
-    if(fi)fi.onchange=function(){parseEMIFile(this);};
   }
   else if(id==='add-loan-modal'){
     editingLoanId=null;
