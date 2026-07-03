@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v81';
+const CURRENT_VERSION = 'v83';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v81</title>
+<title>Artha-Sangraha v83</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2123,32 +2123,41 @@ async function fetchExchangeRates(){
   const todayRates=exchangeRatesHistory.find(r=>r.date===today);
   if(todayRates){
     exchangeRates={...exchangeRates,...todayRates.rates};
+    showRatesNotification(false,null);
     return;
   }
   try{
-    const response=await fetch('https://api.frankfurter.app/latest?from=INR&to=USD,EUR,GBP,AED,SGD,CAD,AUD',{signal:AbortSignal.timeout(5000)});
-    if(!response.ok)throw new Error('API error');
+    // Use AbortController for timeout (broader browser support)
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    const response=await fetch('https://api.frankfurter.app/latest?from=INR&to=USD,EUR,GBP,SGD,CAD,AUD',
+      {signal:controller.signal});
+    clearTimeout(timeout);
+    if(!response.ok)throw new Error('API returned '+response.status);
     const data=await response.json();
     if(data.rates){
-      // frankfurter returns rates FROM INR, so USD rate = how many USD per 1 INR
-      // We need INR per 1 USD/EUR etc. → invert
+      // frankfurter returns: 1 INR = X USD, we need 1 USD = X INR → invert
       const rates={};
       Object.entries(data.rates).forEach(([cur,rate])=>{
-        rates[cur]=Math.round((1/rate)*100)/100; // INR per 1 unit of foreign currency
+        rates[cur]=Math.round((1/rate)*100)/100;
       });
+      // AED is not in ECB rates - use approximate fixed rate
+      if(!rates.AED)rates.AED=Math.round(exchangeRates.AED*100)/100;
       exchangeRates={...exchangeRates,...rates};
       // Save to DB
       await sb.from('exchange_rates').upsert({
         user_id:currentUser.id,date:today,
         base_currency:'INR',rates,source:'frankfurter'
       },{onConflict:'user_id,date,base_currency'});
-      // Reload history
-      const{data:hist}=await sb.from('exchange_rates').select('*').eq('user_id',currentUser.id).order('date',{ascending:false}).limit(90);
+      const{data:hist}=await sb.from('exchange_rates').select('*').eq('user_id',currentUser.id)
+        .order('date',{ascending:false}).limit(90).throwOnError().then(r=>r).catch(()=>({data:[]}));
       if(hist)exchangeRatesHistory=hist;
       showRatesNotification(false,rates);
+      // Refresh dashboard with new rates
+      renderDashboard();
     }
   } catch(err){
-    console.warn('Exchange rate fetch failed:',err);
+    console.warn('Exchange rate fetch failed:',err.message);
     ratesApiError=true;
     showRatesNotification(true,null);
   }
@@ -6038,7 +6047,13 @@ function todayISO(){const d=new Date();return`${d.getFullYear()}-${String(d.getM
 function toLocalISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function toMonthISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
 function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}
-function fmt(val,currency='INR',decimals=2){const n=parseFloat(val)||0;const sym=currency==='USD'?'$':'₹';return sym+n.toLocaleString('en-IN',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});}
+function fmt(val,currency='INR',decimals=2){
+  const n=parseFloat(val)||0;
+  const symbols={INR:'₹',USD:'$',EUR:'€',GBP:'£',AED:'د.إ',SGD:'S$',CAD:'C$',AUD:'A$'};
+  const sym=symbols[currency]||currency+' ';
+  const locale=currency==='INR'?'en-IN':'en-US';
+  return sym+n.toLocaleString(locale,{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+}
 function capitalize(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 function monthsBetween(d1,d2){return(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());}
 function accIcon(type){return{cash:'💵',bank:'🏦','indian-stock':'📈','us-stock':'🌐',property:'🏠',fd:'🔒',pf:'🏛️',gold:'🥇',crypto:'₿',other:'✨'}[type]||'💼';}
