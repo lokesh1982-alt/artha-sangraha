@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v87';
+const CURRENT_VERSION = 'v88';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v87</title>
+<title>Artha-Sangraha v88</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1861,13 +1861,13 @@ function renderSettings(){
     clsOrder.forEach(cls=>{
       const clsAccs=accounts.filter(a=>(a.classification||'asset')===cls);
       if(!clsAccs.length)return;
-      const total=clsAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+      const total=clsAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
       const colId='settings-acc-cls-'+cls;
       html+=`<div style="margin-bottom:8px">
         <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border)">
           <div style="font-size:0.82rem;font-weight:700">${clsLabels[cls]} <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(${clsAccs.length})</span></div>
           <div style="display:flex;align-items:center;gap:10px">
-            <span class="hide-figure" style="font-size:0.78rem;font-weight:600;color:var(--accent)">${fmt(total,'INR')}</span>
+            <span class="hide-figure" style="font-size:0.78rem;font-weight:600;color:var(--accent)">${fmt(total,displayCurrency)}</span>
             <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           </div>
         </div>
@@ -1876,7 +1876,7 @@ function renderSettings(){
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:0.9rem">${accIcon(a.type)}</span>
               <div><div style="font-size:0.82rem;font-weight:500">${a.name}</div>
-              <div style="font-size:0.68rem;color:var(--text2)">${fmtD(calcBalance(a),a.currency||'INR',false)}</div></div>
+              <div style="font-size:0.68rem;color:var(--text2)">${fmtD(calcBalance(a),a.currency||'INR',displayCurrency!==a.currency)}</div></div>
             </div>
             <div style="display:flex;gap:5px">
               ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
@@ -3128,14 +3128,15 @@ function renderChartOfAccounts(){
     let groupTotal=0;
     const rows=groupAccs.map(a=>{
       const bal=calcBalance(a);
-      groupTotal+=a.currency==='INR'?bal:0;
-      if(['asset','expense'].includes(cls))totalDebits+=a.currency==='INR'?bal:0;
-      else totalCredits+=a.currency==='INR'?bal:0;
+      const balD=convertToDisplay(bal,a.currency||'INR');
+      groupTotal+=balD;
+      if(['asset','expense'].includes(cls))totalDebits+=balD;
+      else totalCredits+=balD;
       return `<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
         <td style="padding-left:24px">${accIcon(a.type)} ${a.name}</td>
         <td style="font-size:0.75rem;color:var(--text2)">${a.notes||capitalize(a.type)}</td>
-        <td style="text-align:right">${fmt(parseFloat(a.opening_balance||0),a.currency)}</td>
-        <td style="text-align:right;font-weight:600;color:${color}">${fmt(bal,a.currency)}</td>
+        <td style="text-align:right" class="hide-figure">${fmtD(a.opening_balance||0,a.currency||'INR',displayCurrency!==a.currency)}</td>
+        <td style="text-align:right;font-weight:600;color:${color}" class="hide-figure">${fmtD(bal,a.currency||'INR',displayCurrency!==a.currency)}</td>
         <td><button class="btn-danger" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button></td>
       </tr>`;
     }).join('');
@@ -3145,7 +3146,7 @@ function renderChartOfAccounts(){
           <span id="coa-${cls}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           <div style="font-size:0.92rem;font-weight:700">${icon} ${groupName} <span style="font-size:0.72rem;color:var(--text3);font-weight:400">(${groupAccs.length})</span></div>
         </div>
-        <div class="hide-figure" style="font-weight:700;color:${color}">${fmt(groupTotal,'INR')}</div>
+        <div class="hide-figure" style="font-weight:700;color:${color}">${fmt(groupTotal,displayCurrency)}</div>
       </div>
       <div id="coa-${cls}" style="display:block">
         <div style="overflow-x:auto">
@@ -3161,10 +3162,10 @@ function renderChartOfAccounts(){
   html+=`<div class="card" style="background:var(--bg2)">
     <div class="sec-title" style="margin-bottom:12px">⚖️ Trial Balance</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Debits (Assets + Expenses)</div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">${fmt(totalDebits,'INR')}</div></div>
-      <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Credits (Liabilities + Income + Equity)</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${fmt(totalCredits,'INR')}</div></div>
+      <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Debits (Assets + Expenses)</div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">${fmt(totalDebits,displayCurrency)}</div></div>
+      <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Credits (Liabilities + Income + Equity)</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${fmt(totalCredits,displayCurrency)}</div></div>
     </div>
-    ${Math.abs(totalDebits-totalCredits)<1?'<div style="margin-top:10px;color:var(--green);font-size:0.85rem;font-weight:600">✅ Books are balanced!</div>':'<div style="margin-top:10px;color:var(--red);font-size:0.85rem">⚠️ Difference: '+fmt(Math.abs(totalDebits-totalCredits),'INR')+'</div>'}
+    ${Math.abs(totalDebits-totalCredits)<1?'<div style="margin-top:10px;color:var(--green);font-size:0.85rem;font-weight:600">✅ Books are balanced!</div>':'<div style="margin-top:10px;color:var(--red);font-size:0.85rem">⚠️ Difference: '+fmt(Math.abs(totalDebits-totalCredits),displayCurrency)+'</div>'}
   </div>`;
   document.getElementById('coa-content').innerHTML=html||'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No accounts yet.</div></div>';
 }
@@ -3664,12 +3665,12 @@ function renderPortfolio(){
     <div class="stat-card"><div class="stat-label">Holdings</div><div class="stat-val" style="color:var(--purple)">${investments.length} assets</div></div>
   </div>`;
   Object.entries(byType).forEach(([type,accs])=>{
-    const grpTotal=accs.reduce((s,a)=>s+calcBalanceInDisplay(a),0);
+    const grpTotal=accs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
     html+=`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:0.88rem;font-weight:700">${typeLabel[type]||capitalize(type)}</div>
       <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:var(--accent)">${fmt(grpTotal,displayCurrency)}</div></div>`;
     accs.forEach(a=>{
-      const bal=calcBalanceInDisplay(a);
+      const bal=convertToDisplay(calcBalance(a),a.currency||'INR');
       const pct=totalDisplay>0?Math.round(bal/totalDisplay*100):0;
       html+=`<div class="card" style="margin-bottom:8px;padding:12px;cursor:pointer" onclick="openAccountLedger('${a.id}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
@@ -3678,7 +3679,7 @@ function renderPortfolio(){
             <div style="margin-top:6px;height:4px;background:var(--bg3);border-radius:2px"><div style="height:4px;background:var(--accent);border-radius:2px;width:${pct}%"></div></div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:12px">
-            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(bal,displayCurrency)}${a.currency!==displayCurrency?'<div style="font-size:0.7rem;color:var(--text3)">'+fmt(calcBalance(a),a.currency)+'</div>':''}</div>
+            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmtD(calcBalance(a),a.currency||'INR',true)}</div>
             <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">Tap for ledger ›</div>
           </div>
         </div>
@@ -3726,7 +3727,7 @@ function openPortfolioBuy(accId){
   portfolioInvestAccId=accId;
   const acc=accounts.find(a=>a.id===accId);if(!acc)return;
   const info=document.getElementById('buy-invest-info');
-  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(calcBalance(acc),acc.currency)}</b>`;
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmtD(calcBalance(acc),acc.currency||'INR',true)}</b>`;
   const title=document.getElementById('buy-modal-title');
   if(title)title.textContent=`Buy — ${acc.name}`;
   ['buy-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=todayISO();});
@@ -4602,7 +4603,7 @@ function renderWallets(){
           </div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(bal,'INR')}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmtD(bal,'INR',false)}</div>
           <div style="font-size:0.68rem;color:var(--text3)">Available</div>
         </div>
       </div>
@@ -4627,7 +4628,7 @@ function renderWallets(){
               <div style="font-size:0.68rem;color:var(--text3)">${formatDate(t.date)} · ${t.category||''}</div>
             </div>
             <div style="font-size:0.85rem;font-weight:700;color:${isCredit?'var(--green)':'var(--red)'}">
-              ${isCredit?'+':'-'}${fmt(t.amount,'INR')}
+              ${isCredit?'+':'-'}${fmtD(t.amount,t.currency||'INR',t.currency&&t.currency!==displayCurrency)}
             </div>
           </div>`;
         }).join('')}
@@ -4766,7 +4767,7 @@ function openFDMaturityModal(fdId){
        <div><span style="color:var(--text2)">Principal: </span><b>${fmt(fd.principal,'INR')}</b></div>
        <div><span style="color:var(--text2)">Rate: </span><b>${fd.annual_rate}%</b></div>
        <div><span style="color:var(--text2)">Interest: </span><b style="color:var(--green)">${fmt(interest,'INR')}</b></div>
-       <div style="grid-column:span 2"><span style="color:var(--text2)">Maturity Amount: </span><b style="color:var(--accent)">${fmtD(fd.amount,'INR',false)}</b></div>
+       <div style="grid-column:span 2"><span style="color:var(--text2)">Maturity Amount: </span><b style="color:var(--accent)">${fmtD(fd.amount,currency,currency!==displayCurrency)}</b></div>
      </div>`;
   const amt=document.getElementById('fd-actual-maturity');if(amt)amt.value=fd.amount||'';
   const dt=document.getElementById('fd-actual-date');if(dt)dt.value=fd.end_date||todayISO();
@@ -4877,7 +4878,7 @@ function renderFD(){
       <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${dueFDs.length} FD${dueFDs.length>1?'s':''} Matured</div>
       ${dueFDs.map(fd=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
         <div><div style="font-size:0.85rem;font-weight:600">${fd.name}</div>
-        <div style="font-size:0.72rem;color:var(--text2)">Matured: ${formatDate(fd.end_date)} · ${fmtD(fd.amount,'INR',false)}</div></div>
+        <div style="font-size:0.72rem;color:var(--text2)">Matured: ${formatDate(fd.end_date)} · ${fmtD(fd.amount,currency,false)}</div></div>
         <button class="btn-sm" style="background:var(--accent)" onclick="openFDMaturityModal('${fd.id}')">🔓 Act Now</button>
       </div>`).join('')}
     </div>`:'';
@@ -4916,8 +4917,8 @@ function renderFD(){
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:10px">
-            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(fd.amount,currency)}</div>
-            <div style="font-size:0.72rem;color:var(--green)">+${fmt(interest,currency)}</div>
+            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmtD(fd.amount,currency,currency!==displayCurrency)}</div>
+            <div style="font-size:0.72rem;color:var(--green)">+${fmtD(interest,currency,currency!==displayCurrency)}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -4938,7 +4939,7 @@ function renderFD(){
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div><div style="font-size:0.85rem;font-weight:600">${fd.name}</div>
         <div style="font-size:0.72rem;color:var(--text2)">${formatDate(fd.start_date)} → ${formatDate(fd.end_date)}</div></div>
-        <div style="text-align:right"><div style="font-size:0.88rem;font-weight:600">${fmtD(fd.amount,'INR',false)}</div>
+        <div style="text-align:right"><div style="font-size:0.88rem;font-weight:600">${fmtD(fd.amount,JSON.parse(fd.schedule_rows||'{}').currency||'INR',true)}</div>
           <button class="btn-danger" style="font-size:0.68rem;padding:3px 6px;margin-top:4px" onclick="deleteFD('${fd.id}')">🗑</button></div>
       </div>
     </div>`).join('');
@@ -4955,7 +4956,7 @@ function renderTradingAccounts(){
     return;
   }
   const tAccs=accounts.filter(a=>a.group_id===grp.id);
-  const totalBal=tAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+  const totalBal=tAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   if(!tAccs.length){
     el.innerHTML=`<div class="empty-state" style="padding:20px"><div class="empty-text">No trading accounts yet. Click + Add Trading Account to create one (e.g. CoinDCX, 5paisa).</div></div>`;
     return;
@@ -4971,7 +4972,7 @@ function renderTradingAccounts(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:1.1rem">💹</span>
-          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div class="hide-figure" style="font-size:0.78rem;color:var(--text2)">${fmtD(calcBalance(a),a.currency||'INR')}</div></div>
+          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div class="hide-figure" style="font-size:0.78rem;color:var(--text2)">${fmtD(calcBalance(a),a.currency||'INR',a.currency!==displayCurrency)}</div></div>
         </div>
         <div style="display:flex;gap:4px">
           ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
@@ -4995,7 +4996,7 @@ function openDepositWithdraw(accId,mode){
   const title=document.getElementById('dw-modal-title');
   if(title)title.textContent=mode==='deposit'?`Deposit to ${acc.name}`:`Withdraw from ${acc.name}`;
   const info=document.getElementById('dw-account-info');
-  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(calcBalance(acc),acc.currency)}</b>`;
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmtD(calcBalance(acc),acc.currency||'INR',true)}</b>`;
   const fromLabel=document.getElementById('dw-from-label');
   if(fromLabel)fromLabel.textContent=mode==='deposit'?'From Account *':'To Account *';
   // Populate other accounts (excluding this trading account)
@@ -5427,7 +5428,7 @@ function buildNetWorthHTML(){
   // Calculate running net worth per month
   const nwPoints=months.map(m=>{
     const asOf=m.key+'-28';
-    const assets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a,asOf):0),0);
+    const assets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
     const liab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
     return{label:m.label,val:assets-liab};
   });
