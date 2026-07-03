@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v86';
+const CURRENT_VERSION = 'v87';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v86</title>
+<title>Artha-Sangraha v87</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3014,11 +3014,15 @@ function renderDashboard(){
     </div>
   </div>`;
 
+  const fyIncomeD=convertToDisplay(fyIncome,'INR');
+  const fyExpD=convertToDisplay(fyExp,'INR');
+  const mIncomeD=convertToDisplay(mIncome,'INR');
+  const mExpD=convertToDisplay(mExp,'INR');
   document.getElementById('dash-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-label">${fy.label} Income</div><div class="stat-val" style="color:var(--green)">${fmt(fyIncome,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">${fy.label} Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(fyExp,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">This Month Income</div><div class="stat-val" style="color:var(--green)">${fmt(mIncome,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">This Month Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(mExp,'INR')}</div></div>`;
+    <div class="stat-card"><div class="stat-label">${fy.label} Income</div><div class="stat-val" style="color:var(--green)">${fmt(fyIncomeD,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">${fy.label} Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(fyExpD,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">This Month Income</div><div class="stat-val" style="color:var(--green)">${fmt(mIncomeD,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">This Month Expenses</div><div class="stat-val" style="color:var(--red)">${fmt(mExpD,displayCurrency)}</div></div>`;
 
   // Tile menu
   const tileMenu=document.getElementById('dash-tile-menu');
@@ -3055,7 +3059,7 @@ function renderDashboard(){
             <div style="font-size:0.7rem;color:var(--text3);margin-top:1px">${formatDate(t.date)} · ${t.category||capitalize(t.type)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:0.85rem;font-weight:700;color:${typeColor}">${amtSign}${fmt(t.amount,t.currency)}</div>
+            <div style="font-size:0.85rem;font-weight:700;color:${typeColor}">${amtSign}${fmtD(t.amount,t.currency||'INR',displayCurrency!=='INR')}</div>
           </div>
           <div style="color:var(--text3);font-size:0.8rem">›</div>
         </div>`;
@@ -3214,7 +3218,7 @@ function renderAccounts(groupId=null){
           <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           <div style="font-size:0.88rem;font-weight:700">${label} <span style="font-size:0.72rem;color:var(--text3);font-weight:400">(${accs.length})</span></div>
         </div>
-        <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
+        <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,displayCurrency)}</div>
       </div>
       <div id="${colId}" style="display:none">`;
 
@@ -3233,11 +3237,11 @@ function renderAccounts(groupId=null){
       clsGroups.forEach(grp=>{
         const grpAccs=accs.filter(a=>a.group_id===grp.id);
         if(!grpAccs.length)return;
-        const grpTotal=grpAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+        const grpTotal=grpAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
         html+=`<div class="account-card" onclick="renderAccounts('${grp.id}')" style="background:var(--accent-light);border-color:var(--accent);margin-bottom:8px">
           <div class="account-icon" style="background:var(--accent);color:#fff;font-size:1.1rem">${grp.icon||'📁'}</div>
           <div class="account-info"><div class="account-name">${grp.name}</div><div class="account-type">${grpAccs.length} accounts · tap to expand</div></div>
-          <div class="account-bal"><div class="account-bal-val hide-figure" style="color:var(--accent)">${fmt(grpTotal,'INR')}</div><div class="account-bal-curr">Group Total</div></div>
+          <div class="account-bal"><div class="account-bal-val hide-figure" style="color:var(--accent)">${fmt(convertToDisplay(grpTotal,'INR'),displayCurrency)}</div><div class="account-bal-curr">Group Total</div></div>
         </div>`;
       });
       // Ungrouped accounts
@@ -3247,12 +3251,12 @@ function renderAccounts(groupId=null){
       clsGroups.forEach(grp=>{
         const grpAccs=accs.filter(a=>a.group_id===grp.id);
         if(!grpAccs.length)return;
-        const grpTotal=grpAccs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+        const grpTotal=grpAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
         html+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">
           <div onclick="renderAccounts('${grp.id}')" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:center;padding:12px 16px;cursor:pointer;background:var(--accent-light)">
             <div><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></div>
             <div style="font-size:0.78rem;color:var(--text2)">Group</div><div></div>
-            <div class="hide-figure" style="font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</div>
+            <div class="hide-figure" style="font-weight:700;color:var(--accent)">${fmt(convertToDisplay(grpTotal,'INR'),displayCurrency)}</div>
             <div style="color:var(--accent);font-size:0.8rem">→</div>
           </div>
         </div>`;
@@ -3355,7 +3359,7 @@ function renderTransactions(){
   const totalExp=filtered.filter(t=>t.type==='expense').reduce((s,t)=>s+parseFloat(t.amount),0);
   const net=totalInc-totalExp;
   const summaryEl=document.getElementById('txn-summary');
-  if(summaryEl)summaryEl.innerHTML=`<span>Showing <b>${filtered.length}</b></span><span style="color:var(--green)">Inc: <b>${fmt(totalInc,'INR')}</b></span><span style="color:var(--red)">Exp: <b>${fmt(totalExp,'INR')}</b></span><span style="color:${net>=0?'var(--green)':'var(--red)'}">Net: <b>${fmt(Math.abs(net),'INR')}</b></span>`;
+  if(summaryEl)summaryEl.innerHTML=`<span>Showing <b>${filtered.length}</b></span><span style="color:var(--green)">Inc: <b>${fmt(convertToDisplay(totalInc,'INR'),displayCurrency)}</b></span><span style="color:var(--red)">Exp: <b>${fmt(convertToDisplay(totalExp,'INR'),displayCurrency)}</b></span><span style="color:${net>=0?'var(--green)':'var(--red)'}">Net: <b>${fmt(convertToDisplay(Math.abs(net),'INR'),displayCurrency)}</b></span>`;
 
   // Both mobile and desktop: clean rows with tap-for-detail
   document.getElementById('txn-table-wrap').innerHTML=filtered.length
@@ -3371,7 +3375,7 @@ function renderTransactions(){
             <div style="font-size:0.72rem;color:var(--text3);margin-top:1px">${formatDate(t.date)} · ${t.category||capitalize(t.type)}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:0.88rem;font-weight:700;color:${typeColor}">${amtSign}${fmt(t.amount,t.currency)}</div>
+            <div style="font-size:0.88rem;font-weight:700;color:${typeColor}">${amtSign}${fmtD(t.amount,t.currency||'INR',displayCurrency!=='INR')}</div>
           </div>
           <div style="color:var(--text3);font-size:0.8rem;flex-shrink:0">›</div>
         </div>`;
