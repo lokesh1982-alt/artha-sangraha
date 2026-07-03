@@ -20,7 +20,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v70</title>
+<title>Artha-Sangraha v71</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1762,6 +1762,7 @@ function renderSettings(){
               <div style="font-size:0.68rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
             </div>
             <div style="display:flex;gap:5px">
+              ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
               <button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="editAccount('${a.id}')">✏️</button>
               <button class="btn-danger" style="padding:3px 7px;font-size:0.72rem" onclick="deleteAccountPrompt('${a.id}')">🗑</button>
             </div>
@@ -2891,6 +2892,7 @@ function buildMobileAccountCard(a){
       <div class="account-bal-curr" style="font-size:0.65rem">Current</div>
     </div>
     <div style="display:flex;gap:3px">
+      ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
       <button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
       <button class="btn-danger" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
     </div>
@@ -2908,6 +2910,7 @@ function buildDesktopAccountTable(accs){
         <td style="text-align:right;color:var(--text2)">${fmt(a.opening_balance,a.currency)}</td>
         <td style="text-align:right;font-weight:700;color:var(--accent)">${fmt(calcBalance(a),a.currency)}</td>
         <td><div style="display:flex;gap:4px">
+          ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
           <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
           <button class="btn-danger" style="padding:3px 7px;font-size:0.7rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button>
         </div></td>
@@ -4411,6 +4414,7 @@ function renderTradingAccounts(){
           <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div style="font-size:0.78rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
         </div>
         <div style="display:flex;gap:4px">
+          ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
           <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem" onclick="editAccount('${a.id}')">✏️</button>
           <button class="btn-danger" style="padding:3px 7px;font-size:0.7rem" onclick="deleteAccountPrompt('${a.id}')">🗑</button>
         </div>
