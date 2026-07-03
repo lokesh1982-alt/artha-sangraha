@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v74';
+const CURRENT_VERSION = 'v75';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v74</title>
+<title>Artha-Sangraha v75</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3919,25 +3919,45 @@ async function confirmTopup(){
 
 function renderDueBadge(){
   const today=todayISO();
-  const dueSchedules=schedules.filter(s=>s.status==='active'&&s.type!=='fd'&&s.next_date<=today);
-  const dueFDs=schedules.filter(s=>s.status==='active'&&s.type==='fd'&&s.end_date&&s.end_date<=today);
-  const total=dueSchedules.length+dueFDs.length;
+  let count=0;
+  schedules.filter(s=>s.status==='active').forEach(s=>{
+    if(s.type==='fd'){
+      if(s.end_date&&s.end_date<=today)count++;
+    } else if(s.type==='emi'&&s.schedule_rows){
+      const rows=JSON.parse(s.schedule_rows||'[]');
+      count+=rows.filter(r=>r.date<=today&&r.date>=s.next_date).length;
+    } else {
+      if(s.next_date<=today)count++;
+    }
+  });
   const badge=document.getElementById('due-entries-badge');
-  if(badge){badge.textContent=total;badge.style.display=total?'inline':'none';}
+  if(badge){badge.textContent=count;badge.style.display=count?'inline':'none';}
 }
 
 function renderScheduler(){
   const today=todayISO();
-  const due=schedules.filter(s=>s.status==='active'&&s.next_date<=today);
+
+  // Find ALL overdue entries across all schedules
+  const allOverdue=[];
+  schedules.filter(s=>s.status==='active'&&s.type!=='fd').forEach(s=>{
+    if(s.type==='emi'&&s.schedule_rows){
+      // For EMI: find all past rows that haven't been posted yet
+      const rows=JSON.parse(s.schedule_rows||'[]');
+      const pastRows=rows.filter(r=>r.date<=today&&r.date>=s.next_date);
+      pastRows.forEach(r=>allOverdue.push({...s,_dueDate:r.date,_dueRow:r,_label:`${s.name} — ${formatDate(r.date)}`}));
+    } else {
+      if(s.next_date<=today)allOverdue.push({...s,_dueDate:s.next_date,_label:`${s.name} — ${formatDate(s.next_date)}`});
+    }
+  });
 
   // Due entries notification
   const dueEl=document.getElementById('scheduler-due');
   if(dueEl){
-    dueEl.innerHTML=due.length?`<div class="card" style="border-color:var(--yellow);background:var(--yellow-light);margin-bottom:14px">
-      <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${due.length} Pending ${due.length===1?'Entry':'Entries'}</div>
-      ${due.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-        <div><div style="font-size:0.85rem;font-weight:600">${s.name}</div>
-        <div style="font-size:0.72rem;color:var(--text2)">${formatDate(s.next_date)} · ${fmt(s.amount,'INR')} · ${s.type.toUpperCase()}</div></div>
+    dueEl.innerHTML=allOverdue.length?`<div class="card" style="border-color:var(--yellow);background:var(--yellow-light);margin-bottom:14px">
+      <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${allOverdue.length} Pending ${allOverdue.length===1?'Entry':'Entries'}</div>
+      ${allOverdue.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:0.85rem;font-weight:600">${s._label}</div>
+        <div style="font-size:0.72rem;color:var(--text2)">${fmt(s._dueRow?.emi||s.amount,'INR')} · ${s.type.toUpperCase()}</div></div>
         <button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post</button>
       </div>`).join('')}
     </div>`:'';
