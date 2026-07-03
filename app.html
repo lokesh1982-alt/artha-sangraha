@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v76';
+const CURRENT_VERSION = 'v77';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v76</title>
+<title>Artha-Sangraha v77</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1792,7 +1792,7 @@ function renderSettings(){
         <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border)">
           <div style="font-size:0.82rem;font-weight:700">${clsLabels[cls]} <span style="font-size:0.7rem;color:var(--text3);font-weight:400">(${clsAccs.length})</span></div>
           <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:0.78rem;font-weight:600;color:var(--accent)">${fmt(total,'INR')}</span>
+            <span class="hide-figure" style="font-size:0.78rem;font-weight:600;color:var(--accent)">${fmt(total,'INR')}</span>
             <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           </div>
         </div>
@@ -2899,7 +2899,7 @@ function renderAccounts(groupId=null){
           <span id="${colId}-icon" style="font-size:0.8rem;color:var(--text3)">▾</span>
           <div style="font-size:0.88rem;font-weight:700">${label} <span style="font-size:0.72rem;color:var(--text3);font-weight:400">(${accs.length})</span></div>
         </div>
-        <div style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
+        <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:${color}">${fmt(total,'INR')}</div>
       </div>
       <div id="${colId}" style="display:none">`;
 
@@ -3342,14 +3342,14 @@ function renderPortfolio(){
   investments.forEach(a=>{if(!byType[a.type])byType[a.type]=[];byType[a.type].push(a);});
   const typeLabel={'indian-stock':'🇮🇳 Indian Stocks','us-stock':'🇺🇸 US Stocks',fd:'🏦 Fixed Deposits',pf:'🏛️ PF/EPF',gold:'🥇 Gold',crypto:'₿ Crypto',etf:'📊 ETF/MF'};
   let html=`<div class="card-grid card-grid-2" style="margin-bottom:16px">
-    <div class="stat-card"><div class="stat-label">Total (INR)</div><div class="stat-val" style="color:var(--accent)">${fmt(totalINR,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total (USD)</div><div class="stat-val" style="color:var(--purple)">${fmt(totalUSD,'USD')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total (INR)</div><div class="stat-val hide-figure" style="color:var(--accent)">${fmt(totalINR,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total (USD)</div><div class="stat-val hide-figure" style="color:var(--purple)">${fmt(totalUSD,'USD')}</div></div>
   </div>`;
   Object.entries(byType).forEach(([type,accs])=>{
     const grpTotal=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
     html+=`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:0.88rem;font-weight:700">${typeLabel[type]||capitalize(type)}</div>
-      <div style="font-size:0.88rem;font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</div></div>`;
+      <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</div></div>`;
     accs.forEach(a=>{
       const bal=calcBalance(a);
       const pct=totalINR>0&&a.currency==='INR'?Math.round(bal/totalINR*100):0;
@@ -3360,7 +3360,7 @@ function renderPortfolio(){
             <div style="margin-top:6px;height:4px;background:var(--bg3);border-radius:2px"><div style="height:4px;background:var(--accent);border-radius:2px;width:${pct}%"></div></div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:12px">
-            <div style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(bal,a.currency)}</div>
+            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(bal,a.currency)}</div>
             <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">Tap for ledger ›</div>
           </div>
         </div>
@@ -4625,14 +4625,14 @@ function renderTradingAccounts(){
     <div class="card" style="margin-bottom:10px;background:var(--accent-light);border-color:var(--accent)">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:0.85rem;font-weight:600">💹 Total Trading Balance</div>
-        <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalBal,'INR')}</div>
+        <div class="hide-figure" style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalBal,'INR')}</div>
       </div>
     </div>
     ${tAccs.map(a=>`<div class="card" style="margin-bottom:8px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:1.1rem">💹</span>
-          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div style="font-size:0.78rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div class="hide-figure" style="font-size:0.78rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
         </div>
         <div style="display:flex;gap:4px">
           ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
