@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v84';
+const CURRENT_VERSION = 'v85';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v84</title>
+<title>Artha-Sangraha v85</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1876,7 +1876,7 @@ function renderSettings(){
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:0.9rem">${accIcon(a.type)}</span>
               <div><div style="font-size:0.82rem;font-weight:500">${a.name}</div>
-              <div style="font-size:0.68rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+              <div style="font-size:0.68rem;color:var(--text2)">${fmt(calcBalanceInDisplay(a),displayCurrency)}</div></div>
             </div>
             <div style="display:flex;gap:5px">
               ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
@@ -2097,21 +2097,58 @@ function fromINR(amount, currency){
 }
 
 function fmtInDisplayCurrency(amountINR){
+  // Convert an INR amount to display currency
   if(displayCurrency==='INR')return fmt(amountINR,'INR');
   return fmt(fromINR(amountINR,displayCurrency),displayCurrency);
+}
+
+function fmtAccBalance(acc){
+  // Format account balance respecting the account's native currency
+  const bal=calcBalance(acc);
+  if(displayCurrency==='INR'){
+    // Show in INR - if account is USD/EUR, convert to INR
+    if(acc.currency==='INR')return fmt(bal,'INR');
+    return fmt(toINR(bal,acc.currency),'INR')+` <span style="font-size:0.7em;opacity:0.7">(${fmt(bal,acc.currency)})</span>`;
+  } else if(acc.currency===displayCurrency){
+    // Account is already in display currency
+    return fmt(bal,displayCurrency);
+  } else if(acc.currency==='INR'){
+    // INR account shown in foreign currency
+    return fmt(fromINR(bal,displayCurrency),displayCurrency);
+  } else {
+    // Foreign account shown in different foreign currency - convert via INR
+    const inINR=toINR(bal,acc.currency);
+    return fmt(fromINR(inINR,displayCurrency),displayCurrency)+` <span style="font-size:0.7em;opacity:0.7">(${fmt(bal,acc.currency)})</span>`;
+  }
+}
+
+function calcBalanceInDisplay(acc){
+  // Returns numeric balance in display currency
+  const bal=calcBalance(acc);
+  if(acc.currency===displayCurrency)return bal;
+  if(acc.currency==='INR')return fromINR(bal,displayCurrency);
+  const inINR=toINR(bal,acc.currency);
+  if(displayCurrency==='INR')return inINR;
+  return fromINR(inINR,displayCurrency);
 }
 
 function changeDisplayCurrency(currency){
   displayCurrency=currency;
   localStorage.setItem('as-display-currency',currency);
+  // Re-render all sections that are currently visible or cached
   renderDashboard();
-  // Re-render current section
+  renderAccounts();
+  renderPortfolio();
+  renderFD();
+  renderWallets();
+  // Re-render current active section
   const activeSec=document.querySelector('.section.active');
   if(activeSec){
     const id=activeSec.id.replace('sec-','');
-    if(id==='portfolio')renderPortfolio();
-    if(id==='accounts')renderAccounts();
     if(id==='reports')renderReports();
+    if(id==='transactions')renderTransactions();
+    if(id==='trading')renderTradingAccounts();
+    if(id==='settings')renderSettings();
   }
   showToast(`Displaying in ${currency} 💱`);
 }
@@ -3168,7 +3205,7 @@ function renderAccounts(groupId=null){
 
   Object.entries(classGroups).forEach(([cls,{label,color,accs}])=>{
     if(!accs.length)return;
-    const total=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+    const total=accs.reduce((s,a)=>s+calcBalanceInDisplay(a),0);
     const colId=`acc-cls-${cls}`;
     html+=`<div style="margin-bottom:16px">
       <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;padding:4px 0">
@@ -3604,12 +3641,11 @@ function renderBudget(){
 // ═══════════════════════════════
 function renderPortfolio(){
   const investTypes=['indian-stock','us-stock','fd','pf','gold','crypto','etf'];
-  // Exclude accounts that belong to Trading Account group
   const tradingGrp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
   const tradingAccIds=tradingGrp?accounts.filter(a=>a.group_id===tradingGrp.id).map(a=>a.id):[];
   const investments=accounts.filter(a=>investTypes.includes(a.type)&&!tradingAccIds.includes(a.id));
-  const totalINR=investments.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
-  const totalUSD=investments.filter(a=>a.currency==='USD').reduce((s,a)=>s+calcBalance(a),0);
+  // Total in display currency - convert each account from its native currency
+  const totalDisplay=investments.reduce((s,a)=>s+calcBalanceInDisplay(a),0);
   const isMobile=window.innerWidth<=768;
   if(!investments.length){
     document.getElementById('portfolio-content').innerHTML=`<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-text">No investments yet.</div><button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Investment</button></div>`;
@@ -3619,25 +3655,25 @@ function renderPortfolio(){
   investments.forEach(a=>{if(!byType[a.type])byType[a.type]=[];byType[a.type].push(a);});
   const typeLabel={'indian-stock':'🇮🇳 Indian Stocks','us-stock':'🇺🇸 US Stocks',fd:'🏦 Fixed Deposits',pf:'🏛️ PF/EPF',gold:'🥇 Gold',crypto:'₿ Crypto',etf:'📊 ETF/MF'};
   let html=`<div class="card-grid card-grid-2" style="margin-bottom:16px">
-    <div class="stat-card"><div class="stat-label">Total (INR)</div><div class="stat-val hide-figure" style="color:var(--accent)">${fmt(totalINR,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total (USD)</div><div class="stat-val hide-figure" style="color:var(--purple)">${fmt(totalUSD,'USD')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Portfolio (${displayCurrency})</div><div class="stat-val hide-figure" style="color:var(--accent)">${fmt(totalDisplay,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Holdings</div><div class="stat-val" style="color:var(--purple)">${investments.length} assets</div></div>
   </div>`;
   Object.entries(byType).forEach(([type,accs])=>{
-    const grpTotal=accs.filter(a=>a.currency==='INR').reduce((s,a)=>s+calcBalance(a),0);
+    const grpTotal=accs.reduce((s,a)=>s+calcBalanceInDisplay(a),0);
     html+=`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:0.88rem;font-weight:700">${typeLabel[type]||capitalize(type)}</div>
-      <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:var(--accent)">${fmt(grpTotal,'INR')}</div></div>`;
+      <div class="hide-figure" style="font-size:0.88rem;font-weight:700;color:var(--accent)">${fmt(grpTotal,displayCurrency)}</div></div>`;
     accs.forEach(a=>{
-      const bal=calcBalance(a);
-      const pct=totalINR>0&&a.currency==='INR'?Math.round(bal/totalINR*100):0;
+      const bal=calcBalanceInDisplay(a);
+      const pct=totalDisplay>0?Math.round(bal/totalDisplay*100):0;
       html+=`<div class="card" style="margin-bottom:8px;padding:12px;cursor:pointer" onclick="openAccountLedger('${a.id}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0"><div style="font-size:0.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</div>
-            <div style="font-size:0.7rem;color:var(--text3);margin-top:2px">${a.currency} · ${pct}% of portfolio</div>
+            <div style="font-size:0.7rem;color:var(--text3);margin-top:2px">${a.currency}${a.currency!==displayCurrency?' → '+displayCurrency:''} · ${pct}%</div>
             <div style="margin-top:6px;height:4px;background:var(--bg3);border-radius:2px"><div style="height:4px;background:var(--accent);border-radius:2px;width:${pct}%"></div></div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:12px">
-            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(bal,a.currency)}</div>
+            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmt(bal,displayCurrency)}${a.currency!==displayCurrency?'<div style="font-size:0.7rem;color:var(--text3)">'+fmt(calcBalance(a),a.currency)+'</div>':''}</div>
             <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">Tap for ledger ›</div>
           </div>
         </div>
