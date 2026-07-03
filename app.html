@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v85';
+const CURRENT_VERSION = 'v86';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v85</title>
+<title>Artha-Sangraha v86</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -1876,7 +1876,7 @@ function renderSettings(){
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:0.9rem">${accIcon(a.type)}</span>
               <div><div style="font-size:0.82rem;font-weight:500">${a.name}</div>
-              <div style="font-size:0.68rem;color:var(--text2)">${fmt(calcBalanceInDisplay(a),displayCurrency)}</div></div>
+              <div style="font-size:0.68rem;color:var(--text2)">${fmtD(calcBalance(a),a.currency||'INR',false)}</div></div>
             </div>
             <div style="display:flex;gap:5px">
               ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 8px;font-size:0.72rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
@@ -2982,14 +2982,15 @@ function calcIncomeExpense(txnList){
 }
 
 function renderDashboard(){
-  // Calculate totals including foreign currency converted to INR
+  // Calculate totals - convert everything to INR first then to display currency
   const totalAssetsINR=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>{
     const bal=calcBalance(a);
-    return s+(a.currency==='INR'?bal:toINR(bal,a.currency));
+    return s+toINR(bal,a.currency||'INR');
   },0);
-  const totalLiabilities=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+
-    accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
-  const netWorthINR=totalAssetsINR-totalLiabilities;
+  const totalLiabilitiesINR=loans.reduce((s,l)=>s+toINR(parseFloat(l.principal||0),l.currency||'INR'),0)+
+    accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+toINR(calcBalance(a),a.currency||'INR'),0);
+  const totalLiabilities=totalLiabilitiesINR;
+  const netWorthINR=totalAssetsINR-totalLiabilitiesINR;
   const fy=getFinancialYear();
   const fyTxns=transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end);
   const{income:fyIncome,expenses:fyExp}=calcIncomeExpense(fyTxns);
@@ -3205,7 +3206,7 @@ function renderAccounts(groupId=null){
 
   Object.entries(classGroups).forEach(([cls,{label,color,accs}])=>{
     if(!accs.length)return;
-    const total=accs.reduce((s,a)=>s+calcBalanceInDisplay(a),0);
+    const total=accs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
     const colId=`acc-cls-${cls}`;
     html+=`<div style="margin-bottom:16px">
       <div onclick="toggleSettingsSection('${colId}')" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;padding:4px 0">
@@ -3273,7 +3274,7 @@ function buildMobileAccountCard(a){
       <div class="account-type" style="font-size:0.68rem;color:var(--text3)">${a.currency}</div>
     </div>
     <div class="account-bal">
-      <div class="account-bal-val" style="font-size:0.9rem">${fmt(calcBalance(a),a.currency)}</div>
+      <div class="account-bal-val" style="font-size:0.9rem">${fmtD(calcBalance(a),a.currency||'INR')}</div>
       <div class="account-bal-curr" style="font-size:0.65rem">Current</div>
     </div>
     <div style="display:flex;gap:3px">
@@ -3292,8 +3293,8 @@ function buildDesktopAccountTable(accs){
         <td><b>${accIcon(a.type)} ${a.name}</b></td>
         <td><span class="badge badge-blue" style="font-size:0.68rem">${capitalize(a.type)}</span></td>
         <td style="font-size:0.75rem;color:var(--text2)">${a.notes&&a.notes!=='Auto-created'?a.notes:'—'}</td>
-        <td style="text-align:right;color:var(--text2)" class="hide-figure">${fmt(a.opening_balance,a.currency)}</td>
-        <td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(calcBalance(a),a.currency)}</td>
+        <td style="text-align:right;color:var(--text2)" class="hide-figure">${fmtD(a.opening_balance,a.currency||'INR',false)}</td>
+        <td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmtD(calcBalance(a),a.currency||'INR')}</td>
         <td><div style="display:flex;gap:4px">
           ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="event.stopPropagation();openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
           <button class="btn-outline" style="padding:3px 7px;font-size:0.7rem" onclick="event.stopPropagation();editAccount('${a.id}')">✏️</button>
@@ -3531,9 +3532,9 @@ function renderBalanceSheet(){
   if(!bsEl)return;
   bsEl.innerHTML=`
   <div class="card-grid card-grid-3" style="margin-bottom:16px">
-    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,displayCurrency)}</div></div>
   </div>
   <div class="card">
     <div class="sec-title" style="margin-bottom:14px">Assets (as of ${formatDate(asOf)})</div>
@@ -4569,10 +4570,10 @@ function renderWallets(){
     return;
   }
 
-  const totalBal=walletAccs.reduce((s,a)=>s+calcBalance(a),0);
+  const totalBal=walletAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   let html=`<div class="stat-card" style="margin-bottom:16px">
     <div class="stat-label">Total Wallet Balance</div>
-    <div class="stat-val hide-figure" style="color:var(--accent)">${fmt(totalBal,'INR')}</div>
+    <div class="stat-val hide-figure" style="color:var(--accent)">${fmt(convertToDisplay(totalBal,'INR'),displayCurrency)}</div>
   </div>`;
 
   html+=walletAccs.map(acc=>{
@@ -4761,7 +4762,7 @@ function openFDMaturityModal(fdId){
        <div><span style="color:var(--text2)">Principal: </span><b>${fmt(fd.principal,'INR')}</b></div>
        <div><span style="color:var(--text2)">Rate: </span><b>${fd.annual_rate}%</b></div>
        <div><span style="color:var(--text2)">Interest: </span><b style="color:var(--green)">${fmt(interest,'INR')}</b></div>
-       <div style="grid-column:span 2"><span style="color:var(--text2)">Maturity Amount: </span><b style="color:var(--accent)">${fmt(fd.amount,'INR')}</b></div>
+       <div style="grid-column:span 2"><span style="color:var(--text2)">Maturity Amount: </span><b style="color:var(--accent)">${fmtD(fd.amount,'INR',false)}</b></div>
      </div>`;
   const amt=document.getElementById('fd-actual-maturity');if(amt)amt.value=fd.amount||'';
   const dt=document.getElementById('fd-actual-date');if(dt)dt.value=fd.end_date||todayISO();
@@ -4872,7 +4873,7 @@ function renderFD(){
       <div style="font-size:0.9rem;font-weight:700;margin-bottom:10px">⏰ ${dueFDs.length} FD${dueFDs.length>1?'s':''} Matured</div>
       ${dueFDs.map(fd=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
         <div><div style="font-size:0.85rem;font-weight:600">${fd.name}</div>
-        <div style="font-size:0.72rem;color:var(--text2)">Matured: ${formatDate(fd.end_date)} · ${fmt(fd.amount,'INR')}</div></div>
+        <div style="font-size:0.72rem;color:var(--text2)">Matured: ${formatDate(fd.end_date)} · ${fmtD(fd.amount,'INR',false)}</div></div>
         <button class="btn-sm" style="background:var(--accent)" onclick="openFDMaturityModal('${fd.id}')">🔓 Act Now</button>
       </div>`).join('')}
     </div>`:'';
@@ -4882,13 +4883,13 @@ function renderFD(){
     el.innerHTML=`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">No Fixed Deposits yet.</div><button class="btn-sm" onclick="openModal('add-fd-modal')">+ Add FD</button></div>`;
     return;
   }
-  const totalInvested=activeFDs.reduce((s,fd)=>s+(fd.principal||0),0);
-  const totalMaturity=activeFDs.reduce((s,fd)=>s+(fd.amount||0),0);
+  const totalInvested=activeFDs.reduce((s,fd)=>s+convertToDisplay(fd.principal||0,'INR'),0);
+  const totalMaturity=activeFDs.reduce((s,fd)=>s+convertToDisplay(fd.amount||0,'INR'),0);
   const totalInterest=totalMaturity-totalInvested;
   let html=`<div class="card-grid card-grid-3" style="margin-bottom:16px">
-    <div class="stat-card"><div class="stat-label">Total Invested</div><div class="stat-val hide-figure">${fmt(totalInvested,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Expected Interest</div><div class="stat-val" style="color:var(--green)">${fmt(totalInterest,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total at Maturity</div><div class="stat-val" style="color:var(--accent)">${fmt(totalMaturity,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Invested (${displayCurrency})</div><div class="stat-val hide-figure">${fmt(totalInvested,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Expected Interest</div><div class="stat-val" style="color:var(--green)">${fmt(totalInterest,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Total at Maturity</div><div class="stat-val" style="color:var(--accent)">${fmt(totalMaturity,displayCurrency)}</div></div>
   </div>`;
   if(activeFDs.length){
     html+=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px">🔒 Active FDs (${activeFDs.length})</div>`;
@@ -4933,7 +4934,7 @@ function renderFD(){
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div><div style="font-size:0.85rem;font-weight:600">${fd.name}</div>
         <div style="font-size:0.72rem;color:var(--text2)">${formatDate(fd.start_date)} → ${formatDate(fd.end_date)}</div></div>
-        <div style="text-align:right"><div style="font-size:0.88rem;font-weight:600">${fmt(fd.amount,'INR')}</div>
+        <div style="text-align:right"><div style="font-size:0.88rem;font-weight:600">${fmtD(fd.amount,'INR',false)}</div>
           <button class="btn-danger" style="font-size:0.68rem;padding:3px 6px;margin-top:4px" onclick="deleteFD('${fd.id}')">🗑</button></div>
       </div>
     </div>`).join('');
@@ -4959,14 +4960,14 @@ function renderTradingAccounts(){
     <div class="card" style="margin-bottom:10px;background:var(--accent-light);border-color:var(--accent)">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:0.85rem;font-weight:600">💹 Total Trading Balance</div>
-        <div class="hide-figure" style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalBal,'INR')}</div>
+        <div class="hide-figure" style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(convertToDisplay(totalBal,'INR'),displayCurrency)}</div>
       </div>
     </div>
     ${tAccs.map(a=>`<div class="card" style="margin-bottom:8px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:1.1rem">💹</span>
-          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div class="hide-figure" style="font-size:0.78rem;color:var(--text2)">${fmt(calcBalance(a),a.currency)}</div></div>
+          <div><div style="font-size:0.85rem;font-weight:600">${a.name}</div><div class="hide-figure" style="font-size:0.78rem;color:var(--text2)">${fmtD(calcBalance(a),a.currency||'INR')}</div></div>
         </div>
         <div style="display:flex;gap:4px">
           ${attachments.some(att=>att.transaction_id==='acc_'+a.id)?`<button class="btn-outline" style="padding:3px 6px;font-size:0.7rem" onclick="openAccountAttachModal('${a.id}','${a.name}')">📄</button>`:''}
@@ -4997,7 +4998,7 @@ function openDepositWithdraw(accId,mode){
   const sel=document.getElementById('dw-other-account');
   if(sel){
     const otherAccs=accounts.filter(a=>a.id!==accId&&a.classification==='asset');
-    sel.innerHTML=otherAccs.map(a=>`<option value="${a.id}">${a.name} (${fmt(calcBalance(a),a.currency)})</option>`).join('');
+    sel.innerHTML=otherAccs.map(a=>`<option value="${a.id}">${a.name} (${fmtD(calcBalance(a),a.currency||'INR')})</option>`).join('');
   }
   const amt=document.getElementById('dw-amount');if(amt)amt.value='';
   const dt=document.getElementById('dw-date');if(dt)dt.value=todayISO();
@@ -5186,29 +5187,30 @@ function buildSimpleDonut(segments,total){
 function buildBalanceSheetHTML(){
   const assetAccs=accounts.filter(a=>a.classification==='asset');
   const liabAccs=accounts.filter(a=>a.classification==='liability');
-  const totalAssets=assetAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
-  const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0)+liabAccs.reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
+  // Convert all to display currency
+  const totalAssets=assetAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
+  const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
+    liabAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   const netWorth=totalAssets-totalLiab;
   const colors=['var(--accent)','var(--green)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#dc2626','#7c3aed','#d97706','#0284c7'];
 
-  // Build grouped segments: grouped accounts → show group total, ungrouped → show individual
   const segments=[];
   const tableRows=[];
   const usedGroups=new Set();
 
-  assetAccs.filter(a=>a.currency==='INR').forEach(a=>{
+  assetAccs.forEach(a=>{
     const grp=a.group_id?groups.find(g=>g.id===a.group_id):null;
     if(grp&&!usedGroups.has(grp.id)){
       // First time we see this group — calculate total for ALL accounts in this group
       usedGroups.add(grp.id);
       const grpAccs=assetAccs.filter(x=>x.group_id===grp.id&&x.currency==='INR');
-      const grpTotal=grpAccs.reduce((s,x)=>s+calcBalance(x),0);
+      const grpTotal=grpAccs.reduce((s,x)=>s+convertToDisplay(calcBalance(x),x.currency||'INR'),0);
       if(grpTotal>0){
         const color=colors[segments.length%colors.length];
         segments.push({label:`${grp.icon||'📁'} ${grp.name}`,value:grpTotal,color});
         // Table: group header + expandable accounts
         tableRows.push(`<tr style="background:var(--bg2)"><td colspan="2"><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></td><td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(grpTotal,'INR')}</td></tr>`);
-        grpAccs.forEach(x=>tableRows.push(`<tr><td style="padding-left:20px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmt(calcBalance(x),x.currency)}</td></tr>`));
+        grpAccs.forEach(x=>tableRows.push(`<tr><td style="padding-left:20px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmtD(calcBalance(x),x.currency||'INR',true)}</td></tr>`));
       }
     } else if(!grp){
       // Ungrouped account — show individually
@@ -5216,7 +5218,7 @@ function buildBalanceSheetHTML(){
       if(bal>0){
         const color=colors[segments.length%colors.length];
         segments.push({label:a.name,value:bal,color});
-        tableRows.push(`<tr><td>${accIcon(a.type)} ${a.name}</td><td></td><td style="text-align:right">${fmt(bal,a.currency)}</td></tr>`);
+        tableRows.push(`<tr><td>${accIcon(a.type)} ${a.name}</td><td></td><td style="text-align:right">${fmtD(calcBalance(a),a.currency||'INR',true)}</td></tr>`);
       }
     }
   });
@@ -5238,7 +5240,7 @@ function buildBalanceSheetHTML(){
     <div class="sec-title" style="margin-bottom:10px">Liabilities</div>
     <table class="data-table"><tbody>
     ${loans.map(l=>`<tr><td colspan="2">${l.name}</td><td style="text-align:right;color:var(--red)">${fmt(l.principal,l.currency)}</td></tr>`).join('')}
-    ${liabAccs.map(a=>`<tr><td colspan="2">${a.name}</td><td style="text-align:right;color:var(--red)">${fmt(calcBalance(a),a.currency)}</td></tr>`).join('')}
+    ${liabAccs.map(a=>`<tr><td colspan="2">${a.name}</td><td style="text-align:right;color:var(--red)">${fmtD(calcBalance(a),a.currency||'INR')}</td></tr>`).join('')}
     <tr class="total-row"><td colspan="2"><b>Total Liabilities</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(totalLiab,'INR')}</b></td></tr>
     <tr class="total-row"><td colspan="2"><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,'INR')}</b></td></tr>
     </tbody></table>
@@ -5246,59 +5248,63 @@ function buildBalanceSheetHTML(){
 }
 
 function buildPnLHTML(){
-  const to=todayISO();
   const fy=getFinancialYear();
   const fyTxns=transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end);
   const{income,expenses}=calcIncomeExpense(fyTxns);
-  const net=income-expenses;
-  const maxVal=Math.max(income,expenses,1);
+  // Convert to display currency
+  const incomeD=convertToDisplay(income,'INR');
+  const expD=convertToDisplay(expenses,'INR');
+  const netD=incomeD-expD;
+  const maxVal=Math.max(incomeD,expD,1);
   const bar=`<div style="display:flex;gap:12px;align-items:flex-end;height:80px;margin:12px 0 4px">
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-      <div style="font-size:0.7rem;color:var(--green)">${fmt(income,'INR')}</div>
-      <div style="width:100%;height:${Math.round(income/maxVal*60)+4}px;background:var(--green);border-radius:4px 4px 0 0;opacity:0.8"></div>
+      <div style="font-size:0.7rem;color:var(--green)">${fmt(incomeD,displayCurrency)}</div>
+      <div style="width:100%;height:${Math.round(incomeD/maxVal*60)+4}px;background:var(--green);border-radius:4px 4px 0 0;opacity:0.8"></div>
       <div style="font-size:0.7rem;color:var(--text2)">Income</div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-      <div style="font-size:0.7rem;color:var(--red)">${fmt(expenses,'INR')}</div>
-      <div style="width:100%;height:${Math.round(expenses/maxVal*60)+4}px;background:var(--red);border-radius:4px 4px 0 0;opacity:0.8"></div>
+      <div style="font-size:0.7rem;color:var(--red)">${fmt(expD,displayCurrency)}</div>
+      <div style="width:100%;height:${Math.round(expD/maxVal*60)+4}px;background:var(--red);border-radius:4px 4px 0 0;opacity:0.8"></div>
       <div style="font-size:0.7rem;color:var(--text2)">Expenses</div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-      <div style="font-size:0.7rem;color:${net>=0?'var(--green)':'var(--red)'}">${fmt(Math.abs(net),'INR')}</div>
-      <div style="width:100%;height:${Math.round(Math.abs(net)/maxVal*60)+4}px;background:${net>=0?'var(--accent)':'var(--red)'};border-radius:4px 4px 0 0;opacity:0.8"></div>
-      <div style="font-size:0.7rem;color:var(--text2)">${net>=0?'Surplus':'Deficit'}</div>
+      <div style="font-size:0.7rem;color:${netD>=0?'var(--green)':'var(--red)'}">${fmt(Math.abs(netD),displayCurrency)}</div>
+      <div style="width:100%;height:${Math.round(Math.abs(netD)/maxVal*60)+4}px;background:${netD>=0?'var(--accent)':'var(--red)'};border-radius:4px 4px 0 0;opacity:0.8"></div>
+      <div style="font-size:0.7rem;color:var(--text2)">${netD>=0?'Surplus':'Deficit'}</div>
     </div>
   </div>`;
   const incByCat={};const expByCat={};
   fyTxns.forEach(t=>{
     const amt=parseFloat(t.amount||0);
+    const tCurrency=t.currency||'INR';
+    const amtD=convertToDisplay(amt,tCurrency);
     if(t.type==='income'){
       const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
       const cat=creditAcc?.category_account||t.category||'Other Income';
-      incByCat[cat]=(incByCat[cat]||0)+amt;
+      incByCat[cat]=(incByCat[cat]||0)+amtD;
     } else if(t.type==='expense'){
       const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
       const cat=debitAcc?.category_account||t.category||'Other';
-      expByCat[cat]=(expByCat[cat]||0)+amt;
+      expByCat[cat]=(expByCat[cat]||0)+amtD;
     } else if(t.type==='journal'&&t.category!=='Opening Balance'&&t.category!=='Trading P&L'){
       const ca=accounts.find(a=>a.id===t.credit_account_id);
       const da=accounts.find(a=>a.id===t.debit_account_id);
-      if(ca?.classification==='income'){const cat=ca.category_account||t.category||'Other Income';incByCat[cat]=(incByCat[cat]||0)+amt;}
-      if(da?.classification==='expense'){const cat=da.category_account||t.category||'Other';expByCat[cat]=(expByCat[cat]||0)+amt;}
+      if(ca?.classification==='income'){const cat=ca.category_account||t.category||'Other Income';incByCat[cat]=(incByCat[cat]||0)+amtD;}
+      if(da?.classification==='expense'){const cat=da.category_account||t.category||'Other';expByCat[cat]=(expByCat[cat]||0)+amtD;}
     }
   });
-  return`<div class="sec-header" style="margin-bottom:10px"><div class="sec-title">${fy.label}</div></div>
+  return`<div class="sec-header" style="margin-bottom:10px"><div class="sec-title">${fy.label} · ${displayCurrency}</div></div>
   <div class="card" style="margin-bottom:14px">${bar}</div>
   <div class="card">
-    <table class="data-table"><thead><tr><th>Particulars</th><th style="text-align:right">Amount</th></tr></thead>
+    <table class="data-table"><thead><tr><th>Particulars</th><th style="text-align:right">Amount (${displayCurrency})</th></tr></thead>
     <tbody>
       <tr class="group-row"><td colspan="2">Income</td></tr>
-      ${Object.entries(incByCat).map(([c,v])=>`<tr><td style="padding-left:20px">${c}</td><td style="text-align:right;color:var(--green)">${fmt(v,'INR')}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:10px">No income</td></tr>'}
-      <tr class="total-row"><td><b>Total Income</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(income,'INR')}</b></td></tr>
+      ${Object.entries(incByCat).map(([c,v])=>`<tr><td style="padding-left:20px">${c}</td><td style="text-align:right;color:var(--green)">${fmt(v,displayCurrency)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:10px">No income</td></tr>'}
+      <tr class="total-row"><td><b>Total Income</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(incomeD,displayCurrency)}</b></td></tr>
       <tr class="group-row"><td colspan="2">Expenses</td></tr>
-      ${Object.entries(expByCat).map(([c,v])=>`<tr><td style="padding-left:20px">${c}</td><td style="text-align:right;color:var(--red)">${fmt(v,'INR')}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:10px">No expenses</td></tr>'}
-      <tr class="total-row"><td><b>Total Expenses</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(expenses,'INR')}</b></td></tr>
-      <tr class="total-row"><td><b>Net ${net>=0?'Surplus':'Deficit'}</b></td><td style="text-align:right;color:${net>=0?'var(--green)':'var(--red)'}"><b>${fmt(Math.abs(net),'INR')}</b></td></tr>
+      ${Object.entries(expByCat).map(([c,v])=>`<tr><td style="padding-left:20px">${c}</td><td style="text-align:right;color:var(--red)">${fmt(v,displayCurrency)}</td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:10px">No expenses</td></tr>'}
+      <tr class="total-row"><td><b>Total Expenses</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(expD,displayCurrency)}</b></td></tr>
+      <tr class="total-row"><td><b>Net ${netD>=0?'Surplus':'Deficit'}</b></td><td style="text-align:right;color:${netD>=0?'var(--green)':'var(--red)'}"><b>${fmt(Math.abs(netD),displayCurrency)}</b></td></tr>
     </tbody></table>
   </div>`;
 }
@@ -5312,24 +5318,25 @@ function buildTrialBalanceHTML(){
     rows+=`<tr class="group-row"><td colspan="3">${label}</td></tr>`;
     accs.forEach(a=>{
       const bal=calcBalance(a);
+      const balD=convertToDisplay(bal,a.currency||'INR');
       const isDebitNormal=['asset','expense'].includes(cls);
-      const dr=isDebitNormal&&bal>0?bal:(!isDebitNormal&&bal<0?Math.abs(bal):0);
-      const cr=!isDebitNormal&&bal>0?bal:(isDebitNormal&&bal<0?Math.abs(bal):0);
-      if(a.currency==='INR'){totalDr+=dr;totalCr+=cr;}
-      rows+=`<tr><td style="padding-left:20px">${a.name}</td><td style="text-align:right;color:var(--green)">${dr>0?fmt(dr,a.currency):''}</td><td style="text-align:right;color:var(--accent)">${cr>0?fmt(cr,a.currency):''}</td></tr>`;
+      const dr=isDebitNormal&&balD>0?balD:(!isDebitNormal&&balD<0?Math.abs(balD):0);
+      const cr=!isDebitNormal&&balD>0?balD:(isDebitNormal&&balD<0?Math.abs(balD):0);
+      totalDr+=dr;totalCr+=cr;
+      rows+=`<tr><td style="padding-left:20px">${a.name}${a.currency!==displayCurrency?` <span style="font-size:0.7em;opacity:0.6">(${a.currency})</span>`:''}</td><td style="text-align:right;color:var(--green)">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent)">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
     });
   });
   const balanced=Math.abs(totalDr-totalCr)<1;
   return`<div class="card" style="margin-bottom:14px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
-      <div><div class="stat-label">Total Debits (Dr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(totalDr,'INR')}</div></div>
-      <div><div class="stat-label">Total Credits (Cr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalCr,'INR')}</div></div>
+      <div><div class="stat-label">Total Debits (Dr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(totalDr,displayCurrency)}</div></div>
+      <div><div class="stat-label">Total Credits (Cr)</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalCr,displayCurrency)}</div></div>
     </div>
-    <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDr-totalCr),'INR')}</div>
+    <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDr-totalCr),displayCurrency)}</div>
   </div>
   <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:320px">
     <thead><tr><th>Account</th><th style="text-align:right">Dr</th><th style="text-align:right">Cr</th></tr></thead>
-    <tbody>${rows}<tr class="total-row"><td><b>Total</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalDr,'INR')}</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(totalCr,'INR')}</b></td></tr></tbody>
+    <tbody>${rows}<tr class="total-row"><td><b>Total</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalDr,displayCurrency)}</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(totalCr,displayCurrency)}</b></td></tr></tbody>
   </table></div></div>`;
 }
 
@@ -5339,11 +5346,13 @@ function buildMonthlyHTML(){
   const rows=months.map(m=>{
     const mTxns=transactions.filter(t=>t.date.startsWith(m.key));
     const{income,expenses}=calcIncomeExpense(mTxns);
-    const net=income-expenses;
-    return`<tr><td style="white-space:nowrap">${m.label}</td><td style="color:var(--green)">${fmt(income,'INR')}</td><td style="color:var(--red)">${fmt(expenses,'INR')}</td><td style="color:${net>=0?'var(--green)':'var(--red)'};font-weight:600">${fmt(Math.abs(net),'INR')}</td></tr>`;
+    const incD=convertToDisplay(income,'INR');
+    const expD=convertToDisplay(expenses,'INR');
+    const net=incD-expD;
+    return`<tr><td style="white-space:nowrap">${m.label}</td><td style="color:var(--green)">${fmt(incD,displayCurrency)}</td><td style="color:var(--red)">${fmt(expD,displayCurrency)}</td><td style="color:${net>=0?'var(--green)':'var(--red)'};font-weight:600">${fmt(Math.abs(net),displayCurrency)}</td></tr>`;
   }).join('');
   return`<div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:340px">
-    <thead><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Net</th></tr></thead>
+    <thead><tr><th>Month</th><th>Income (${displayCurrency})</th><th>Expenses (${displayCurrency})</th><th>Net (${displayCurrency})</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div></div>`;
 }
@@ -5351,7 +5360,7 @@ function buildMonthlyHTML(){
 function buildCategoryHTML(){
   const incMap={},expMap={};
   transactions.forEach(t=>{
-    const amt=parseFloat(t.amount||0);
+    const amt=convertToDisplay(parseFloat(t.amount||0),t.currency||'INR');
     // Determine category: use transaction category first, then look up from account
     let cat=t.category||'';
     const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
@@ -5384,7 +5393,7 @@ function buildCategoryHTML(){
   const incSegments=Object.entries(incMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
   const buildRows=(map,total)=>Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>`<tr>
     <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:6px"></span>${c}</td>
-    <td style="text-align:right">${fmt(v,'INR')}</td>
+    <td style="text-align:right">${fmt(v,displayCurrency)}</td>
     <td style="text-align:right">${total>0?Math.round(v/total*100):0}%</td>
   </tr>`).join('');
   return`
@@ -6087,6 +6096,40 @@ function fmt(val,currency='INR',decimals=2){
   const sym=symbols[currency]||currency+' ';
   const locale=currency==='INR'?'en-IN':'en-US';
   return sym+n.toLocaleString(locale,{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+}
+
+// Universal display: convert any amount from its native currency to display currency
+// Shows original amount in small text if different currency
+function fmtD(amount, nativeCurrency='INR', showOriginal=true){
+  const n=parseFloat(amount)||0;
+  if(!n&&n!==0)return fmt(0,displayCurrency);
+  // Convert to display currency
+  let displayAmount;
+  if(nativeCurrency===displayCurrency){
+    displayAmount=n;
+  } else if(nativeCurrency==='INR'){
+    displayAmount=fromINR(n,displayCurrency);
+  } else if(displayCurrency==='INR'){
+    displayAmount=toINR(n,nativeCurrency);
+  } else {
+    // Cross conversion: native → INR → display
+    displayAmount=fromINR(toINR(n,nativeCurrency),displayCurrency);
+  }
+  const main=fmt(displayAmount,displayCurrency);
+  // Show original if different currency and showOriginal is true
+  if(showOriginal&&nativeCurrency!==displayCurrency){
+    return main+`<span style="font-size:0.7em;opacity:0.6;display:block;line-height:1"> (${fmt(n,nativeCurrency)})</span>`;
+  }
+  return main;
+}
+
+// Simple numeric conversion without formatting
+function convertToDisplay(amount, fromCurrency='INR'){
+  const n=parseFloat(amount)||0;
+  if(fromCurrency===displayCurrency)return n;
+  if(fromCurrency==='INR')return fromINR(n,displayCurrency);
+  if(displayCurrency==='INR')return toINR(n,fromCurrency);
+  return fromINR(toINR(n,fromCurrency),displayCurrency);
 }
 function capitalize(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 function monthsBetween(d1,d2){return(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());}
