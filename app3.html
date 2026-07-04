@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v89';
+const CURRENT_VERSION = 'v90';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v89</title>
+<title>Artha-Sangraha v90</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -5192,34 +5192,26 @@ function buildSimpleDonut(segments,total){
 function buildBalanceSheetHTML(){
   const assetAccs=accounts.filter(a=>a.classification==='asset');
   const liabAccs=accounts.filter(a=>a.classification==='liability');
-  // Convert all to display currency
   const totalAssets=assetAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
     liabAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   const netWorth=totalAssets-totalLiab;
   const colors=['var(--accent)','var(--green)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#dc2626','#7c3aed','#d97706','#0284c7'];
-
-  const segments=[];
-  const tableRows=[];
-  const usedGroups=new Set();
-
+  const segments=[];const tableRows=[];const usedGroups=new Set();
   assetAccs.forEach(a=>{
     const grp=a.group_id?groups.find(g=>g.id===a.group_id):null;
     if(grp&&!usedGroups.has(grp.id)){
-      // First time we see this group — calculate total for ALL accounts in this group
       usedGroups.add(grp.id);
-      const grpAccs=assetAccs.filter(x=>x.group_id===grp.id&&x.currency==='INR');
+      const grpAccs=assetAccs.filter(x=>x.group_id===grp.id);
       const grpTotal=grpAccs.reduce((s,x)=>s+convertToDisplay(calcBalance(x),x.currency||'INR'),0);
       if(grpTotal>0){
         const color=colors[segments.length%colors.length];
         segments.push({label:`${grp.icon||'📁'} ${grp.name}`,value:grpTotal,color});
-        // Table: group header + expandable accounts
-        tableRows.push(`<tr style="background:var(--bg2)"><td colspan="2"><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></td><td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(grpTotal,'INR')}</td></tr>`);
+        tableRows.push(`<tr style="background:var(--bg2)"><td colspan="2"><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></td><td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(grpTotal,displayCurrency)}</td></tr>`);
         grpAccs.forEach(x=>tableRows.push(`<tr><td style="padding-left:20px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmtD(calcBalance(x),x.currency||'INR',true)}</td></tr>`));
       }
     } else if(!grp){
-      // Ungrouped account — show individually
-      const bal=calcBalance(a);
+      const bal=convertToDisplay(calcBalance(a),a.currency||'INR');
       if(bal>0){
         const color=colors[segments.length%colors.length];
         segments.push({label:a.name,value:bal,color});
@@ -5227,27 +5219,26 @@ function buildBalanceSheetHTML(){
       }
     }
   });
-
   const donut=buildSimpleDonut(segments,totalAssets);
   return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
-    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Assets (${displayCurrency})</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Liabilities (${displayCurrency})</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Worth (${displayCurrency})</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,displayCurrency)}</div></div>
   </div>
   <div class="card" style="margin-bottom:14px">${donut}</div>
   <div class="card">
-    <div class="sec-title" style="margin-bottom:10px">Assets</div>
-    <table class="data-table"><thead><tr><th>Account / Group</th><th></th><th style="text-align:right">Balance</th></tr></thead>
+    <div class="sec-title" style="margin-bottom:10px">Assets · ${displayCurrency}</div>
+    <table class="data-table"><thead><tr><th>Account / Group</th><th></th><th style="text-align:right">Balance (${displayCurrency})</th></tr></thead>
     <tbody>${tableRows.join('')}
-    <tr class="total-row"><td colspan="2"><b>Total Assets</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalAssets,'INR')}</b></td></tr>
+    <tr class="total-row"><td colspan="2"><b>Total Assets</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalAssets,displayCurrency)}</b></td></tr>
     </tbody></table>
     <div class="divider"></div>
-    <div class="sec-title" style="margin-bottom:10px">Liabilities</div>
+    <div class="sec-title" style="margin-bottom:10px">Liabilities · ${displayCurrency}</div>
     <table class="data-table"><tbody>
-    ${loans.map(l=>`<tr><td colspan="2">${l.name}</td><td style="text-align:right;color:var(--red)">${fmt(l.principal,l.currency)}</td></tr>`).join('')}
-    ${liabAccs.map(a=>`<tr><td colspan="2">${a.name}</td><td style="text-align:right;color:var(--red)">${fmtD(calcBalance(a),a.currency||'INR')}</td></tr>`).join('')}
-    <tr class="total-row"><td colspan="2"><b>Total Liabilities</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(totalLiab,'INR')}</b></td></tr>
-    <tr class="total-row"><td colspan="2"><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,'INR')}</b></td></tr>
+    ${loans.map(l=>`<tr><td colspan="2">${l.name}</td><td style="text-align:right;color:var(--red)">${fmtD(parseFloat(l.principal||0),l.currency||'INR',true)}</td></tr>`).join('')}
+    ${liabAccs.map(a=>`<tr><td colspan="2">${a.name}</td><td style="text-align:right;color:var(--red)">${fmtD(calcBalance(a),a.currency||'INR',true)}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="2"><b>Total Liabilities</b></td><td style="text-align:right;color:var(--red)"><b>${fmt(totalLiab,displayCurrency)}</b></td></tr>
+    <tr class="total-row"><td colspan="2"><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,displayCurrency)}</b></td></tr>
     </tbody></table>
   </div>`;
 }
