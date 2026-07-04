@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v91';
+const CURRENT_VERSION = 'v92';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v91</title>
+<title>Artha-Sangraha v92</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3130,9 +3130,14 @@ function renderChartOfAccounts(){
       const bal=calcBalance(a);
       const balINR=toINR(bal,a.currency||'INR');
       const balD=convertToDisplay(bal,a.currency||'INR');
-      groupTotal+=balD;
-      if(['asset','expense'].includes(cls)){totalDebits+=balD;totalDebitsINR+=balINR;}
-      else{totalCredits+=balD;totalCreditsINR+=balINR;}
+      groupTotal+=Math.abs(balD);
+      // Use same logic as Reports Trial Balance:
+      // Debit-normal: asset, expense AND negative income/equity/liability
+      const isDebitNormal=['asset','expense'].includes(cls);
+      const effectiveDebit=isDebitNormal?balD>0:balD<0;
+      const effectiveCredit=isDebitNormal?balD<0:balD>0;
+      if(effectiveDebit){totalDebits+=Math.abs(balD);totalDebitsINR+=Math.abs(balINR);}
+      else if(effectiveCredit){totalCredits+=Math.abs(balD);totalCreditsINR+=Math.abs(balINR);}
       return `<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
         <td style="padding-left:24px">${accIcon(a.type)} ${a.name}</td>
         <td style="font-size:0.75rem;color:var(--text2)">${a.notes||capitalize(a.type)}</td>
