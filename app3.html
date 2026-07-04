@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v93';
+const CURRENT_VERSION = 'v94';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v93</title>
+<title>Artha-Sangraha v94</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -406,6 +406,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
         <div id="rates-notification" style="display:none"></div>
         <div id="nw-banner-wrap"></div>
+        <div id="dash-fx-widget"></div>
         <div class="card-grid card-grid-4" id="dash-stats"></div>
         <!-- Tile Navigation Menu (mobile only) -->
         <div class="tile-menu" id="dash-tile-menu"></div>
@@ -583,6 +584,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="tab-btn" onclick="switchReportTab('monthly',this)">Monthly</button>
           <button class="tab-btn" onclick="switchReportTab('category',this)">By Category</button>
           <button class="tab-btn" onclick="switchReportTab('networth',this)">Net Worth</button>
+          <button class="tab-btn" onclick="switchReportTab('fx',this)">FX Revaluation</button>
         </div>
         <div id="reports-content"></div>
       </div>
@@ -3014,6 +3016,33 @@ function renderDashboard(){
     </div>
   </div>`;
 
+  // Foreign Currency Position widget — always shows native-currency balances
+  // regardless of the selected display currency, plus unrealized FX gain/loss.
+  const fxWidget=document.getElementById('dash-fx-widget');
+  if(fxWidget){
+    const fxAccounts=accounts.filter(a=>(a.currency||'INR')!=='INR'&&['asset','liability'].includes(a.classification));
+    if(!fxAccounts.length){
+      fxWidget.innerHTML='';
+    } else {
+      const positions=fxAccounts.map(calcFXPosition).filter(Boolean);
+      const totalUnrealized=positions.reduce((s,p)=>s+p.unrealized,0);
+      fxWidget.innerHTML=`<div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:600;font-size:0.9rem">🌍 Foreign Currency Position</div>
+          <div style="font-size:0.8rem;font-weight:700;color:${totalUnrealized>=0?'var(--green)':'var(--red)'}">${totalUnrealized>=0?'+':'-'}${fmt(Math.abs(totalUnrealized),'INR')} FX</div>
+        </div>
+        <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:2px">
+          ${positions.map(p=>`<div style="flex-shrink:0;min-width:140px;background:var(--bg2);border-radius:10px;padding:10px 12px">
+            <div style="font-size:0.72rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${accIcon(p.acc.type)} ${p.acc.name}</div>
+            <div style="font-size:0.95rem;font-weight:700;margin-top:2px">${fmt(p.nativeBal,p.acc.currency)}</div>
+            <div style="font-size:0.7rem;color:${p.unrealized>=0?'var(--green)':'var(--red)'};margin-top:2px">${p.unrealized>=0?'▲':'▼'} ${fmt(Math.abs(p.unrealized),'INR')}</div>
+          </div>`).join('')}
+        </div>
+        <div style="text-align:right;margin-top:8px"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="switchSection('reports',null);setTimeout(()=>switchReportTab('fx',document.querySelectorAll('#sec-reports .tab-btn')[6]),50)">View FX Revaluation Report →</button></div>
+      </div>`;
+    }
+  }
+
   const fyIncomeD=convertToDisplay(fyIncome,'INR');
   const fyExpD=convertToDisplay(fyExp,'INR');
   const mIncomeD=convertToDisplay(mIncome,'INR');
@@ -5177,6 +5206,120 @@ function renderReports(){
   else if(currentReportTab==='monthly')c.innerHTML=buildMonthlyHTML();
   else if(currentReportTab==='category')c.innerHTML=buildCategoryHTML();
   else if(currentReportTab==='networth')c.innerHTML=buildNetWorthHTML();
+  else if(currentReportTab==='fx')c.innerHTML=buildFXRevaluationHTML();
+}
+
+// ═══════════════════════════════
+//  FX REVALUATION (Unrealized Gain/Loss on foreign-currency balances)
+// ═══════════════════════════════
+// Finds the best-available historical INR rate for a currency as of a given date,
+// using the exchange_rates history table. Falls back gracefully if no data exists
+// for that date (uses earliest known rate, then live rate).
+function historicalFXRate(currency, date){
+  if(!currency||currency==='INR')return 1;
+  if(exchangeRatesHistory&&exchangeRatesHistory.length){
+    // exchangeRatesHistory is ordered date desc; find most recent entry on/before `date`
+    let best=null;
+    for(const h of exchangeRatesHistory){
+      if(h.rates&&h.rates[currency]&&h.date<=date){
+        if(!best||h.date>best.date)best=h;
+      }
+    }
+    if(best)return best.rates[currency];
+    // No entry on/before date (account predates our rate history) — use earliest available rate
+    const withRate=exchangeRatesHistory.filter(h=>h.rates&&h.rates[currency]);
+    if(withRate.length)return withRate[withRate.length-1].rates[currency];
+  }
+  return exchangeRates[currency]||1;
+}
+
+// Historical INR cost basis of a foreign-currency account: walks the same transactions
+// as calcBalance(), but values each leg at the exchange rate in effect on that
+// transaction's date instead of today's rate. The difference between this and the
+// current INR value (at today's live rate) is the Unrealized FX Gain/Loss.
+function calcFXCostBasis(acc){
+  const currency=acc.currency||'INR';
+  const cls=acc.classification||'asset';
+  const hasOpeningJournal=transactions.some(t=>
+    t.category==='Opening Balance'&&(t.debit_account_id===acc.id||t.credit_account_id===acc.id)
+  );
+  let cost=hasOpeningJournal?0:parseFloat(acc.opening_balance||0)*historicalFXRate(currency,acc.opening_date||todayISO());
+  const accTxns=transactions.filter(t=>{
+    if(t.debit_account_id||t.credit_account_id)return t.debit_account_id===acc.id||t.credit_account_id===acc.id;
+    return t.account_id===acc.id||t.to_account_id===acc.id;
+  });
+  accTxns.forEach(t=>{
+    const amt=parseFloat(t.amount||0);
+    const rate=historicalFXRate(currency,t.date);
+    if(t.debit_account_id||t.credit_account_id){
+      if(t.debit_account_id===acc.id){
+        if(['asset','expense'].includes(cls))cost+=amt*rate;else cost-=amt*rate;
+      } else if(t.credit_account_id===acc.id){
+        if(['asset','expense'].includes(cls))cost-=amt*rate;else cost+=amt*rate;
+      }
+    } else {
+      if(t.account_id===acc.id){
+        if(t.type==='income')cost+=amt*rate;
+        else if(t.type==='expense'||t.type==='transfer')cost-=amt*rate;
+      } else if(t.to_account_id===acc.id){
+        cost+=amt*rate;
+      }
+    }
+  });
+  return cost;
+}
+
+function calcFXPosition(acc){
+  const currency=acc.currency||'INR';
+  if(currency==='INR')return null;
+  const nativeBal=calcBalance(acc);
+  const currentRate=exchangeRates[currency]||1;
+  const currentINR=nativeBal*currentRate;
+  const costBasisINR=calcFXCostBasis(acc);
+  const unrealized=currentINR-costBasisINR;
+  const pct=Math.abs(costBasisINR)>0.01?(unrealized/Math.abs(costBasisINR))*100:0;
+  return{acc,nativeBal,currentRate,currentINR,costBasisINR,unrealized,pct};
+}
+
+function buildFXRevaluationHTML(){
+  const fxAccounts=accounts.filter(a=>(a.currency||'INR')!=='INR'&&['asset','liability'].includes(a.classification));
+  if(!fxAccounts.length){
+    return`<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">No foreign-currency accounts found.<br>This report tracks Unrealized FX Gain/Loss on any account held in a non-INR currency.</div></div>`;
+  }
+  const positions=fxAccounts.map(calcFXPosition).filter(Boolean);
+  const totalCurrentINR=positions.reduce((s,p)=>s+p.currentINR,0);
+  const totalCostINR=positions.reduce((s,p)=>s+p.costBasisINR,0);
+  const totalUnrealized=totalCurrentINR-totalCostINR;
+  const rows=positions.map(p=>{
+    const{acc,nativeBal,currentRate,currentINR,costBasisINR,unrealized,pct}=p;
+    const color=unrealized>=0?'var(--green)':'var(--red)';
+    const arrow=unrealized>0?'▲':unrealized<0?'▼':'—';
+    return`<tr>
+      <td>${accIcon(acc.type)} ${acc.name}<div style="font-size:0.68rem;color:var(--text3)">${acc.currency}</div></td>
+      <td style="text-align:right">${fmt(nativeBal,acc.currency)}</td>
+      <td style="text-align:right;font-size:0.8rem">₹${currentRate}</td>
+      <td style="text-align:right">${fmt(currentINR,'INR')}</td>
+      <td style="text-align:right;color:var(--text2)">${fmt(costBasisINR,'INR')}</td>
+      <td style="text-align:right;color:${color};font-weight:700">${arrow} ${fmt(Math.abs(unrealized),'INR')}</td>
+      <td style="text-align:right;color:${color}">${pct>=0?'+':''}${pct.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+  return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
+    <div class="stat-card"><div class="stat-label">Current Value (INR)</div><div class="stat-val">${fmt(totalCurrentINR,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Historical Cost (INR)</div><div class="stat-val">${fmt(totalCostINR,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Unrealized FX Gain/Loss</div><div class="stat-val" style="color:${totalUnrealized>=0?'var(--green)':'var(--red)'}">${totalUnrealized>=0?'+':'-'}${fmt(Math.abs(totalUnrealized),'INR')}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:0.78rem;color:var(--text2);line-height:1.5">
+      💡 This shows how much your foreign-currency balances have gained or lost in ₹ terms purely due to exchange-rate movement since each amount was originally posted — separate from any interest, price appreciation, or trading gains already captured elsewhere. Historical rates are sourced from your saved exchange-rate history; accounts/transactions older than your saved history use the earliest available rate as a best estimate.
+    </div>
+  </div>
+  <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:600px">
+    <thead><tr><th>Account</th><th style="text-align:right">Native Balance</th><th style="text-align:right">Rate Today</th><th style="text-align:right">Current (INR)</th><th style="text-align:right">Cost Basis (INR)</th><th style="text-align:right">Unrealized</th><th style="text-align:right">%</th></tr></thead>
+    <tbody>${rows}
+    <tr class="total-row"><td><b>Total</b></td><td></td><td></td><td style="text-align:right"><b>${fmt(totalCurrentINR,'INR')}</b></td><td style="text-align:right"><b>${fmt(totalCostINR,'INR')}</b></td><td style="text-align:right;color:${totalUnrealized>=0?'var(--green)':'var(--red)'}"><b>${totalUnrealized>=0?'+':'-'}${fmt(Math.abs(totalUnrealized),'INR')}</b></td><td></td></tr>
+    </tbody>
+  </table></div></div>`;
 }
 
 function buildSimpleDonut(segments,total){
