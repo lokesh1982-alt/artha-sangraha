@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v97';
+const CURRENT_VERSION = 'v98';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v97</title>
+<title>Artha-Sangraha v98</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2535,18 +2535,26 @@ async function updateAccount(attachAfter=false){
   };
   const{error}=await sb.from('accounts').update(updates).eq('id',editingAccId);
   if(error){showToast('Error: '+error.message);return;}
-  // If opening balance changed and no journal entry exists, create/update one
-  if(newOpeningBal!==0){
-    const hasJournal=transactions.some(t=>t.category==='Opening Balance'&&
-      (t.debit_account_id===editingAccId||t.credit_account_id===editingAccId||t.account_id===editingAccId));
-    if(!hasJournal&&newOpeningBal!==0){
-      // Create opening balance journal entry
-      await ensureOpeningBalanceJournal({id:editingAccId,classification,opening_balance:newOpeningBal,currency:updates.currency,opening_date:openingDate});
-    } else {
-      // Update existing opening balance journal entry amount
-      const obTxn=transactions.find(t=>t.category==='Opening Balance'&&(t.debit_account_id===editingAccId||t.credit_account_id===editingAccId));
-      if(obTxn)await sb.from('transactions').update({amount:Math.abs(newOpeningBal),date:openingDate}).eq('id',obTxn.id);
+  // Keep the Opening Balance journal entry in sync with the account's opening_balance
+  // field. Matched unambiguously via account_id (set on every opening-balance entry
+  // regardless of which side is debit/credit) so an edit always UPDATES the existing
+  // entry instead of risking a duplicate.
+  const existingObTxn=transactions.find(t=>t.category==='Opening Balance'&&t.account_id===editingAccId);
+  if(newOpeningBal===0){
+    // Balance cleared — remove the opening entry entirely if one exists
+    if(existingObTxn)await sb.from('transactions').delete().eq('id',existingObTxn.id);
+  } else if(existingObTxn){
+    // Recompute debit/credit sides in case classification changed since it was created
+    let capitalAcc=accounts.find(a=>a.classification==='equity'&&a.category_account==='capital');
+    let debit_id=existingObTxn.debit_account_id,credit_id=existingObTxn.credit_account_id;
+    if(capitalAcc){
+      if(['asset','expense'].includes(classification)){debit_id=editingAccId;credit_id=capitalAcc.id;}
+      else{debit_id=capitalAcc.id;credit_id=editingAccId;}
     }
+    await sb.from('transactions').update({amount:Math.abs(newOpeningBal),date:openingDate,currency:updates.currency,debit_account_id:debit_id,credit_account_id:credit_id}).eq('id',existingObTxn.id);
+  } else {
+    // No existing entry — create one
+    await ensureOpeningBalanceJournal({id:editingAccId,classification,opening_balance:newOpeningBal,currency:updates.currency,opening_date:openingDate});
   }
   closeModal('add-account-modal');
   const accId=editingAccId;
@@ -2812,6 +2820,8 @@ function calcBalance(acc, asOfDate=null){
 
 // Auto-create income/expense accounts for a category
 async function ensureOpeningBalanceJournal(acc){
+  // Idempotency guard: never create a second Opening Balance entry for the same account
+  if(transactions.some(t=>t.category==='Opening Balance'&&t.account_id===acc.id))return;
   // Find or create Capital Account for equity
   let capitalAcc=accounts.find(a=>a.classification==='equity'&&a.category_account==='capital');
   if(!capitalAcc){
