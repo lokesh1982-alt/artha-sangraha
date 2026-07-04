@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v96';
+const CURRENT_VERSION = 'v97';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v96</title>
+<title>Artha-Sangraha v97</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3178,11 +3178,15 @@ function renderChartOfAccounts(){
   };
   let totalDebits=0,totalCredits=0,totalDebitsINR=0,totalCreditsINR=0;
   let html='';
+  // Same Unrealized FX Gain/(Loss) plug as the Reports > Trial Balance — see there
+  // for the full explanation. Kept identical so the two screens always agree.
+  const fxAccountsCOA=accounts.filter(a=>(a.currency||'INR')!=='INR'&&['asset','liability'].includes(a.classification));
+  const fxNetINRCOA=fxAccountsCOA.map(calcFXPosition).filter(Boolean).reduce((s,p)=>s+p.unrealized,0);
   Object.entries(groups).forEach(([groupName,{cls,color,icon}])=>{
     const groupAccs=accounts.filter(a=>(a.classification||'asset')===cls);
-    if(!groupAccs.length)return;
+    if(!groupAccs.length&&!(cls==='liability'&&Math.abs(fxNetINRCOA)>=1))return;
     let groupTotal=0;
-    const rows=groupAccs.map(a=>{
+    let rows=groupAccs.map(a=>{
       const bal=calcBalance(a);
       const balINR=toINR(bal,a.currency||'INR');
       const balD=convertToDisplay(bal,a.currency||'INR');
@@ -3202,6 +3206,22 @@ function renderChartOfAccounts(){
         <td><button class="btn-danger" style="padding:3px 8px;font-size:0.72rem" onclick="event.stopPropagation();deleteAccountPrompt('${a.id}')">🗑</button></td>
       </tr>`;
     }).join('');
+    if(cls==='liability'&&Math.abs(fxNetINRCOA)>=1){
+      // Same Unrealized FX Gain/(Loss) plug as Reports > Trial Balance (credit-normal:
+      // gain adds to credit side, loss shows as debit).
+      const fxD=convertToDisplay(fxNetINRCOA,'INR');
+      groupTotal+=Math.abs(fxD);
+      const effectiveDebit=fxD<0,effectiveCredit=fxD>0;
+      if(effectiveDebit){totalDebits+=Math.abs(fxD);totalDebitsINR+=Math.abs(fxNetINRCOA);}
+      else if(effectiveCredit){totalCredits+=Math.abs(fxD);totalCreditsINR+=Math.abs(fxNetINRCOA);}
+      rows+=`<tr>
+        <td style="padding-left:24px">🌍 Unrealized FX Gain/(Loss)</td>
+        <td style="font-size:0.75rem;color:var(--text2)">vs. booking rate</td>
+        <td style="text-align:right" class="hide-figure">—</td>
+        <td style="text-align:right;font-weight:600;color:${color}" class="hide-figure">${fmtD(fxNetINRCOA,'INR',displayCurrency!=='INR')}</td>
+        <td></td>
+      </tr>`;
+    }
     html+=`<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">
       <div onclick="toggleSettingsSection('coa-${cls}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer;background:var(--bg2)">
         <div style="display:flex;align-items:center;gap:8px">
