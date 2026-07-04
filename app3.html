@@ -3120,7 +3120,7 @@ function renderChartOfAccounts(){
     'Income':{cls:'income',color:'var(--accent)',icon:'💰'},
     'Expenses':{cls:'expense',color:'var(--yellow)',icon:'💸'},
   };
-  let totalDebits=0,totalCredits=0;
+  let totalDebits=0,totalCredits=0,totalDebitsINR=0,totalCreditsINR=0;
   let html='';
   Object.entries(groups).forEach(([groupName,{cls,color,icon}])=>{
     const groupAccs=accounts.filter(a=>(a.classification||'asset')===cls);
@@ -3128,10 +3128,11 @@ function renderChartOfAccounts(){
     let groupTotal=0;
     const rows=groupAccs.map(a=>{
       const bal=calcBalance(a);
+      const balINR=toINR(bal,a.currency||'INR');
       const balD=convertToDisplay(bal,a.currency||'INR');
       groupTotal+=balD;
-      if(['asset','expense'].includes(cls))totalDebits+=balD;
-      else totalCredits+=balD;
+      if(['asset','expense'].includes(cls)){totalDebits+=balD;totalDebitsINR+=balINR;}
+      else{totalCredits+=balD;totalCreditsINR+=balINR;}
       return `<tr onclick="openAccountLedger('${a.id}')" style="cursor:pointer">
         <td style="padding-left:24px">${accIcon(a.type)} ${a.name}</td>
         <td style="font-size:0.75rem;color:var(--text2)">${a.notes||capitalize(a.type)}</td>
@@ -3165,7 +3166,7 @@ function renderChartOfAccounts(){
       <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Debits (Assets + Expenses)</div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">${fmt(totalDebits,displayCurrency)}</div></div>
       <div><div style="font-size:0.78rem;color:var(--text2);margin-bottom:4px">Total Credits (Liabilities + Income + Equity)</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${fmt(totalCredits,displayCurrency)}</div></div>
     </div>
-    ${Math.abs(totalDebits-totalCredits)<1?'<div style="margin-top:10px;color:var(--green);font-size:0.85rem;font-weight:600">✅ Books are balanced!</div>':'<div style="margin-top:10px;color:var(--red);font-size:0.85rem">⚠️ Difference: '+fmt(Math.abs(totalDebits-totalCredits),displayCurrency)+'</div>'}
+    ${Math.abs(totalDebitsINR-totalCreditsINR)<1?'<div style="margin-top:10px;color:var(--green);font-size:0.85rem;font-weight:600">✅ Books are balanced!</div>':'<div style="margin-top:10px;color:var(--red);font-size:0.85rem">⚠️ Difference: '+fmt(Math.abs(totalDebitsINR-totalCreditsINR),'INR')+' (INR basis)</div>'}
   </div>`;
   document.getElementById('coa-content').innerHTML=html||'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No accounts yet.</div></div>';
 }
@@ -5414,19 +5415,20 @@ function buildCategoryHTML(){
 }
 
 function buildNetWorthHTML(){
-  const totalAssets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+(a.currency==='INR'?calcBalance(a):0),0);
-  const totalLiab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
+  // All figures in display currency
+  const totalAssets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
+  const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
+    accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   const netWorth=totalAssets-totalLiab;
   const fy=getFinancialYear();
   const{income:fyInc,expenses:fyExp}=calcIncomeExpense(transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end));
-  // Build 12-month net worth trend (cumulative)
   const months=[];
   for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short'}),key:toMonthISO(d)});}
-  // Calculate running net worth per month
   const nwPoints=months.map(m=>{
     const asOf=m.key+'-28';
     const assets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
-    const liab=loans.reduce((s,l)=>s+(l.currency==='INR'?parseFloat(l.principal||0):0),0);
+    const liab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
+      accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
     return{label:m.label,val:assets-liab};
   });
   const maxVal=Math.max(...nwPoints.map(p=>Math.abs(p.val)),1);
@@ -5450,22 +5452,18 @@ function buildNetWorthHTML(){
   </svg>`;
 
   return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
-    <div class="stat-card"><div class="stat-label">Total Assets</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Liabilities</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,'INR')}</div></div>
-    <div class="stat-card"><div class="stat-label">Net Worth</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,'INR')}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Assets (${displayCurrency})</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Liabilities (${displayCurrency})</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,displayCurrency)}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Worth (${displayCurrency})</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,displayCurrency)}</div></div>
   </div>
-  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">Net Worth Trend (12 months)</div></div>
+  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">Net Worth Trend · ${displayCurrency} (12 months)</div></div>
   <div class="card" style="margin-bottom:14px">${lineChart}</div>
   <div class="card">
-    <div class="sec-title" style="margin-bottom:12px">${fy.label} Summary</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div><div class="stat-label">FY Income</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(fyInc,'INR')}</div></div>
-      <div><div class="stat-label">FY Expenses</div><div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(fyExp,'INR')}</div></div>
-      <div><div class="stat-label">FY Net Savings</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(fyInc-fyExp,'INR')}</div></div>
-    </div>
+    <table class="data-table"><thead><tr><th>Month</th><th style="text-align:right">Net Worth (${displayCurrency})</th></tr></thead>
+    <tbody>${nwPoints.map(p=>`<tr><td>${p.label}</td><td style="text-align:right;font-weight:600;color:${p.val>=0?'var(--accent)':'var(--red)'}">${fmt(p.val,displayCurrency)}</td></tr>`).join('')}</tbody>
+    </table>
   </div>`;
 }
-
 
 // ═══════════════════════════════
 //  PROFILE
