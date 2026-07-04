@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v94';
+const CURRENT_VERSION = 'v95';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v94</title>
+<title>Artha-Sangraha v95</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2744,6 +2744,28 @@ function syncAccountSearchInputs(){
   });
 }
 
+// Converts an amount from one currency to another using the exchange rate that was
+// in effect on the given date (see historicalFXRate below). Used to correctly handle
+// journal entries where the debit and credit legs are in different currencies
+// (e.g. debiting a USD FD account, crediting an INR Capital account) — previously the
+// raw number was applied unconverted to both legs, causing a false Trial Balance
+// difference equal to (amount × rate - amount).
+function convertAmountAtRate(amount, fromCurrency, toCurrency, date){
+  const amt=parseFloat(amount)||0;
+  if(!fromCurrency||!toCurrency||fromCurrency===toCurrency)return amt;
+  const d=date||todayISO();
+  if(fromCurrency==='INR'){
+    const rate=historicalFXRate(toCurrency,d);
+    return rate?amt/rate:amt;
+  }
+  if(toCurrency==='INR'){
+    return amt*historicalFXRate(fromCurrency,d);
+  }
+  const inr=amt*historicalFXRate(fromCurrency,d);
+  const rateTo=historicalFXRate(toCurrency,d);
+  return rateTo?inr/rateTo:inr;
+}
+
 function calcBalance(acc, asOfDate=null){
   const hasOpeningJournal=transactions.some(t=>
     t.category==='Opening Balance'&&
@@ -2761,7 +2783,12 @@ function calcBalance(acc, asOfDate=null){
   });
 
   accTxns.forEach(t=>{
-    const amt=parseFloat(t.amount||0);
+    const accCurrency=acc.currency||'INR';
+    const txnCurrency=t.currency||accCurrency;
+    // Convert the transaction amount into THIS account's own currency at the rate
+    // in effect on the transaction date, in case the other leg was posted in a
+    // different currency (e.g. a USD FD funded from an INR Capital account).
+    const amt=convertAmountAtRate(t.amount,txnCurrency,accCurrency,t.date);
     const cls=acc.classification||'asset';
     if(t.debit_account_id||t.credit_account_id){
       if(t.debit_account_id===acc.id){
@@ -5249,20 +5276,23 @@ function calcFXCostBasis(acc){
     return t.account_id===acc.id||t.to_account_id===acc.id;
   });
   accTxns.forEach(t=>{
-    const amt=parseFloat(t.amount||0);
-    const rate=historicalFXRate(currency,t.date);
+    const txnCurrency=t.currency||currency;
+    // Convert straight to INR at the historical rate for whichever currency the
+    // transaction was actually posted in (handles legs where the other side of a
+    // journal entry was posted in a different currency, e.g. an FD funded from INR).
+    const amtINR=convertAmountAtRate(t.amount,txnCurrency,'INR',t.date);
     if(t.debit_account_id||t.credit_account_id){
       if(t.debit_account_id===acc.id){
-        if(['asset','expense'].includes(cls))cost+=amt*rate;else cost-=amt*rate;
+        if(['asset','expense'].includes(cls))cost+=amtINR;else cost-=amtINR;
       } else if(t.credit_account_id===acc.id){
-        if(['asset','expense'].includes(cls))cost-=amt*rate;else cost+=amt*rate;
+        if(['asset','expense'].includes(cls))cost-=amtINR;else cost+=amtINR;
       }
     } else {
       if(t.account_id===acc.id){
-        if(t.type==='income')cost+=amt*rate;
-        else if(t.type==='expense'||t.type==='transfer')cost-=amt*rate;
+        if(t.type==='income')cost+=amtINR;
+        else if(t.type==='expense'||t.type==='transfer')cost-=amtINR;
       } else if(t.to_account_id===acc.id){
-        cost+=amt*rate;
+        cost+=amtINR;
       }
     }
   });
