@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v106';
+const CURRENT_VERSION = 'v107';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v106</title>
+<title>Artha-Sangraha v107</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -2890,6 +2890,7 @@ async function updateTxn(){
   const amount=parseFloat(document.getElementById('txn-amount').value);
   const date=document.getElementById('txn-date').value;
   if(!amount||!date){showToast('Please fill amount and date.');return;}
+  const category=document.getElementById('txn-category').value;
   let debit_account_id=null,credit_account_id=null,account_id=null,to_account_id=null;
   if(selectedTxnType==='journal'){
     debit_account_id=document.getElementById('txn-debit-account').value||null;
@@ -2903,16 +2904,23 @@ async function updateTxn(){
   } else if(selectedTxnType==='income'){
     account_id=document.getElementById('txn-account').value;
     debit_account_id=account_id;
+    // Re-link the category (counterparty) side — previously this was left blank on
+    // edit, silently wiping the other leg of the entry every time an income/expense
+    // transaction was edited.
+    const incAcc=await ensureCategoryAccount(category,'income');
+    credit_account_id=incAcc?.id||null;
   } else if(selectedTxnType==='expense'){
     account_id=document.getElementById('txn-account').value;
     credit_account_id=account_id;
+    const expAcc=await ensureCategoryAccount(category,'expense');
+    debit_account_id=expAcc?.id||null;
   }
   const updates={
     date,amount,
     currency:document.getElementById('txn-currency').value,
     account_id,to_account_id,
     debit_account_id,credit_account_id,
-    category:document.getElementById('txn-category').value,
+    category,
     description:document.getElementById('txn-desc').value.trim(),
     type:selectedTxnType
   };
