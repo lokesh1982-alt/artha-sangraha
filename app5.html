@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v103';
+const CURRENT_VERSION = 'v104';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v103</title>
+<title>Artha-Sangraha v104</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3043,7 +3043,9 @@ function buildAccountDropdown(selectId){
   const opts=Array.from(sel.options).filter(o=>o.value);
   const q=(searchEl?.value||'').toLowerCase();
   const filtered=q?opts.filter(o=>o.text.toLowerCase().includes(q)):opts;
-  drop.innerHTML=filtered.length?filtered.map(o=>`<div class="search-select-option${sel.value===o.value?' selected':''}" data-value="${o.value}" onmousedown="event.preventDefault();selectAccountOption('${selectId}','${o.value}',this.textContent.trim())">${o.text}</div>`).join(''):'<div style="padding:10px 12px;font-size:0.82rem;color:var(--text3)">No accounts found</div>';
+  const listHtml=filtered.length?filtered.map(o=>`<div class="search-select-option${sel.value===o.value?' selected':''}" data-value="${o.value}" onmousedown="event.preventDefault();selectAccountOption('${selectId}','${o.value}',this.textContent.trim())">${o.text}</div>`).join(''):'<div style="padding:10px 12px;font-size:0.82rem;color:var(--text3)">No accounts found</div>';
+  const createHtml=`<div class="search-select-option" style="color:var(--accent);font-weight:600;border-top:1px solid var(--border)" onmousedown="event.preventDefault();quickCreateAccountFor('${selectId}')">+ Create New Account</div>`;
+  drop.innerHTML=listHtml+createHtml;
 }
 function openAccountSearch(selectId){buildAccountDropdown(selectId);const d=document.getElementById(selectId+'-dropdown');if(d)d.classList.add('open');}
 function closeAccountSearch(selectId){const d=document.getElementById(selectId+'-dropdown');if(d)d.classList.remove('open');}
@@ -3063,6 +3065,24 @@ function syncAccountSearchInputs(){
       const opt=Array.from(sel.options).find(o=>o.value===sel.value);
       inp.value=opt?opt.text:'';
     }
+  });
+}
+
+// ---- Quick "+ Create New Account" from inside the Add/Edit Transaction form ----
+// Lets you create a missing account on the spot (e.g. mid-registration, or while
+// resolving a reconciliation) instead of closing the form and going to Settings.
+let pendingTxnAccountField=null;
+function quickCreateAccountFor(selectId){
+  pendingTxnAccountField=selectId;
+  closeAccountSearch(selectId);
+  openModal('add-account-modal');
+  const m=document.getElementById('add-account-modal');
+  if(m)m.style.zIndex='10001';
+}
+function refreshTxnAccountDropdowns(){
+  const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(id=>{
+    const e=document.getElementById(id);if(e){const cur=e.value;e.innerHTML=opts;e.value=cur;}
   });
 }
 
@@ -6653,6 +6673,18 @@ async function saveAccount(attachAfter=false){
   }
 
   closeModal('add-account-modal');
+  if(pendingTxnAccountField){
+    const newAccId=data.id,newAccName=data.name,targetField=pendingTxnAccountField;
+    pendingTxnAccountField=null;
+    await loadAllData();
+    refreshTxnAccountDropdowns();
+    const sel=document.getElementById(targetField);
+    const inp=document.getElementById(targetField+'-search');
+    if(sel)sel.value=newAccId;
+    if(inp)inp.value=newAccName;
+    showToast(`"${newAccName}" created and selected ✅`);
+    return;
+  }
   if(attachAfter&&data?.id){
     showToast('Account saved! Opening for documents... 📎');
     await loadAllData();renderAccounts();renderDashboard();
@@ -6883,6 +6915,7 @@ function closeModal(id){
   if(!el)return;
   el.classList.remove('open');
   if(id==='txn-detail-modal')el.style.zIndex='';
+  if(id==='add-account-modal')el.style.zIndex='';
   if(id==='add-txn-modal'){
     el.style.zIndex='';
     if(reconcileCtx)renderReconcileForm();
