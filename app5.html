@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v105';
+const CURRENT_VERSION = 'v106';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v105</title>
+<title>Artha-Sangraha v106</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3085,6 +3085,18 @@ function refreshTxnAccountDropdowns(){
     const e=document.getElementById(id);if(e){const cur=e.value;e.innerHTML=opts;e.value=cur;}
   });
 }
+// Opens the Add Transaction form pre-filled with the account currently being
+// reconciled — otherwise the Account field defaults to whatever's first in the
+// list, which could silently post the entry against the wrong account entirely.
+function openMissingTxnFromReconcile(){
+  openModal('add-txn-modal');
+  const acc=accounts.find(a=>a.id===reconcileCtx?.accId);
+  if(!acc)return;
+  const sel=document.getElementById('txn-account');
+  const inp=document.getElementById('txn-account-search');
+  if(sel)sel.value=acc.id;
+  if(inp)inp.value=acc.name;
+}
 
 // Converts an amount from one currency to another using the exchange rate that was
 // in effect on the given date (see historicalFXRate below). Used to correctly handle
@@ -3186,7 +3198,8 @@ async function ensureOpeningBalanceJournal(acc){
 
 async function ensureCategoryAccount(category, type){
   const classification=type==='income'?'income':'expense';
-  const accountName=category+(type==='income'?' Income':' Expense');
+  const suffix=type==='income'?'Income':'Expense';
+  const accountName=category.toLowerCase().endsWith(suffix.toLowerCase())?category:category+' '+suffix;
   // Check in memory first
   const existing=accounts.find(a=>a.name===accountName&&a.classification===classification);
   if(existing)return existing;
@@ -6341,7 +6354,7 @@ function renderReconcileForm(){
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <button class="btn-sm" onclick="openModal('add-txn-modal')">+ Add Missing Transaction</button>
+      <button class="btn-sm" onclick="openMissingTxnFromReconcile()">+ Add Missing Transaction</button>
       <button class="btn-outline" style="font-size:0.78rem" onclick="reconcileMarkAllReconciled()">${allReconciled?'✕ Unmark All':'✓ Mark All Reconciled'}</button>
     </div>
     <div class="card" style="padding:0">
