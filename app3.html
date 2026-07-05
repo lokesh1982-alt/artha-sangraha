@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v101';
+const CURRENT_VERSION = 'v102';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v101</title>
+<title>Artha-Sangraha v102</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -6231,21 +6231,28 @@ function renderReconcileForm(){
     else if(t.account_id===acc.id){isDebitSide=t.type==='income';}
     else if(t.to_account_id===acc.id){isDebitSide=true;}
     else{isDebitSide=false;}
-    const dr=isDebitSide?fmt(t.amount,t.currency||acc.currency):'';
-    const cr=!isDebitSide?fmt(t.amount,t.currency||acc.currency):'';
-    const rowBg=st==='reconciled'?'var(--green-light,rgba(16,185,129,0.08))':st==='outstanding'?'var(--yellow-light,rgba(234,179,8,0.1))':'transparent';
-    return`<tr style="background:${rowBg}">
-      <td style="font-size:0.76rem;white-space:nowrap">${formatDate(t.date)}</td>
-      <td style="font-size:0.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description||t.category||capitalize(t.type||'')}</td>
-      <td style="text-align:right;font-size:0.78rem;color:var(--green)">${dr}</td>
-      <td style="text-align:right;font-size:0.78rem;color:var(--accent)">${cr}</td>
-      <td style="font-size:0.74rem;color:var(--text2);white-space:nowrap">${cpAcc?cpAcc.name:'—'}</td>
-      <td style="text-align:center"><input type="checkbox" ${st==='reconciled'?'checked':''} onchange="reconcileToggleStatus('${t.id}','reconciled')" title="Confirmed in statement"/></td>
-      <td style="text-align:center">
-        <button class="btn-outline" style="padding:2px 8px;font-size:0.68rem;${st==='outstanding'?'background:var(--yellow-light,#fef3c7)':''}" onclick="reconcileToggleStatus('${t.id}','outstanding')" title="Booked here, not yet on statement">${st==='outstanding'?'🕓 Outstanding':'Mark Outstanding'}</button>
-      </td>
-      <td><button class="btn-outline" style="padding:2px 8px;font-size:0.68rem" onclick="editTxn('${t.id}')">✏️</button></td>
-    </tr>`;
+    const amtColor=isDebitSide?'var(--green)':'var(--accent)';
+    const amtLabel=isDebitSide?'Dr':'Cr';
+    const rowBg=st==='reconciled'?'rgba(16,185,129,0.08)':st==='outstanding'?'rgba(234,179,8,0.12)':'transparent';
+    return`<div style="background:${rowBg};border-bottom:1px solid var(--border);padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:0.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description||t.category||capitalize(t.type||'')}</div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-top:1px">${formatDate(t.date)} · ${cpAcc?cpAcc.name:'—'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:0.85rem;color:${amtColor}">${fmt(t.amount,t.currency||acc.currency)}</div>
+          <div style="font-size:0.68rem;color:var(--text3)">${amtLabel}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;cursor:pointer">
+          <input type="checkbox" ${st==='reconciled'?'checked':''} onchange="reconcileToggleStatus('${t.id}','reconciled')"/> Reconciled
+        </label>
+        <button class="btn-outline" style="padding:3px 9px;font-size:0.7rem;${st==='outstanding'?'background:#fef3c7':''}" onclick="reconcileToggleStatus('${t.id}','outstanding')">${st==='outstanding'?'🕓 Outstanding':'Mark Outstanding'}</button>
+        <button class="btn-outline" style="padding:3px 9px;font-size:0.7rem" onclick="editTxn('${t.id}')">✏️ Edit</button>
+      </div>
+    </div>`;
   }).join('');
 
   document.getElementById('reconcile-modal-content').innerHTML=`
@@ -6270,11 +6277,8 @@ function renderReconcileForm(){
       <button class="btn-sm" onclick="openModal('add-txn-modal')">+ Add Missing Transaction</button>
       <button class="btn-outline" style="font-size:0.78rem" onclick="reconcileMarkAllReconciled()">${allReconciled?'✕ Unmark All':'✓ Mark All Reconciled'}</button>
     </div>
-    <div class="card" style="padding:0;overflow-x:auto">
-      <table class="data-table" style="min-width:680px">
-        <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Dr</th><th style="text-align:right">Cr</th><th>Counterparty</th><th>Reconciled</th><th>Outstanding</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--text2)">No transactions to review — nothing outstanding since last reconciliation.</td></tr>'}</tbody>
-      </table>
+    <div class="card" style="padding:0">
+      ${rows||'<div style="text-align:center;padding:16px;color:var(--text2);font-size:0.82rem">No transactions to review — nothing outstanding since last reconciliation.</div>'}
     </div>
     <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn-outline" style="flex:1" onclick="reconcileCtx=null;closeModal('reconcile-modal')">Cancel</button>
