@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v104';
+const CURRENT_VERSION = 'v105';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v104</title>
+<title>Artha-Sangraha v105</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3282,7 +3282,7 @@ async function loadAllData(){
   accountReconciliations=(await sb.from('account_reconciliations').select('*').eq('user_id',uid).order('statement_date',{ascending:false}).throwOnError().then(r=>r).catch(()=>({data:[]}))).data||[];
   // Keep an open Reconciliation form live-updated whenever data reloads (e.g. after
   // adding/editing a transaction from within the reconciliation screen itself).
-  if(typeof reconcileCtx!=='undefined'&&reconcileCtx)refreshReconcileView();
+  if(typeof reconcileCtx!=='undefined'&&reconcileCtx)renderReconcileForm();
 }
 
 // ═══════════════════════════════
@@ -6264,7 +6264,17 @@ function renderReconcileForm(){
   if(title)title.textContent=`🔄 Reconcile — ${acc.name}`;
   const bookBalance=calcBalance(acc,reconcileCtx.closingDate);
   const list=getReconcileTxnList(acc.id,reconcileCtx.closingDate);
-  const localStatus=reconcileCtx.localStatus||{};
+  const localStatus=reconcileCtx.localStatus||(reconcileCtx.localStatus={});
+  // Anything added to the ledger AFTER this reconciliation session started (e.g. via
+  // "+ Add Missing Transaction") is assumed to have been entered specifically to match
+  // the statement, so pre-tick it as Reconciled rather than making you check it again.
+  if(!reconcileCtx.knownIds)reconcileCtx.knownIds=new Set(list.map(t=>t.id));
+  list.forEach(t=>{
+    if(!reconcileCtx.knownIds.has(t.id)){
+      if(!localStatus[t.id])localStatus[t.id]='reconciled';
+      reconcileCtx.knownIds.add(t.id);
+    }
+  });
   let netOutstanding=0,unresolvedCount=0;
   list.forEach(t=>{
     const st=localStatus[t.id];
