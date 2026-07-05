@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v100';
+const CURRENT_VERSION = 'v101';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v100</title>
+<title>Artha-Sangraha v101</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -6217,6 +6217,7 @@ function renderReconcileForm(){
   const adjustedBalance=bookBalance-netOutstanding;
   const diff=reconcileCtx.statementBalance-adjustedBalance;
   const diffOk=Math.abs(diff)<0.01;
+  const allReconciled=list.length>0&&list.every(t=>localStatus[t.id]==='reconciled');
   // cache for the lightweight live-diff updater
   reconcileCtx._lastBookBalance=bookBalance;
   reconcileCtx._lastNetOutstanding=netOutstanding;
@@ -6267,7 +6268,7 @@ function renderReconcileForm(){
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn-sm" onclick="openModal('add-txn-modal')">+ Add Missing Transaction</button>
-      <button class="btn-outline" style="font-size:0.78rem" onclick="reconcileMarkAllReconciled()">✓ Mark All Reconciled</button>
+      <button class="btn-outline" style="font-size:0.78rem" onclick="reconcileMarkAllReconciled()">${allReconciled?'✕ Unmark All':'✓ Mark All Reconciled'}</button>
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="data-table" style="min-width:680px">
@@ -6305,7 +6306,11 @@ function reconcileToggleStatus(txnId,status){
 function reconcileMarkAllReconciled(){
   const list=getReconcileTxnList(reconcileCtx.accId,reconcileCtx.closingDate);
   reconcileCtx.localStatus=reconcileCtx.localStatus||{};
-  list.forEach(t=>{if(!reconcileCtx.localStatus[t.id])reconcileCtx.localStatus[t.id]='reconciled';});
+  const allReconciled=list.length>0&&list.every(t=>reconcileCtx.localStatus[t.id]==='reconciled');
+  list.forEach(t=>{
+    if(allReconciled)delete reconcileCtx.localStatus[t.id];
+    else reconcileCtx.localStatus[t.id]='reconciled';
+  });
   renderReconcileForm();
 }
 
@@ -6825,6 +6830,11 @@ function openModal(id){
   const modal=document.getElementById(id);
   if(modal)modal.classList.add('open');
   else console.warn('Modal not found:',id);
+  // If opened from within the Reconciliation screen, make sure it appears on top
+  // (both share the same base z-index, and DOM order would otherwise bury it).
+  if(id==='add-txn-modal'&&document.getElementById('reconcile-modal').classList.contains('open')){
+    modal.style.zIndex='10001';
+  }
 }
 
 function closeModal(id){
@@ -6832,6 +6842,10 @@ function closeModal(id){
   if(!el)return;
   el.classList.remove('open');
   if(id==='txn-detail-modal')el.style.zIndex='';
+  if(id==='add-txn-modal'){
+    el.style.zIndex='';
+    if(reconcileCtx)renderReconcileForm();
+  }
 }
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{
   if(e.target!==o)return;
