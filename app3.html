@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v102';
+const CURRENT_VERSION = 'v103';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v102</title>
+<title>Artha-Sangraha v103</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -626,6 +626,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="tab-btn" onclick="switchReportTab('category',this)">By Category</button>
           <button class="tab-btn" onclick="switchReportTab('networth',this)">Net Worth</button>
           <button class="tab-btn" onclick="switchReportTab('fx',this)">FX Revaluation</button>
+          <button class="tab-btn" onclick="switchReportTab('recon',this)">Reconciliation</button>
         </div>
         <div id="reports-content"></div>
       </div>
@@ -5582,6 +5583,7 @@ function renderReports(){
   else if(currentReportTab==='category')c.innerHTML=buildCategoryHTML();
   else if(currentReportTab==='networth')c.innerHTML=buildNetWorthHTML();
   else if(currentReportTab==='fx')c.innerHTML=buildFXRevaluationHTML();
+  else if(currentReportTab==='recon')c.innerHTML=buildReconciliationStatusHTML();
 }
 
 // ═══════════════════════════════
@@ -5697,6 +5699,41 @@ function buildFXRevaluationHTML(){
     <tbody>${rows}
     <tr class="total-row"><td><b>Total</b></td><td></td><td></td><td style="text-align:right"><b>${fmt(totalCurrentINR,'INR')}</b></td><td style="text-align:right"><b>${fmt(totalCostINR,'INR')}</b></td><td style="text-align:right;color:${totalUnrealized>=0?'var(--green)':'var(--red)'}"><b>${totalUnrealized>=0?'+':'-'}${fmt(Math.abs(totalUnrealized),'INR')}</b></td><td></td></tr>
     </tbody>
+  </table></div></div>`;
+}
+
+function buildReconciliationStatusHTML(){
+  const eligible=accounts.filter(a=>['asset','liability'].includes(a.classification||'asset'));
+  if(!eligible.length){
+    return`<div class="empty-state"><div class="empty-icon">🔄</div><div class="empty-text">No accounts to reconcile yet.</div></div>`;
+  }
+  const today=todayISO();
+  const rows=eligible.map(a=>{
+    const history=accountReconciliations.filter(r=>r.account_id===a.id).sort((x,y)=>y.statement_date.localeCompare(x.statement_date));
+    const last=history[0];
+    const daysSince=last?Math.floor((new Date(today)-new Date(last.statement_date))/86400000):null;
+    let statusLabel,statusColor;
+    if(!last){statusLabel='Never reconciled';statusColor='var(--red)';}
+    else if(daysSince<=30){statusLabel=`${daysSince} day(s) ago`;statusColor='var(--green)';}
+    else if(daysSince<=60){statusLabel=`${daysSince} days ago`;statusColor='#D97706';}
+    else{statusLabel=`${daysSince} days ago`;statusColor='var(--red)';}
+    return`<tr>
+      <td>${accIcon(a.type)} ${a.name}<div style="font-size:0.68rem;color:var(--text3)">${a.currency}</div></td>
+      <td>${last?formatDate(last.statement_date):'—'}</td>
+      <td style="text-align:right">${last?fmt(last.statement_balance,a.currency):'—'}</td>
+      <td style="color:${statusColor};font-weight:600">${statusLabel}</td>
+      <td style="text-align:right"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="openReconcileStart('${a.id}')">🔄 Reconcile</button></td>
+    </tr>`;
+  }).join('');
+  const neverCount=eligible.filter(a=>!accountReconciliations.some(r=>r.account_id===a.id)).length;
+  return`<div class="card" style="margin-bottom:14px">
+    <div style="font-size:0.78rem;color:var(--text2);line-height:1.5">
+      💡 Shows when each asset/liability account was last reconciled against its actual bank/broker/FD statement. ${neverCount>0?`<b>${neverCount} account(s) have never been reconciled.</b>`:'All accounts have been reconciled at least once.'}
+    </div>
+  </div>
+  <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:560px">
+    <thead><tr><th>Account</th><th>Last Reconciled</th><th style="text-align:right">Statement Balance</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
   </table></div></div>`;
 }
 
