@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v107';
+const CURRENT_VERSION = 'v108';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v107</title>
+<title>Artha-Sangraha v108</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -3208,11 +3208,14 @@ async function ensureCategoryAccount(category, type){
   const classification=type==='income'?'income':'expense';
   const suffix=type==='income'?'Income':'Expense';
   const accountName=category.toLowerCase().endsWith(suffix.toLowerCase())?category:category+' '+suffix;
-  // Check in memory first
-  const existing=accounts.find(a=>a.name===accountName&&a.classification===classification);
+  // Check in memory first — match on the suffixed name, the plain category name (e.g. an
+  // account you created yourself just called "Bank Charges"), or a tagged category_account,
+  // so we reuse an existing account instead of creating a near-duplicate.
+  const existing=accounts.find(a=>a.classification===classification&&(a.name===accountName||a.name===category||a.category_account===category));
   if(existing)return existing;
   // Check in DB to avoid duplicates
-  const{data:dbCheck}=await sb.from('accounts').select('*').eq('user_id',currentUser.id).eq('name',accountName).eq('classification',classification);
+  const{data:dbCheck}=await sb.from('accounts').select('*').eq('user_id',currentUser.id).eq('classification',classification)
+    .or(`name.eq.${accountName},name.eq.${category},category_account.eq.${category}`);
   if(dbCheck&&dbCheck.length>0){
     if(!accounts.find(a=>a.id===dbCheck[0].id))accounts.push(dbCheck[0]);
     return dbCheck[0];
