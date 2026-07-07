@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v110';
+const CURRENT_VERSION = 'v111';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v110</title>
+<title>Artha-Sangraha v111</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -699,17 +699,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
             <button class="btn-sm" onclick="openModal('add-group-modal')">+ Add</button>
           </div>
           <div style="margin-top:12px" id="settings-groups-list"></div>
-        </div>
-
-        <!-- Categories (retired — superseded by Account Groups) -->
-        <div class="card" style="margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">🏷️</div>
-            <div>
-              <div style="font-weight:600;font-size:0.9rem">Categories</div>
-              <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;line-height:1.4">Picking a "Category" on a transaction now directly selects a real Income/Expense account — organize them using <b>Account Groups</b> above (e.g. "Operating Expenses" containing "School Fee," "Bank Charges," etc.) instead of managing a separate category list here.</div>
-            </div>
-          </div>
         </div>
 
         <!-- Legacy categories list retained for reference only; no longer used to drive transaction entry -->
@@ -6647,6 +6636,8 @@ function populateTxnCatAccountOptions(){
   }
   if(wrap)wrap.style.display='block';
   const cls=selectedTxnType==='income'?'income':'expense';
+  const label=document.getElementById('txn-cat-account-label');
+  if(label)label.textContent=cls==='income'?'Income Account *':'Expense Account *';
   const matching=accounts.filter(a=>a.classification===cls);
   const cur=sel.value;
   sel.innerHTML=matching.map(a=>{
@@ -6657,6 +6648,7 @@ function populateTxnCatAccountOptions(){
   if(matching.some(a=>a.id===cur))sel.value=cur;
   const inp=document.getElementById('txn-cat-account-search');
   if(inp){
+    inp.placeholder=cls==='income'?'Search or create an income account...':'Search or create an expense account...';
     const opt=Array.from(sel.options).find(o=>o.value===sel.value);
     inp.value=opt?opt.text:'';
   }
