@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v112';
+const CURRENT_VERSION = 'v114';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v112</title>
+<title>Artha-Sangraha v114</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -4742,6 +4742,57 @@ async function confirmScheduleEntry(schedId){
   await loadAllData();renderScheduler();renderDashboard();renderDueBadge();
 }
 
+// For when an auto-debit/SIP/EMI actually bounces — deliberately does NOT post the
+// normal transaction (the money never really moved). The specific due entry stays
+// permanently on record as "Bounced" (not silently skipped or overwritten), while
+// the schedule's "due now" moves on to the next entry. Offers to log the bank's
+// bounce/penalty fee as a separate expense, since that's a real cost that did happen.
+async function markScheduleBounced(schedId){
+  const sch=schedules.find(s=>s.id===schedId);if(!sch)return;
+  const postDate=sch.next_date;
+  const rows=JSON.parse(sch.schedule_rows||'[]');
+  const dueAmount=sch.type==='emi'?(rows.find(r=>r.date===postDate)?.emi||sch.amount||0):(sch.amount||0);
+  if(!confirm(`Mark the ${fmt(dueAmount,'INR')} entry due ${formatDate(postDate)} for "${sch.name}" as bounced/rejected?\n\nNo transaction will be posted for this amount — it stays on record as bounced. The schedule will move on to its next due date.`))return;
+
+  const updates={bounce_count:(sch.bounce_count||0)+1,last_bounce_date:postDate};
+  let nextDate;
+  if(rows.length){
+    // EMI — mark this specific installment row as bounced, keep it visible in the table
+    const idx=rows.findIndex(r=>r.date===postDate);
+    if(idx>=0){rows[idx].bounced=true;}
+    nextDate=idx>=0&&idx<rows.length-1?rows[idx+1].date:null;
+    updates.schedule_rows=JSON.stringify(rows);
+  } else {
+    // SIP/SWP/recurring — record this dated occurrence as bounced for the history list
+    const bounced=JSON.parse(sch.bounced_dates||'[]');
+    bounced.push({date:postDate,amount:dueAmount});
+    updates.bounced_dates=JSON.stringify(bounced);
+    nextDate=getNextDate(postDate,sch.frequency||'monthly');
+  }
+  const isCompleted=!nextDate||(sch.end_date&&nextDate>sch.end_date);
+  updates.next_date=nextDate||postDate;
+  updates.status=isCompleted?'completed':'active';
+
+  await sb.from('schedules').update(updates).eq('id',schedId);
+  showToast(`Marked as bounced. Next due: ${nextDate?formatDate(nextDate):'—'}.`);
+  await loadAllData();renderScheduler();renderDashboard();renderDueBadge();
+  setTimeout(()=>{
+    if(confirm('Banks usually charge a bounce/penalty fee for a failed auto-debit. Log that fee now as an expense?')){
+      openBounceFeeTxn(sch.from_account_id);
+    }
+  },400);
+}
+function openBounceFeeTxn(accId){
+  openModal('add-txn-modal');
+  selectTxnType('expense',document.querySelectorAll('#add-txn-modal .tab-btn')[1]);
+  const acc=accounts.find(a=>a.id===accId);
+  if(!acc)return;
+  const sel=document.getElementById('txn-account');
+  const inp=document.getElementById('txn-account-search');
+  if(sel)sel.value=acc.id;
+  if(inp)inp.value=acc.name;
+}
+
 async function pauseSchedule(id){
   const sch=schedules.find(s=>s.id===id);if(!sch)return;
   const newStatus=sch.status==='paused'?'active':'paused';
@@ -4829,7 +4880,10 @@ function renderScheduler(){
       ${allOverdue.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
         <div><div style="font-size:0.85rem;font-weight:600">${s._label}</div>
         <div style="font-size:0.72rem;color:var(--text2)">${fmt(s._dueRow?.emi||s.amount,'INR')} · ${s.type.toUpperCase()}</div></div>
-        <button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${s.id}')">✅ Post</button>
+          <button class="btn-outline" style="font-size:0.72rem;color:#B45309;border-color:#B45309;padding:4px 8px" onclick="markScheduleBounced('${s.id}')">⚠️ Bounce</button>
+        </div>
       </div>`).join('')}
     </div>`:'';
   }
@@ -4870,7 +4924,7 @@ function renderScheduler(){
           <span style="font-size:0.7rem;color:var(--accent)">Details ›</span>
         </div>
       </div>
-      ${isDue?`<div style="margin-top:10px"><button class="btn-sm" style="background:var(--green)" onclick="event.stopPropagation();confirmScheduleEntry('${s.id}')">✅ Post Entry</button></div>`:''}
+      ${isDue?`<div style="margin-top:10px;display:flex;gap:6px"><button class="btn-sm" style="background:var(--green)" onclick="event.stopPropagation();confirmScheduleEntry('${s.id}')">✅ Post Entry</button><button class="btn-outline" style="font-size:0.72rem;color:#B45309;border-color:#B45309" onclick="event.stopPropagation();markScheduleBounced('${s.id}')">⚠️ Bounce</button></div>`:''}
     </div>`;
   }).join('');
 }
@@ -4882,6 +4936,8 @@ function renderScheduleDetail(schedId){
   const rows=JSON.parse(sch.schedule_rows||'[]');
   const fromAcc=accounts.find(a=>a.id===sch.from_account_id);
   const toAcc=accounts.find(a=>a.id===sch.to_account_id);
+  const isDueNow=sch.status==='active'&&sch.next_date<=today;
+  const dueAmount=sch.type==='emi'?(rows.find(r=>r.date===sch.next_date)?.emi||sch.amount||0):(sch.amount||0);
 
   let tableHTML='';
   if(sch.type==='sip'||sch.type==='swp'||sch.type==='recurring'){
@@ -4890,6 +4946,14 @@ function renderScheduleDetail(schedId){
       if(sch.end_date&&d>sch.end_date)break;
       upcoming.push(d);d=getNextDate(d,sch.frequency||'monthly');
     }
+    const bouncedList=JSON.parse(sch.bounced_dates||'[]');
+    const bouncedHTML=bouncedList.length?`<div style="font-size:0.88rem;font-weight:700;margin:16px 0 10px">❌ Bounced / Rejected Entries</div>
+    <div class="card" style="padding:0;overflow:hidden;border-color:var(--red)">
+    ${bouncedList.map(b=>`<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:#FEF2F2">
+      <div style="font-size:0.82rem;font-weight:500;color:var(--red)">${formatDate(b.date)} · ❌ Bounced</div>
+      <div style="font-weight:700;color:var(--red)">${fmt(b.amount,'INR')}</div>
+    </div>`).join('')}
+    </div>`:'';
     tableHTML=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px">Next 12 Scheduled Entries</div>
     <div class="card" style="padding:0;overflow:hidden">
     ${upcoming.map((date,i)=>`<div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);${date<=today?'background:var(--yellow-light)':''}">
@@ -4897,7 +4961,7 @@ function renderScheduleDetail(schedId){
       <div style="font-size:0.7rem;color:var(--text3)">${date<=today?'⏰ Due':'Upcoming'}</div></div>
       <div style="font-weight:700;color:var(--accent)">${fmt(sch.amount,'INR')}</div>
     </div>`).join('')}
-    </div>`;
+    </div>${bouncedHTML}`;
   } else if(rows.length){
     tableHTML=`<div style="font-size:0.88rem;font-weight:700;margin-bottom:10px">EMI Schedule (${rows.length} instalments)</div>
     <div style="overflow-x:auto"><table class="data-table" style="min-width:400px">
@@ -4905,13 +4969,13 @@ function renderScheduleDetail(schedId){
       <tbody>${rows.map(r=>{
         const isPast=r.date<sch.next_date;
         const isDueRow=r.date===sch.next_date;
-        return`<tr style="${isPast?'color:var(--text3)':''}${isDueRow?'background:var(--yellow-light);font-weight:600':''}">
+        return`<tr style="${r.bounced?'background:#FEF2F2':isPast?'color:var(--text3)':''}${isDueRow?'background:var(--yellow-light);font-weight:600':''}">
           <td>${r.month}</td><td>${formatDate(r.date)}</td>
           <td style="text-align:right">${fmt(r.emi,'INR')}</td>
           <td style="text-align:right">${fmt(r.principal,'INR')}</td>
           <td style="text-align:right">${fmt(r.interest,'INR')}</td>
           <td style="text-align:right">${fmt(r.balance,'INR')}</td>
-          <td>${isPast?'✅':isDueRow?'⏰':''}</td>
+          <td>${r.bounced?'<span style="color:var(--red);font-weight:600">❌ Bounced</span>':isPast?'✅':isDueRow?'⏰':''}</td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;
@@ -4934,8 +4998,10 @@ function renderScheduleDetail(schedId){
         ${sch.principal?`<div><div style="font-size:0.7rem;color:var(--text2)">Principal</div><div style="font-weight:600">${fmt(sch.principal,'INR')}</div></div>`:''}
         ${sch.annual_rate?`<div><div style="font-size:0.7rem;color:var(--text2)">Rate</div><div style="font-weight:600">${sch.annual_rate}% p.a.</div></div>`:''}
       </div>
+      ${sch.bounce_count>0?`<div style="font-size:0.74rem;color:#B45309;margin-bottom:10px">⚠️ Bounced ${sch.bounce_count} time(s) — last on ${formatDate(sch.last_bounce_date)}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${sch.status==='active'&&sch.next_date<=today?`<button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${sch.id}')">✅ Post Entry</button>`:''}
+        ${isDueNow?`<button class="btn-sm" style="background:var(--green)" onclick="confirmScheduleEntry('${sch.id}')">✅ Post Entry</button>`:''}
+        ${isDueNow?`<button class="btn-outline" style="font-size:0.78rem;color:#B45309;border-color:#B45309" onclick="markScheduleBounced('${sch.id}')">⚠️ Mark as Bounced</button>`:''}
         ${sch.status!=='stopped'&&sch.status!=='completed'?`<button class="btn-outline" style="font-size:0.78rem" onclick="pauseSchedule('${sch.id}')">${sch.status==='paused'?'▶ Resume':'⏸ Pause'}</button>`:''}
         ${(sch.type==='sip'||sch.type==='swp')&&sch.status==='active'?`<button class="btn-outline" style="font-size:0.78rem" onclick="openTopup('${sch.id}')">📈 Top-up</button>`:''}
         ${sch.status!=='stopped'&&sch.status!=='completed'?`<button class="btn-outline" style="font-size:0.78rem;color:var(--red);border-color:var(--red)" onclick="stopSchedule('${sch.id}')">⏹ Stop</button>`:''}
