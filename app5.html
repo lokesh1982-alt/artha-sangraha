@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v111';
+const CURRENT_VERSION = 'v112';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v111</title>
+<title>Artha-Sangraha v112</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -908,12 +908,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="modal-title">Add Account / Asset</div>
       <button class="btn-close" onclick="closeModal('add-account-modal')">✕</button>
     </div>
-    <div class="form-group"><label class="form-label">Account Name *</label><input class="form-input" id="acc-name" placeholder="e.g. HDFC Savings, Nifty50 ETF"/></div>
     <div class="form-group"><label class="form-label">Account Group (optional)</label>
-      <select class="form-select" id="acc-group">
-        <option value="">— No Group —</option>
-      </select>
+      <div style="display:flex;gap:8px">
+        <select class="form-select" id="acc-group" style="flex:1">
+          <option value="">— No Group —</option>
+        </select>
+        <button type="button" class="btn-outline" style="padding:0 12px;white-space:nowrap" onclick="quickCreateGroupFromAccount()">+ New Group</button>
+      </div>
     </div>
+    <div class="form-group"><label class="form-label">Account Name *</label><input class="form-input" id="acc-name" placeholder="e.g. HDFC Savings, Nifty50 ETF"/></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Type *</label>
         <select class="form-select" id="acc-type" onchange="updateAccClassification()">
@@ -2651,18 +2654,48 @@ async function saveGroup(){
   const name=document.getElementById('grp-name').value.trim();
   if(!name){showToast('Please enter group name.');return;}
   const group={user_id:currentUser.id,name,classification:document.getElementById('grp-classification').value,icon:document.getElementById('grp-icon').value||'📁'};
+  let newGroupId=null;
   if(editingGroupId){
     await sb.from('account_groups').update(group).eq('id',editingGroupId);
     editingGroupId=null;
   } else {
-    const{error}=await sb.from('account_groups').insert(group);
+    const{data,error}=await sb.from('account_groups').insert(group).select().single();
     if(error){showToast('Error: '+error.message);return;}
+    newGroupId=data?.id||null;
   }
   closeModal('add-group-modal');
+  if(pendingAccGroupSelect&&newGroupId){
+    pendingAccGroupSelect=false;
+    await loadAllData();
+    const gs=document.getElementById('acc-group');
+    if(gs){
+      gs.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
+      gs.value=newGroupId;
+    }
+    showToast(`"${name}" group created and selected ✅`);
+    return;
+  }
   showToast('Group saved! ✅');
   await loadAllData();
   renderAccounts();
   if(document.getElementById('sec-settings').classList.contains('active'))renderSettings();
+}
+
+// Lets you create a new Account Group without leaving the Add Account form — handy
+// while creating an expense/income account mid-reconciliation, where closing out
+// to Settings to set up a group first would be a real interruption.
+let pendingAccGroupSelect=false;
+function quickCreateGroupFromAccount(){
+  pendingAccGroupSelect=true;
+  openModal('add-group-modal');
+  const accCls=document.getElementById('acc-classification')?.value||'asset';
+  const grpClsSel=document.getElementById('grp-classification');
+  if(grpClsSel)grpClsSel.value=accCls;
+  const m=document.getElementById('add-group-modal');
+  if(m){
+    const accModalZ=parseInt(document.getElementById('add-account-modal').style.zIndex)||9999;
+    m.style.zIndex=String(Math.max(accModalZ+1,10002));
+  }
 }
 
 // ═══════════════════════════════
@@ -6727,9 +6760,7 @@ async function saveAccount(attachAfter=false){
   const grpSel=document.getElementById('acc-group');
   const group_id=grpSel?.value||null;
   const accCustName=document.getElementById('acc-custom-name');
-  const catSel=document.getElementById('acc-category-select');
   const isPnL=classification==='income'||classification==='expense';
-  if(isPnL&&catSel&&!catSel.value){showToast('Please select a category for this P&L account.');return;}
   const acc={
     user_id:currentUser.id,name,
     type:document.getElementById('acc-type').value,
@@ -6739,7 +6770,7 @@ async function saveAccount(attachAfter=false){
     opening_date:document.getElementById('acc-opening-date').value||todayISO(),
     classification,
     group_id:group_id||null,
-    category_account:isPnL&&catSel?.value?catSel.value:null
+    category_account:null
   };
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
@@ -7026,6 +7057,7 @@ function closeModal(id){
   el.classList.remove('open');
   if(id==='txn-detail-modal')el.style.zIndex='';
   if(id==='add-account-modal')el.style.zIndex='';
+  if(id==='add-group-modal'){el.style.zIndex='';pendingAccGroupSelect=false;}
   if(id==='add-txn-modal'){
     el.style.zIndex='';
     if(reconcileCtx)renderReconcileForm();
