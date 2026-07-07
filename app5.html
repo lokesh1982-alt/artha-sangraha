@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v108';
+const CURRENT_VERSION = 'v110';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v108</title>
+<title>Artha-Sangraha v110</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -701,15 +701,19 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <div style="margin-top:12px" id="settings-groups-list"></div>
         </div>
 
-        <!-- Categories -->
+        <!-- Categories (retired — superseded by Account Groups) -->
         <div class="card" style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:12px">
-              <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">🏷️</div>
-              <div><div style="font-weight:600;font-size:0.9rem">Categories</div><div style="font-size:0.72rem;color:var(--text2)">Income & expense categories</div></div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="tile-icon-wrap" style="width:42px;height:42px;border-radius:12px">🏷️</div>
+            <div>
+              <div style="font-weight:600;font-size:0.9rem">Categories</div>
+              <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;line-height:1.4">Picking a "Category" on a transaction now directly selects a real Income/Expense account — organize them using <b>Account Groups</b> above (e.g. "Operating Expenses" containing "School Fee," "Bank Charges," etc.) instead of managing a separate category list here.</div>
             </div>
-            <button class="btn-sm" onclick="openModal('add-category-modal')">+ Add</button>
           </div>
+        </div>
+
+        <!-- Legacy categories list retained for reference only; no longer used to drive transaction entry -->
+        <div style="display:none">
           <div style="margin-top:12px" id="settings-categories-list"></div>
         </div>
 
@@ -862,6 +866,14 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <input class="form-input search-select-input" id="txn-account-search" placeholder="Search account..." autocomplete="off" oninput="filterAccountSearch('txn-account')" onfocus="openAccountSearch('txn-account')" onblur="setTimeout(()=>closeAccountSearch('txn-account'),200)"/>
           <select class="form-select" id="txn-account" style="display:none"></select>
           <div class="search-select-dropdown" id="txn-account-dropdown"></div>
+        </div>
+        <div id="txn-account-lock-note" style="display:none;font-size:0.72rem;color:var(--text2);margin-top:3px">🔒 Locked to the account you're reconciling — pick the <b>Category</b> below for the other side of this entry.</div>
+      </div>
+      <div class="form-group" id="txn-cat-account-wrap"><label class="form-label" id="txn-cat-account-label">Category *</label>
+        <div class="search-select-wrap">
+          <input class="form-input search-select-input" id="txn-cat-account-search" placeholder="Search or create a category account..." autocomplete="off" oninput="filterAccountSearch('txn-cat-account')" onfocus="openAccountSearch('txn-cat-account')" onblur="setTimeout(()=>closeAccountSearch('txn-cat-account'),200)"/>
+          <select class="form-select" id="txn-cat-account" style="display:none"></select>
+          <div class="search-select-dropdown" id="txn-cat-account-dropdown"></div>
         </div>
       </div>
       <div class="form-group" id="txn-to-account-wrap" style="display:none">
@@ -2317,12 +2329,22 @@ function getCategoryOptions(type='all'){
 }
 
 function updateCategoryDropdowns(){
-  const txnCat=document.getElementById('txn-category');
-  if(txnCat)txnCat.innerHTML=getCategoryOptions('all');
+  // Budget & filter dropdowns now list real Expense/Income accounts (grouped under
+  // Account Groups) instead of the old separate categories table — this keeps them
+  // in sync with whatever accounts actually exist, with zero duplicate upkeep.
   const budgetCat=document.getElementById('budget-cat');
-  if(budgetCat)budgetCat.innerHTML=getCategoryOptions('expense');
+  if(budgetCat){
+    const expAccs=accounts.filter(a=>a.classification==='expense');
+    budgetCat.innerHTML=expAccs.map(a=>{
+      const grp=groups.find(g=>g.id===a.group_id);
+      return`<option value="${a.name}">${grp?grp.name+' / ':''}${a.name}</option>`;
+    }).join('');
+  }
   const filterCat=document.getElementById('txn-filter-cat');
-  if(filterCat)filterCat.innerHTML='<option value="all">All categories</option>'+getCategoryOptions('all');
+  if(filterCat){
+    const pnlAccs=accounts.filter(a=>a.classification==='income'||a.classification==='expense');
+    filterCat.innerHTML='<option value="all">All categories</option>'+pnlAccs.map(a=>`<option value="${a.name}">${a.name}</option>`).join('');
+  }
 }
 
 function renderCategories(){
@@ -2797,6 +2819,18 @@ function editTxn(id){
   const accSel=document.getElementById('txn-account');
   const accInp=document.getElementById('txn-account-search');
   if(accSel&&accInp){const opt=Array.from(accSel.options).find(o=>o.value===accSel.value);accInp.value=opt?opt.text:'';}
+  const tal=document.getElementById('txn-account-label');
+  if(tal)tal.textContent=selectedTxnType==='income'?'Account (received into) *':selectedTxnType==='expense'?'Account (paid from) *':'From Account *';
+  populateTxnCatAccountOptions();
+  if(selectedTxnType==='income'||selectedTxnType==='expense'){
+    const catAccId=selectedTxnType==='income'?t.credit_account_id:t.debit_account_id;
+    const catSel=document.getElementById('txn-cat-account');
+    const catInp=document.getElementById('txn-cat-account-search');
+    if(catSel&&catAccId){
+      catSel.value=catAccId;
+      if(catInp){const opt=Array.from(catSel.options).find(o=>o.value===catAccId);catInp.value=opt?opt.text:'';}
+    }
+  }
 }
 
 function editTrade(id){
@@ -2890,8 +2924,7 @@ async function updateTxn(){
   const amount=parseFloat(document.getElementById('txn-amount').value);
   const date=document.getElementById('txn-date').value;
   if(!amount||!date){showToast('Please fill amount and date.');return;}
-  const category=document.getElementById('txn-category').value;
-  let debit_account_id=null,credit_account_id=null,account_id=null,to_account_id=null;
+  let debit_account_id=null,credit_account_id=null,account_id=null,to_account_id=null,category='';
   if(selectedTxnType==='journal'){
     debit_account_id=document.getElementById('txn-debit-account').value||null;
     credit_account_id=document.getElementById('txn-credit-account').value||null;
@@ -2904,16 +2937,19 @@ async function updateTxn(){
   } else if(selectedTxnType==='income'){
     account_id=document.getElementById('txn-account').value;
     debit_account_id=account_id;
-    // Re-link the category (counterparty) side — previously this was left blank on
-    // edit, silently wiping the other leg of the entry every time an income/expense
-    // transaction was edited.
-    const incAcc=await ensureCategoryAccount(category,'income');
-    credit_account_id=incAcc?.id||null;
+    // Category is a direct account pick (grouped under Account Groups) — no more
+    // auto-created shadow account, and no more silently wiping this side on edit.
+    const catAccId=document.getElementById('txn-cat-account').value;
+    if(!catAccId){showToast('Please select a category.');return;}
+    credit_account_id=catAccId;
+    category=accounts.find(a=>a.id===catAccId)?.name||'';
   } else if(selectedTxnType==='expense'){
     account_id=document.getElementById('txn-account').value;
     credit_account_id=account_id;
-    const expAcc=await ensureCategoryAccount(category,'expense');
-    debit_account_id=expAcc?.id||null;
+    const catAccId=document.getElementById('txn-cat-account').value;
+    if(!catAccId){showToast('Please select a category.');return;}
+    debit_account_id=catAccId;
+    category=accounts.find(a=>a.id===catAccId)?.name||'';
   }
   const updates={
     date,amount,
@@ -3086,12 +3122,22 @@ function quickCreateAccountFor(selectId){
   openModal('add-account-modal');
   const m=document.getElementById('add-account-modal');
   if(m)m.style.zIndex='10001';
+  // If creating from the Category picker, default the new account's type to match
+  // (income or expense) so the person doesn't have to set it manually.
+  if(selectId==='txn-cat-account'){
+    const typeSel=document.getElementById('acc-type');
+    if(typeSel){
+      typeSel.value=selectedTxnType==='income'?'custom-income':'custom-expense';
+      updateAccClassification();
+    }
+  }
 }
 function refreshTxnAccountDropdowns(){
   const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
   ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(id=>{
     const e=document.getElementById(id);if(e){const cur=e.value;e.innerHTML=opts;e.value=cur;}
   });
+  populateTxnCatAccountOptions();
 }
 // Opens the Add Transaction form pre-filled with the account currently being
 // reconciled — otherwise the Account field defaults to whatever's first in the
@@ -3103,7 +3149,9 @@ function openMissingTxnFromReconcile(){
   const sel=document.getElementById('txn-account');
   const inp=document.getElementById('txn-account-search');
   if(sel)sel.value=acc.id;
-  if(inp)inp.value=acc.name;
+  if(inp){inp.value=acc.name;inp.disabled=true;}
+  const lockNote=document.getElementById('txn-account-lock-note');
+  if(lockNote)lockNote.style.display='block';
 }
 
 // Converts an amount from one currency to another using the exchange rate that was
@@ -3538,7 +3586,7 @@ function setEntryMode(mode){
   document.getElementById('simple-mode-fields').style.display=mode==='simple'?'block':'none';
   document.getElementById('double-entry-fields').style.display=mode==='double'?'block':'none';
   document.getElementById('txn-type-wrap').style.display=mode==='simple'?'block':'none';
-  document.getElementById('txn-category-wrap').style.display=mode==='simple'?'flex':'none';
+  document.getElementById('txn-category-wrap').style.display='none';
 }
 
 function renderChartOfAccounts(){
@@ -6191,17 +6239,9 @@ function updateAccClassification(){
   if(clsWrap)clsWrap.style.display=isCustom?'block':'none';
   const cnWrap=document.getElementById('acc-custom-name-wrap');
   if(cnWrap)cnWrap.style.display=isCustom?'block':'none';
-  // Show category field for P&L accounts (income/expense)
-  const isPnL=cls==='income'||cls==='expense';
+  // Category tagging retired — Account Groups (the field above) now handle this
   const catWrap=document.getElementById('acc-category-wrap');
-  if(catWrap)catWrap.style.display=isPnL?'block':'none';
-  if(isPnL){
-    const catSel=document.getElementById('acc-category-select');
-    if(catSel){
-      const filtered=categories.filter(c=>c.type===cls||c.type==='both');
-      catSel.innerHTML='<option value="">— Select Category —</option>'+filtered.map(c=>`<option value="${c.name}">${c.icon||''} ${c.name}</option>`).join('');
-    }
-  }
+  if(catWrap)catWrap.style.display='none';
 }
 
 function toggleFnoFields(){
@@ -6584,6 +6624,42 @@ function selectTxnType(type,btn){
   // Show/hide transfer to account
   const wrap=document.getElementById('txn-to-account-wrap');
   if(wrap)wrap.style.display=type==='transfer'?'block':'none';
+  // Make it clearer which account this field means — it's always the bank/wallet
+  // account money moves through, never the income/expense category itself.
+  const label=document.getElementById('txn-account-label');
+  if(label){
+    label.textContent=type==='income'?'Account (received into) *':type==='expense'?'Account (paid from) *':'From Account *';
+  }
+  populateTxnCatAccountOptions();
+}
+
+// The "Category" field is really an Income/Expense account picker (grouped under
+// Account Groups, same as every other account) — this replaces the old separate
+// Categories table, which used to silently auto-create a loosely-matched shadow
+// account instead of letting you pick or create the real one directly.
+function populateTxnCatAccountOptions(){
+  const wrap=document.getElementById('txn-cat-account-wrap');
+  const sel=document.getElementById('txn-cat-account');
+  if(!sel)return;
+  if(selectedTxnType==='transfer'||selectedTxnType==='journal'){
+    if(wrap)wrap.style.display='none';
+    return;
+  }
+  if(wrap)wrap.style.display='block';
+  const cls=selectedTxnType==='income'?'income':'expense';
+  const matching=accounts.filter(a=>a.classification===cls);
+  const cur=sel.value;
+  sel.innerHTML=matching.map(a=>{
+    const grp=groups.find(g=>g.id===a.group_id);
+    const label=grp?`${grp.name} / ${a.name}`:a.name;
+    return`<option value="${a.id}">${label}</option>`;
+  }).join('');
+  if(matching.some(a=>a.id===cur))sel.value=cur;
+  const inp=document.getElementById('txn-cat-account-search');
+  if(inp){
+    const opt=Array.from(sel.options).find(o=>o.value===sel.value);
+    inp.value=opt?opt.text:'';
+  }
 }
 
 async function saveTxn(attachAfter=false){
@@ -6612,15 +6688,19 @@ async function saveTxn(attachAfter=false){
     const to_account_id=selectedTxnType==='transfer'?document.getElementById('txn-to-account').value:null;
     if(selectedTxnType==='transfer'&&!to_account_id){showToast('Please select destination account.');return;}
     if(selectedTxnType==='transfer'&&to_account_id===account_id){showToast('Source and destination cannot be same.');return;}
-    const category=document.getElementById('txn-category').value;
-    // Auto-create income/expense category account
-    let debit_acc=null,credit_acc=null;
+    // Category is now a direct account pick (grouped under Account Groups), not an
+    // auto-created shadow account — the picker already returns the real account id.
+    let debit_acc=null,credit_acc=null,category='';
     if(selectedTxnType==='income'){
-      const incAcc=await ensureCategoryAccount(category,'income');
-      debit_acc=account_id;credit_acc=incAcc?.id||null;
+      const catAccId=document.getElementById('txn-cat-account').value;
+      if(!catAccId){showToast('Please select a category.');return;}
+      debit_acc=account_id;credit_acc=catAccId;
+      category=accounts.find(a=>a.id===catAccId)?.name||'';
     } else if(selectedTxnType==='expense'){
-      const expAcc=await ensureCategoryAccount(category,'expense');
-      credit_acc=account_id;debit_acc=expAcc?.id||null;
+      const catAccId=document.getElementById('txn-cat-account').value;
+      if(!catAccId){showToast('Please select a category.');return;}
+      credit_acc=account_id;debit_acc=catAccId;
+      category=accounts.find(a=>a.id===catAccId)?.name||'';
     } else {
       debit_acc=to_account_id;credit_acc=account_id;
     }
@@ -6835,19 +6915,23 @@ function openModal(id){
     const opts=accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
     ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(el=>{const e=document.getElementById(el);if(e)e.innerHTML=opts;});
     // Clear search inputs
-    ['txn-account','txn-to-account','txn-debit-account','txn-credit-account'].forEach(id=>{const e=document.getElementById(id+'-search');if(e)e.value='';});
+    ['txn-account','txn-to-account','txn-debit-account','txn-credit-account','txn-cat-account'].forEach(id=>{const e=document.getElementById(id+'-search');if(e)e.value='';});
     ['txn-amount','txn-desc'].forEach(el=>{const e=document.getElementById(el);if(e)e.value='';});
+    const tas=document.getElementById('txn-account-search');if(tas)tas.disabled=false;
+    const taln=document.getElementById('txn-account-lock-note');if(taln)taln.style.display='none';
     const td=document.getElementById('txn-date');if(td)td.value=todayISO();
     const tw=document.getElementById('txn-to-account-wrap');if(tw)tw.style.display='none';
     const tm=document.querySelector('#add-txn-modal .modal-title');if(tm)tm.textContent='Add Transaction';
     selectedTxnType='income';entryMode='simple';
+    const tal=document.getElementById('txn-account-label');if(tal)tal.textContent='Account (received into) *';
     const sm=document.getElementById('simple-mode-fields');if(sm)sm.style.display='block';
     const dm=document.getElementById('double-entry-fields');if(dm)dm.style.display='none';
     const tw2=document.getElementById('txn-type-wrap');if(tw2)tw2.style.display='block';
-    const cw=document.getElementById('txn-category-wrap');if(cw)cw.style.display='flex';
+    const cw=document.getElementById('txn-category-wrap');if(cw)cw.style.display='none';
     const smb=document.getElementById('mode-simple-btn');if(smb)smb.classList.add('active');
     const dmb=document.getElementById('mode-double-btn');if(dmb)dmb.classList.remove('active');
     document.querySelectorAll('#txn-type-wrap .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+    populateTxnCatAccountOptions();
   }
   else if(id==='add-account-modal'){
     editingAccId=null;
