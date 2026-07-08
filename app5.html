@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v115';
+const CURRENT_VERSION = 'v118';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v115</title>
+<title>Artha-Sangraha v118</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -244,7 +244,8 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .nw-prop-seg-l{background:rgba(255,255,255,0.3);}
 .dash-card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:14px;}
 .dash-card-title{font-size:0.8rem;font-weight:600;color:var(--charcoal);margin-bottom:10px;}
-.dash-menu-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;}
+.dash-content-wrap{max-width:640px;margin:0 auto;}
+.dash-menu-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px;}
 .dash-menu-tile{background:var(--card);border-radius:12px;padding:10px 4px;text-align:center;border:none;cursor:pointer;font-family:inherit;transition:transform 0.15s;}
 .dash-menu-tile:active{transform:scale(0.95);}
 .dash-menu-icon{font-size:16px;margin-bottom:3px;}
@@ -273,6 +274,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   .form-row{grid-template-columns:1fr;}
   .nw-val{font-size:1.5rem;}
   .card-grid-3,.card-grid-4{grid-template-columns:1fr 1fr;}
+  .dash-menu-grid{grid-template-columns:repeat(3,1fr);}
 }
 .tile-menu{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:16px 0;}
 .tile-btn{background:transparent;border:none;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all 0.2s;text-align:center;padding:0;font-family:inherit;}
@@ -399,7 +401,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   <div class="topbar">
     <div class="topbar-left">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#1a56db,#1e429f);display:flex;align-items:center;justify-content:center;font-size:1rem;color:#fff;font-weight:700;flex-shrink:0;font-family:'Playfair Display',serif;">₹</div>
+        <img src="as-icon-192.png" alt="Artha-Sangraha" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;object-fit:cover"/>
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:0.98rem;color:var(--accent2);font-weight:700;line-height:1.1">अर्थ-संग्रह</div>
           <div style="font-size:0.58rem;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;line-height:1">Artha-Sangraha</div>
@@ -408,15 +410,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     </div>
     <div class="topbar-right">
       <button class="eye-toggle" id="eye-toggle-btn" onclick="toggleFigures()" title="Show/Hide figures">👁</button>
-      <select id="display-currency-select" onchange="changeDisplayCurrency(this.value)"
-        style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:0.78rem;color:var(--text);cursor:pointer">
-        <option value="INR">₹ INR</option>
-        <option value="USD">$ USD</option>
-        <option value="EUR">€ EUR</option>
-        <option value="GBP">£ GBP</option>
-        <option value="AED">د AED</option>
-        <option value="SGD">S$ SGD</option>
-      </select>
       <div style="position:relative">
         <div class="user-pill" onclick="toggleUserMenu()" id="user-menu-btn" style="padding:4px 10px 4px 4px">
           <div class="user-avatar" id="user-avatar">U</div>
@@ -478,26 +471,28 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="btn-sm" onclick="openModal('add-txn-modal')">+ Add Transaction</button>
         </div>
         <div id="rates-notification" style="display:none"></div>
-        <div id="nw-banner-wrap"></div>
-        <div class="dash-card"><div class="dash-card-title">Income vs expenses</div><div id="dash-chart" style="position:relative;height:110px"></div></div>
-        <div class="dash-charts-2col">
-          <div class="dash-card" style="margin-bottom:0">
-            <div class="dash-donut-title">Spending by category</div>
-            <div id="dash-spend-donut"></div>
+        <div class="dash-content-wrap">
+          <div id="nw-banner-wrap"></div>
+          <div class="dash-card"><div class="dash-card-title">Income vs expenses</div><div id="dash-chart" style="position:relative;height:110px"></div></div>
+          <div class="dash-charts-2col">
+            <div class="dash-card" style="margin-bottom:0">
+              <div class="dash-donut-title">Spending by category</div>
+              <div id="dash-spend-donut"></div>
+            </div>
+            <div class="dash-card" style="margin-bottom:0">
+              <div class="dash-donut-title">Income by category</div>
+              <div id="dash-income-donut"></div>
+            </div>
           </div>
-          <div class="dash-card" style="margin-bottom:0">
-            <div class="dash-donut-title">Income by category</div>
-            <div id="dash-income-donut"></div>
+          <div class="dash-card">
+            <div class="dash-donut-title" id="dash-fy-donut-title">FY income vs expenses</div>
+            <div id="dash-fy-donut"></div>
           </div>
+          <div id="dash-fx-widget"></div>
+          <div class="dash-menu-grid" id="dash-tile-menu"></div>
+          <div class="dash-card"><div class="dash-card-title">Notifications</div><div id="dash-notifications"></div></div>
+          <div class="dash-card" style="padding-bottom:4px"><div class="dash-card-title">Funds</div><div id="dash-funds-list"></div></div>
         </div>
-        <div class="dash-card">
-          <div class="dash-donut-title" id="dash-fy-donut-title">FY income vs expenses</div>
-          <div id="dash-fy-donut"></div>
-        </div>
-        <div id="dash-fx-widget"></div>
-        <div class="dash-menu-grid" id="dash-tile-menu"></div>
-        <div class="dash-card"><div class="dash-card-title">Notifications</div><div id="dash-notifications"></div></div>
-        <div class="dash-card" style="padding-bottom:4px"><div class="dash-card-title">Funds</div><div id="dash-funds-list"></div></div>
       </div>
 
       <!-- CHART OF ACCOUNTS -->
@@ -3514,7 +3509,18 @@ function renderDashboard(){
 
   document.getElementById('nw-banner-wrap').innerHTML=`
   <div class="nw-banner">
-    <div class="nw-label">Total net worth · ${fy.label}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1">
+      <div class="nw-label">Total net worth · ${fy.label}</div>
+      <select id="display-currency-select" onchange="changeDisplayCurrency(this.value)"
+        style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:3px 6px;font-size:0.72rem;color:var(--ivory);cursor:pointer;font-family:inherit">
+        <option value="INR" ${displayCurrency==='INR'?'selected':''}>₹ INR</option>
+        <option value="USD" ${displayCurrency==='USD'?'selected':''}>$ USD</option>
+        <option value="EUR" ${displayCurrency==='EUR'?'selected':''}>€ EUR</option>
+        <option value="GBP" ${displayCurrency==='GBP'?'selected':''}>£ GBP</option>
+        <option value="AED" ${displayCurrency==='AED'?'selected':''}>د AED</option>
+        <option value="SGD" ${displayCurrency==='SGD'?'selected':''}>S$ SGD</option>
+      </select>
+    </div>
     <div class="nw-val">${fmt(netWorthDisplay,displayCurrency)}</div>
     ${momPct!==null?`<div class="nw-trend-line" style="color:${momPct>=0?'#7FD9A8':'#F0A0A0'}">${momPct>=0?'▲':'▼'} ${Math.abs(momPct).toFixed(1)}% vs last month</div>`:'<div style="height:22px"></div>'}
     <div class="nw-spark-wrap">
@@ -3561,7 +3567,11 @@ function calcNetWorthTrend(months=6){
 
 function buildSparklineSVG(vals,width=400,height=70,color='#E8C766'){
   if(vals.length<2)return'';
-  const min=Math.min(...vals,0),max=Math.max(...vals);
+  // Use the actual data range (not forced down to 0) — net worth values are large,
+  // so anchoring the floor at ₹0 squashes real month-to-month movement into a
+  // barely-visible sliver near the top of the chart.
+  let min=Math.min(...vals),max=Math.max(...vals);
+  if(min===max){min-=1;max+=1;} // avoid a zero-range flat line if every value is identical
   const range=(max-min)||1;
   const stepX=width/(vals.length-1);
   const pad=6;
@@ -3699,6 +3709,7 @@ function renderDashMenuTiles(){
     {icon:'🏦',label:'Accounts',fn:"switchSection('accounts',null)"},
     {icon:'💳',label:'Transact.',fn:"switchSection('transactions',null)"},
     {icon:'📊',label:'Reports',fn:"switchSection('reports',null)"},
+    {icon:'🎯',label:'Budget',fn:"switchSection('budget',null)"},
     {icon:'📅',label:'Schedule',fn:"switchSection('scheduler',null)"},
     {icon:'⚙️',label:'Settings',fn:"switchSection('settings',null)"},
   ];
@@ -3737,15 +3748,26 @@ function renderDashNotifications(){
     }
   });
 
-  const reconAccs=accounts.filter(a=>['asset','liability'].includes(a.classification));
-  reconAccs.forEach(a=>{
+  // Reconciliation reminders only make sense for accounts with a real external
+  // statement to check against — bank/cash/FD and liabilities. Individual stock,
+  // ETF, gold, or crypto holdings aren't "reconciled" the same way, so they're
+  // excluded here (still visible in the Reconciliation report itself if needed).
+  const reconAccs=accounts.filter(a=>
+    (a.classification==='asset'&&['cash','bank','fd'].includes(a.type))||a.classification==='liability'
+  );
+  const needsRecon=reconAccs.filter(a=>{
     const history=accountReconciliations.filter(r=>r.account_id===a.id).sort((x,y)=>y.statement_date.localeCompare(x.statement_date));
     const last=history[0];
     const daysSince=last?Math.floor((new Date(today)-new Date(last.statement_date))/86400000):null;
-    if(daysSince===null||daysSince>60){
-      items.push({icon:'🔄',bg:'#F7E7E9',title:`${a.name} needs reconciling`,sub:last?`Not reconciled in ${daysSince} days`:'Never reconciled',action:'Review ›',fn:`switchSection('reports',null);setTimeout(()=>switchReportTab('recon',document.querySelectorAll('#sec-reports .tab-btn')[7]),50)`});
-    }
+    return daysSince===null||daysSince>60;
   });
+  if(needsRecon.length){
+    const names=needsRecon.slice(0,3).map(a=>a.name).join(', ')+(needsRecon.length>3?` +${needsRecon.length-3} more`:'');
+    items.push({icon:'🔄',bg:'#F7E7E9',
+      title:`${needsRecon.length} account${needsRecon.length>1?'s':''} need${needsRecon.length>1?'':'s'} reconciling`,
+      sub:names,action:'Review ›',
+      fn:`switchSection('reports',null);setTimeout(()=>switchReportTab('recon',document.querySelectorAll('#sec-reports .tab-btn')[7]),50)`});
+  }
 
   if(!items.length){
     el.innerHTML='<div style="font-size:0.78rem;color:var(--ink2);text-align:center;padding:10px 0">All caught up — nothing needs your attention.</div>';
