@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v118';
+const CURRENT_VERSION = 'v119';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v118</title>
+<title>Artha-Sangraha v119</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -3759,7 +3759,7 @@ function renderDashNotifications(){
     const history=accountReconciliations.filter(r=>r.account_id===a.id).sort((x,y)=>y.statement_date.localeCompare(x.statement_date));
     const last=history[0];
     const daysSince=last?Math.floor((new Date(today)-new Date(last.statement_date))/86400000):null;
-    return daysSince===null||daysSince>60;
+    return daysSince===null||daysSince>30;
   });
   if(needsRecon.length){
     const names=needsRecon.slice(0,3).map(a=>a.name).join(', ')+(needsRecon.length>3?` +${needsRecon.length-3} more`:'');
