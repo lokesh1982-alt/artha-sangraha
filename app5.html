@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v120';
+const CURRENT_VERSION = 'v123';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v120</title>
+<title>Artha-Sangraha v123</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -489,6 +489,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
             <div id="dash-fy-donut"></div>
           </div>
           <div id="dash-fx-widget"></div>
+          <div id="dash-unrealized-pl"></div>
           <div class="dash-menu-grid" id="dash-tile-menu"></div>
           <div class="dash-card"><div class="dash-card-title">Notifications</div><div id="dash-notifications"></div></div>
           <div class="dash-card" style="padding-bottom:4px"><div class="dash-card-title">Funds</div><div id="dash-funds-list"></div></div>
@@ -576,7 +577,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <div class="section" id="sec-portfolio">
         <div class="page-header">
           <div><div class="page-title">Investment Portfolio</div></div>
-          <button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Investment</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-outline" onclick="openUpdatePricesModal()">💹 Update Prices</button>
+            <button class="btn-sm" onclick="openModal('add-account-modal')">+ Add Investment</button>
+          </div>
         </div>
         <div id="portfolio-content"></div>
       </div>
@@ -1475,6 +1479,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem" id="buy-invest-info"></div>
     <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="buy-date"/></div>
     <div class="form-group"><label class="form-label">Amount Invested *</label><input class="form-input" type="number" id="buy-amount" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group" id="buy-units-wrap" style="display:none"><label class="form-label">Units / Shares Bought</label><input class="form-input" type="number" id="buy-units" placeholder="e.g. 10" step="0.0001"/></div>
     <div class="form-group"><label class="form-label">Commission / Brokerage</label><input class="form-input" type="number" id="buy-commission" placeholder="0.00" step="0.01"/></div>
     <div class="form-group"><label class="form-label">Source Account * <span style="font-size:0.72rem;color:var(--text2)">(money goes FROM here)</span></label>
       <div class="search-select-wrap">
@@ -1498,6 +1503,22 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   </div>
 </div>
 
+<!-- UPDATE PRICES MODAL -->
+<div class="modal-overlay" id="update-prices-modal">
+  <div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">💹 Update Units &amp; Prices</div>
+      <button class="btn-close" onclick="closeModal('update-prices-modal')">✕</button>
+    </div>
+    <div style="font-size:0.76rem;color:var(--text2);margin-bottom:10px">This app has no live stock feed, so prices are only as current as your last update here. Crypto can auto-fetch if you set a coin symbol below.</div>
+    <div id="update-prices-content"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn-outline" style="flex:1" onclick="closeModal('update-prices-modal')">Cancel</button>
+      <button class="btn-primary" style="flex:1" onclick="saveUpdatedPrices()">Save All</button>
+    </div>
+  </div>
+</div>
+
 <!-- PORTFOLIO SELL MODAL -->
 <div class="modal-overlay" id="portfolio-sell-modal">
   <div class="modal" style="max-width:400px">
@@ -1508,6 +1529,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem" id="sell-invest-info"></div>
     <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="sell-date"/></div>
     <div class="form-group"><label class="form-label">Sale Amount * <span style="font-size:0.72rem;color:var(--text2)">(what you received)</span></label><input class="form-input" type="number" id="sell-amount" placeholder="0.00" step="0.01"/></div>
+    <div class="form-group" id="sell-units-wrap" style="display:none"><label class="form-label">Units / Shares Sold</label><input class="form-input" type="number" id="sell-units" placeholder="e.g. 5" step="0.0001"/></div>
     <div class="form-group"><label class="form-label">Original Cost <span style="font-size:0.72rem;color:var(--text2)">(for P&L calculation)</span></label><input class="form-input" type="number" id="sell-cost" placeholder="0.00" step="0.01"/></div>
     <div class="form-group"><label class="form-label">Commission / Brokerage</label><input class="form-input" type="number" id="sell-commission" placeholder="0.00" step="0.01"/></div>
     <div class="form-group"><label class="form-label">Destination Account * <span style="font-size:0.72rem;color:var(--text2)">(money goes TO here)</span></label>
@@ -3543,6 +3565,7 @@ function renderDashboard(){
   renderDashChart();
   renderDashDonuts();
   renderDashFXWidget();
+  renderDashUnrealizedPL();
   renderDashMenuTiles();
   renderDashNotifications();
   renderDashFundsList();
@@ -3699,6 +3722,48 @@ function renderDashFXWidget(){
       </div>`).join('')}
     </div>
     <div style="text-align:right;margin-top:8px"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="switchSection('reports',null);setTimeout(()=>switchReportTab('fx',document.querySelectorAll('#sec-reports .tab-btn')[6]),50)">View FX Revaluation Report →</button></div>
+  </div>`;
+}
+
+// Invested vs Current vs Unrealized P&L, aggregated per asset class (Indian Stocks,
+// US Stocks, Crypto) — uses calcHoldingPL per account, so it only reflects real
+// numbers you've entered via Portfolio > Update Prices, never a guessed figure.
+function renderDashUnrealizedPL(){
+  const el=document.getElementById('dash-unrealized-pl');
+  if(!el)return;
+  const groupsDef=[
+    {type:'indian-stock',label:'Indian Stocks',icon:'🇮🇳'},
+    {type:'us-stock',label:'US Stocks',icon:'🇺🇸'},
+    {type:'crypto',label:'Crypto',icon:'₿'},
+  ];
+  const rows=groupsDef.map(g=>{
+    const accs=accounts.filter(a=>a.type===g.type);
+    if(!accs.length)return null;
+    let invested=0,current=0,anyData=false;
+    accs.forEach(a=>{
+      const pl=calcHoldingPL(a);
+      invested+=convertToDisplay(pl.invested,a.currency||'INR');
+      current+=convertToDisplay(pl.currentValue,a.currency||'INR');
+      if(pl.hasData)anyData=true;
+    });
+    const gain=current-invested;
+    const gainPct=invested!==0?(gain/Math.abs(invested))*100:0;
+    return{...g,invested,current,gain,gainPct,anyData,count:accs.length};
+  }).filter(Boolean);
+  if(!rows.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="dash-card">
+    <div class="dash-card-title">Unrealized Gains</div>
+    ${rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--hairline)">
+      <div>
+        <div style="font-size:0.8rem;font-weight:600;color:var(--charcoal)">${r.icon} ${r.label}</div>
+        <div style="font-size:0.66rem;color:var(--ink2)">Invested ${fmt(r.invested,displayCurrency)}${!r.anyData?' · no price set yet':''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'Fraunces',serif;font-size:0.88rem;font-weight:600;color:var(--charcoal)">${fmt(r.current,displayCurrency)}</div>
+        ${r.anyData?`<div style="font-size:0.7rem;font-weight:600;color:${r.gain>=0?'var(--emerald)':'var(--burgundy)'}">${r.gain>=0?'▲':'▼'} ${fmt(Math.abs(r.gain),displayCurrency)} (${r.gainPct>=0?'+':''}${r.gainPct.toFixed(1)}%)</div>`:''}
+      </div>
+    </div>`).join('')}
+    <div style="text-align:right;margin-top:8px"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="switchSection('portfolio',null);openUpdatePricesModal()">💹 Update Prices →</button></div>
   </div>`;
 }
 
@@ -4392,6 +4457,115 @@ function renderBudget(){
 // ═══════════════════════════════
 //  PORTFOLIO
 // ═══════════════════════════════
+// ═══════════════════════════════
+//  UPDATE UNITS & PRICES
+// ═══════════════════════════════
+function openUpdatePricesModal(){
+  renderUpdatePricesContent();
+  openModal('update-prices-modal');
+}
+function renderUpdatePricesContent(){
+  const el=document.getElementById('update-prices-content');
+  if(!el)return;
+  const types=[['indian-stock','🇮🇳 Indian Stocks'],['us-stock','🇺🇸 US Stocks'],['crypto','₿ Crypto']];
+  let html='';
+  types.forEach(([type,label])=>{
+    const accs=accounts.filter(a=>a.type===type);
+    if(!accs.length)return;
+    html+=`<div style="font-weight:600;font-size:0.85rem;margin:14px 0 8px">${label}</div>`;
+    accs.forEach(a=>{
+      const updatedLabel=a.price_updated_date?`Updated ${formatDate(a.price_updated_date)}`:'Never updated';
+      html+=`<div class="card" style="padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:0.82rem;font-weight:600;margin-bottom:6px">${a.name} <span style="font-size:0.68rem;color:var(--text3);font-weight:400">· ${updatedLabel}</span></div>
+        <div style="display:grid;grid-template-columns:${type==='crypto'?'1fr 1fr 1fr':'1fr 1fr'};gap:6px">
+          <div><label style="font-size:0.68rem;color:var(--text2)">Units held</label>
+            <input class="form-input" style="padding:5px 8px;font-size:0.8rem" type="number" step="0.0001" data-acc="${a.id}" data-field="units_held" value="${a.units_held!=null?a.units_held:''}" placeholder="0"/></div>
+          ${type==='crypto'?`<div><label style="font-size:0.68rem;color:var(--text2)">Coin symbol</label>
+            <input class="form-input" style="padding:5px 8px;font-size:0.8rem" data-acc="${a.id}" data-field="price_symbol" value="${a.price_symbol||''}" placeholder="e.g. bitcoin"/></div>`:''}
+          <div><label style="font-size:0.68rem;color:var(--text2)">Price/unit (${a.currency})</label>
+            <input class="form-input" style="padding:5px 8px;font-size:0.8rem" type="number" step="0.01" data-acc="${a.id}" data-field="current_price_per_unit" value="${a.current_price_per_unit!=null?a.current_price_per_unit:''}" placeholder="0.00"/></div>
+        </div>
+      </div>`;
+    });
+  });
+  if(!html)html='<div class="empty-state"><div class="empty-icon">💹</div><div class="empty-text">No Indian stock, US stock, or crypto holdings yet.</div></div>';
+  el.innerHTML=(html.includes('empty-state')?'':`<button class="btn-sm" style="margin-bottom:10px" onclick="fetchCryptoPrices()">🔄 Fetch Crypto Prices</button>`)+html;
+}
+
+// Uses CoinGecko's free public API (no key needed) to auto-fill crypto prices for any
+// row where a coin symbol (CoinGecko id, e.g. "bitcoin") has been set. Indian/US stocks
+// have no equivalent free, reliable, no-key API, so those stay manual.
+async function fetchCryptoPrices(){
+  const cryptoAccs=accounts.filter(a=>a.type==='crypto');
+  const symbolInputs=document.querySelectorAll('[data-field="price_symbol"]');
+  const symbolMap={};
+  symbolInputs.forEach(inp=>{const val=inp.value.trim().toLowerCase();if(val)symbolMap[inp.dataset.acc]=val;});
+  const ids=[...new Set(Object.values(symbolMap))];
+  if(!ids.length){showToast('Add a coin symbol (e.g. "bitcoin", "ethereum") to at least one crypto holding first.');return;}
+  try{
+    const res=await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=inr,usd`);
+    if(!res.ok)throw new Error('CoinGecko request failed');
+    const data=await res.json();
+    let updated=0;
+    cryptoAccs.forEach(a=>{
+      const sym=symbolMap[a.id];
+      if(!sym||!data[sym])return;
+      const priceInput=document.querySelector(`[data-acc="${a.id}"][data-field="current_price_per_unit"]`);
+      const price=data[sym][(a.currency||'INR').toLowerCase()];
+      if(priceInput&&price!==undefined){priceInput.value=price;updated++;}
+    });
+    showToast(updated?`Fetched live prices for ${updated} coin(s) ✅ — tap Save All to store them`:'No matching coins found — check the symbol spelling (CoinGecko id, e.g. "bitcoin")');
+  }catch(e){
+    showToast('Could not reach CoinGecko — check your connection and try again.');
+  }
+}
+
+async function saveUpdatedPrices(){
+  const inputs=document.querySelectorAll('#update-prices-content [data-acc]');
+  const byAcc={};
+  inputs.forEach(inp=>{
+    const id=inp.dataset.acc,field=inp.dataset.field;
+    if(!byAcc[id])byAcc[id]={};
+    byAcc[id][field]=inp.value;
+  });
+  const today=todayISO();
+  let count=0;
+  for(const[id,fields]of Object.entries(byAcc)){
+    const updates={};
+    if(fields.units_held!==undefined&&fields.units_held!=='')updates.units_held=parseFloat(fields.units_held);
+    if(fields.price_symbol!==undefined)updates.price_symbol=fields.price_symbol.trim()||null;
+    if(fields.current_price_per_unit!==undefined&&fields.current_price_per_unit!==''){
+      updates.current_price_per_unit=parseFloat(fields.current_price_per_unit);
+      updates.price_updated_date=today;
+    }
+    if(Object.keys(updates).length){
+      await sb.from('accounts').update(updates).eq('id',id);
+      count++;
+    }
+  }
+  showToast(`Updated ${count} holding(s) ✅`);
+  closeModal('update-prices-modal');
+  await loadAllData();
+  renderPortfolio();renderDashboard();
+}
+
+// Computes invested (cost basis), current value, and unrealized gain/loss for a
+// holding — only meaningful once units_held and current_price_per_unit are set
+// (via Portfolio > Update Prices). Falls back to invested==current when no price
+// is recorded yet, so nothing displays a fabricated gain/loss.
+function calcHoldingPL(acc){
+  const invested=calcBalance(acc);
+  const units=parseFloat(acc.units_held)||0;
+  const hasPrice=acc.current_price_per_unit!==null&&acc.current_price_per_unit!==undefined&&acc.current_price_per_unit!=='';
+  const price=hasPrice?parseFloat(acc.current_price_per_unit):null;
+  const hasData=units>0&&hasPrice;
+  const currentValue=hasData?units*price:invested;
+  const avgCost=units>0?invested/units:null;
+  const gain=hasData?currentValue-invested:null;
+  const gainPct=hasData&&invested!==0?(gain/Math.abs(invested))*100:null;
+  return{invested,units,hasPrice,price,hasData,currentValue,avgCost,gain,gainPct};
+}
+
 function renderPortfolio(){
   const investTypes=['indian-stock','us-stock','fd','pf','gold','crypto','etf'];
   const tradingGrp=groups.find(g=>g.name==='Trading Account'&&g.classification==='asset');
@@ -4407,6 +4581,7 @@ function renderPortfolio(){
   const byType={};
   investments.forEach(a=>{if(!byType[a.type])byType[a.type]=[];byType[a.type].push(a);});
   const typeLabel={'indian-stock':'🇮🇳 Indian Stocks','us-stock':'🇺🇸 US Stocks',fd:'🏦 Fixed Deposits',pf:'🏛️ PF/EPF',gold:'🥇 Gold',crypto:'₿ Crypto',etf:'📊 ETF/MF'};
+  const unitTrackedTypes=['indian-stock','us-stock','crypto'];
   let html=`<div class="card-grid card-grid-2" style="margin-bottom:16px">
     <div class="stat-card"><div class="stat-label">Total Portfolio (${displayCurrency})</div><div class="stat-val hide-figure" style="color:var(--accent)">${fmt(totalDisplay,displayCurrency)}</div></div>
     <div class="stat-card"><div class="stat-label">Holdings</div><div class="stat-val" style="color:var(--purple)">${investments.length} assets</div></div>
@@ -4419,15 +4594,19 @@ function renderPortfolio(){
     accs.forEach(a=>{
       const bal=convertToDisplay(calcBalance(a),a.currency||'INR');
       const pct=totalDisplay>0?Math.round(bal/totalDisplay*100):0;
+      const isUnitTracked=unitTrackedTypes.includes(type);
+      const pl=isUnitTracked?calcHoldingPL(a):null;
       html+=`<div class="card" style="margin-bottom:8px;padding:12px;cursor:pointer" onclick="openAccountLedger('${a.id}')">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div style="flex:1;min-width:0"><div style="font-size:0.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</div>
-            <div style="font-size:0.7rem;color:var(--text3);margin-top:2px">${a.currency}${a.currency!==displayCurrency?' → '+displayCurrency:''} · ${pct}%</div>
+            <div style="font-size:0.7rem;color:var(--text3);margin-top:2px">${a.currency}${a.currency!==displayCurrency?' → '+displayCurrency:''} · ${pct}%${isUnitTracked&&pl.units>0?` · ${pl.units} units`:''}</div>
             <div style="margin-top:6px;height:4px;background:var(--bg3);border-radius:2px"><div style="height:4px;background:var(--accent);border-radius:2px;width:${pct}%"></div></div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:12px">
-            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmtD(calcBalance(a),a.currency||'INR',true)}</div>
-            <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">Tap for ledger ›</div>
+            <div class="hide-figure" style="font-size:0.95rem;font-weight:700;color:var(--accent)">${fmtD(isUnitTracked&&pl.hasData?pl.currentValue:calcBalance(a),a.currency||'INR',true)}</div>
+            <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">${isUnitTracked&&pl.hasData?'Current value':'Tap for ledger ›'}</div>
+            ${isUnitTracked&&pl.hasData?`<div style="font-size:0.7rem;font-weight:600;margin-top:2px;color:${pl.gain>=0?'var(--green)':'var(--red)'}">${pl.gain>=0?'▲':'▼'} ${fmtD(Math.abs(pl.gain),a.currency||'INR',true)} (${pl.gainPct>=0?'+':''}${pl.gainPct.toFixed(1)}%)</div>`:''}
+            ${isUnitTracked&&pl.avgCost!==null?`<div style="font-size:0.65rem;color:var(--text3);margin-top:1px">Avg cost: ${fmtD(pl.avgCost,a.currency||'INR',true)}/unit</div>`:''}
           </div>
         </div>
         <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
@@ -4440,7 +4619,6 @@ function renderPortfolio(){
   });
   document.getElementById('portfolio-content').innerHTML=html;
 }
-
 
 // ═══════════════════════════════
 //  PORTFOLIO BUY / SELL
@@ -4474,11 +4652,13 @@ function openPortfolioBuy(accId){
   portfolioInvestAccId=accId;
   const acc=accounts.find(a=>a.id===accId);if(!acc)return;
   const info=document.getElementById('buy-invest-info');
-  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmtD(calcBalance(acc),acc.currency||'INR',true)}</b>`;
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmtD(calcBalance(acc),acc.currency||'INR',true)}</b>${acc.units_held?` · <b>${acc.units_held}</b> units held`:''}`;
   const title=document.getElementById('buy-modal-title');
   if(title)title.textContent=`Buy — ${acc.name}`;
   ['buy-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=todayISO();});
-  ['buy-amount','buy-commission','buy-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['buy-amount','buy-commission','buy-notes','buy-units'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const uw=document.getElementById('buy-units-wrap');
+  if(uw)uw.style.display=['indian-stock','us-stock','crypto'].includes(acc.type)?'block':'none';
   populatePortfolioAccOptions();
   openModal('portfolio-buy-modal');
 }
@@ -4516,6 +4696,11 @@ async function submitBuy(attachAfter=false){
     }
   }
   closeModal('portfolio-buy-modal');
+  const unitsBought=parseFloat(document.getElementById('buy-units').value||0);
+  if(unitsBought>0){
+    const newUnits=(parseFloat(acc.units_held)||0)+unitsBought;
+    await sb.from('accounts').update({units_held:newUnits}).eq('id',acc.id);
+  }
   if(attachAfter&&buyData?.id){
     showToast('Buy recorded! Opening for attachment... 📎');
     await openAttachAfterSave(buyData.id);
@@ -4534,11 +4719,13 @@ function openPortfolioSell(accId){
   const acc=accounts.find(a=>a.id===accId);if(!acc)return;
   const bal=calcBalance(acc);
   const info=document.getElementById('sell-invest-info');
-  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(bal,acc.currency)}</b>`;
+  if(info)info.innerHTML=`<b>${acc.name}</b> · Current Balance: <b>${fmt(bal,acc.currency)}</b>${acc.units_held?` · <b>${acc.units_held}</b> units held`:''}`;
   const title=document.getElementById('sell-modal-title');
   if(title)title.textContent=`Sell — ${acc.name}`;
   ['sell-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=todayISO();});
-  ['sell-amount','sell-commission','sell-notes','sell-pnl-search'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['sell-amount','sell-commission','sell-notes','sell-pnl-search','sell-units'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const uw=document.getElementById('sell-units-wrap');
+  if(uw)uw.style.display=['indian-stock','us-stock','crypto'].includes(acc.type)?'block':'none';
   // Pre-fill cost with current balance
   const costEl=document.getElementById('sell-cost');
   if(costEl)costEl.value=bal>0?bal.toFixed(2):'';
@@ -4594,6 +4781,11 @@ async function submitSell(attachAfter=false){
     }
   }
   closeModal('portfolio-sell-modal');
+  const unitsSold=parseFloat(document.getElementById('sell-units').value||0);
+  if(unitsSold>0){
+    const newUnits=Math.max(0,(parseFloat(acc.units_held)||0)-unitsSold);
+    await sb.from('accounts').update({units_held:newUnits}).eq('id',acc.id);
+  }
   if(attachAfter){
     showToast('Sell recorded! Opening for attachment... 📎');
     const{data:recentTxn}=await sb.from('transactions').select('id').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(1).single();
