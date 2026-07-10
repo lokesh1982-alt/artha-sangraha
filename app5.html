@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v124';
+const CURRENT_VERSION = 'v125';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v124</title>
+<title>Artha-Sangraha v125</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -1515,6 +1515,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       <button class="btn-close" onclick="closeModal('update-prices-modal')">✕</button>
     </div>
     <div style="font-size:0.76rem;color:var(--text2);margin-bottom:10px">This app has no live stock feed, so prices are only as current as your last update here. Crypto can auto-fetch if you set a coin symbol below.</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn-outline" style="flex:1;font-size:0.8rem" onclick="downloadPriceTemplate()">⬇️ Download Template</button>
+      <button class="btn-outline" style="flex:1;font-size:0.8rem" onclick="document.getElementById('price-upload-input').click()">⬆️ Upload Filled File</button>
+      <input type="file" id="price-upload-input" accept=".csv" style="display:none" onchange="handlePriceUpload(event)"/>
+    </div>
     <div id="update-prices-content"></div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn-outline" style="flex:1" onclick="closeModal('update-prices-modal')">Cancel</button>
@@ -1868,6 +1873,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
 // ═══════════════════════════════
 //  SUPABASE CONFIG
@@ -4469,6 +4475,63 @@ function renderBudget(){
 // ═══════════════════════════════
 //  UPDATE UNITS & PRICES
 // ═══════════════════════════════
+// Bulk price update via CSV — download a template pre-filled with your current
+// holdings, edit units/prices offline (Excel, Sheets, wherever), upload it back.
+// Rows are matched by the hidden "id" column, so renaming/reordering is safe as
+// long as that column stays intact.
+function downloadPriceTemplate(){
+  const types=['indian-stock','us-stock','crypto'];
+  const accs=accounts.filter(a=>types.includes(a.type));
+  if(!accs.length){showToast('No Indian stock, US stock, or crypto holdings to export.');return;}
+  const rows=accs.map(a=>({
+    id:a.id,name:a.name,type:a.type,currency:a.currency||'INR',
+    units_held:a.units_held??'',current_price_per_unit:a.current_price_per_unit??'',
+    price_symbol:a.price_symbol??''
+  }));
+  const csv=Papa.unparse(rows,{columns:['id','name','type','currency','units_held','current_price_per_unit','price_symbol']});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;link.download=`artha-sangraha-prices-${todayISO()}.csv`;
+  document.body.appendChild(link);link.click();document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast(`Downloaded ${accs.length} holding(s) — fill in units_held / current_price_per_unit and upload it back.`);
+}
+
+function handlePriceUpload(e){
+  const file=e.target.files[0];if(!file)return;
+  Papa.parse(file,{
+    header:true,skipEmptyLines:true,
+    complete:async(results)=>{
+      const today=todayISO();
+      let updated=0,notFound=0;
+      for(const row of results.data){
+        const id=(row.id||'').trim();
+        if(!id)continue;
+        const acc=accounts.find(a=>a.id===id);
+        if(!acc){notFound++;continue;}
+        const updates={};
+        if(row.units_held!==undefined&&String(row.units_held).trim()!=='')updates.units_held=parseFloat(row.units_held);
+        if(row.price_symbol!==undefined)updates.price_symbol=String(row.price_symbol).trim()||null;
+        if(row.current_price_per_unit!==undefined&&String(row.current_price_per_unit).trim()!==''){
+          updates.current_price_per_unit=parseFloat(row.current_price_per_unit);
+          updates.price_updated_date=today;
+        }
+        if(Object.keys(updates).length){
+          await sb.from('accounts').update(updates).eq('id',id);
+          updated++;
+        }
+      }
+      e.target.value='';
+      showToast(`Updated ${updated} holding(s) from file${notFound?` · ${notFound} row(s) not matched (id missing/changed)`:''} ✅`);
+      await loadAllData();
+      renderPortfolio();renderDashboard();
+      if(document.getElementById('update-prices-modal')?.classList.contains('open'))renderUpdatePricesContent();
+    },
+    error:()=>showToast('Could not read that file — make sure it\'s the CSV you downloaded, unedited in structure.')
+  });
+}
+
 function openUpdatePricesModal(){
   renderUpdatePricesContent();
   openModal('update-prices-modal');
