@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v123';
+const CURRENT_VERSION = 'v124';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v123</title>
+<title>Artha-Sangraha v124</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -998,6 +998,10 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
       </div>
     </div>
     <div class="form-group"><label class="form-label">Opening Balance Date *</label><input class="form-input" type="date" id="acc-opening-date"/></div>
+    <div class="form-group" id="acc-units-wrap" style="display:none">
+      <label class="form-label">Units Held <span style="font-size:0.72rem;color:var(--text2)">(shares/coins currently held)</span></label>
+      <input class="form-input" type="number" step="0.0001" id="acc-units" placeholder="e.g. 10"/>
+    </div>
     <div class="form-group" id="acc-category-wrap" style="display:none">
       <label class="form-label">Category <span style="color:var(--red)">*</span> <span style="font-size:0.72rem;color:var(--text2)">(required for P&L accounts)</span></label>
       <select class="form-select" id="acc-category-select">
@@ -2836,6 +2840,7 @@ function editAccount(id){
   updateAccClassification();
   // Restore saved values after updateAccClassification resets them
   document.getElementById('acc-classification').value=a.classification||'asset';
+  const au=document.getElementById('acc-units');if(au)au.value=a.units_held!=null?a.units_held:'';
   // Show and populate category if P&L account
   const isPnL=(a.classification==='income'||a.classification==='expense');
   const catWrap=document.getElementById('acc-category-wrap');
@@ -2947,16 +2952,20 @@ async function updateAccount(attachAfter=false){
   const grpSel=document.getElementById('acc-group');
   const newOpeningBal=parseFloat(document.getElementById('acc-balance').value)||0;
   const openingDate=document.getElementById('acc-opening-date').value||todayISO();
+  const newType=document.getElementById('acc-type').value;
+  const unitsEl=document.getElementById('acc-units');
+  const unitsVal=unitsEl&&unitsEl.value!==''&&['indian-stock','us-stock','crypto'].includes(newType)?parseFloat(unitsEl.value):(a.units_held!=null?a.units_held:null);
   const updates={
     name:document.getElementById('acc-name').value.trim(),
     opening_balance:newOpeningBal,
     notes:(accCustName?.value.trim()||document.getElementById('acc-notes').value.trim()),
     opening_date:openingDate,
-    type:document.getElementById('acc-type').value,
+    type:newType,
     currency:document.getElementById('acc-currency').value,
     classification,
     group_id:grpSel?.value||null,
-    category_account
+    category_account,
+    units_held:unitsVal
   };
   const{error}=await sb.from('accounts').update(updates).eq('id',editingAccId);
   if(error){showToast('Error: '+error.message);return;}
@@ -6744,6 +6753,8 @@ function updateAccClassification(){
   // Category tagging retired — Account Groups (the field above) now handle this
   const catWrap=document.getElementById('acc-category-wrap');
   if(catWrap)catWrap.style.display='none';
+  const unitsWrap=document.getElementById('acc-units-wrap');
+  if(unitsWrap)unitsWrap.style.display=['indian-stock','us-stock','crypto'].includes(type)?'block':'none';
 }
 
 function toggleFnoFields(){
@@ -7241,6 +7252,8 @@ async function saveAccount(attachAfter=false){
   const group_id=grpSel?.value||null;
   const accCustName=document.getElementById('acc-custom-name');
   const isPnL=classification==='income'||classification==='expense';
+  const unitsEl=document.getElementById('acc-units');
+  const unitsVal=unitsEl&&unitsEl.value!==''&&['indian-stock','us-stock','crypto'].includes(document.getElementById('acc-type').value)?parseFloat(unitsEl.value):null;
   const acc={
     user_id:currentUser.id,name,
     type:document.getElementById('acc-type').value,
@@ -7250,7 +7263,8 @@ async function saveAccount(attachAfter=false){
     opening_date:document.getElementById('acc-opening-date').value||todayISO(),
     classification,
     group_id:group_id||null,
-    category_account:null
+    category_account:null,
+    units_held:unitsVal
   };
   const{data,error}=await sb.from('accounts').insert(acc).select().single();
   if(error){showToast('Error: '+error.message);return;}
@@ -7445,6 +7459,8 @@ function openModal(id){
     const ac=document.getElementById('acc-currency');if(ac)ac.value='INR';
     const acl=document.getElementById('acc-classification');if(acl)acl.value='asset';
     const cw=document.getElementById('acc-custom-name-wrap');if(cw)cw.style.display='none';
+    const auw=document.getElementById('acc-units-wrap');if(auw)auw.style.display='none';
+    const au=document.getElementById('acc-units');if(au)au.value='';
     const gs=document.getElementById('acc-group');
     if(gs)gs.innerHTML='<option value="">— No Group —</option>'+groups.map(g=>`<option value="${g.id}">${g.icon||'📁'} ${g.name}</option>`).join('');
     const tm=document.querySelector('#add-account-modal .modal-title');if(tm)tm.textContent='Add Account / Asset';
