@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v127';
+const CURRENT_VERSION = 'v128';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v127</title>
+<title>Artha-Sangraha v128</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -474,16 +474,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div id="rates-notification" style="display:none"></div>
         <div class="dash-content-wrap">
           <div id="nw-banner-wrap"></div>
-          <div class="dash-charts-2col">
-            <div class="dash-card" style="margin-bottom:0">
-              <div class="dash-card-title">Income vs expenses</div>
-              <div id="dash-chart" style="position:relative;height:110px"></div>
-            </div>
-            <div class="dash-card" style="margin-bottom:0">
-              <div class="dash-card-title">Funds</div>
-              <div id="dash-funds-list"></div>
-            </div>
-          </div>
+          <div class="dash-card"><div class="dash-card-title">Income vs expenses</div><div id="dash-chart" style="position:relative;height:110px"></div></div>
           <div class="dash-charts-2col">
             <div class="dash-card" style="margin-bottom:0">
               <div class="dash-donut-title">Spending by category</div>
@@ -494,9 +485,15 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
               <div id="dash-income-donut"></div>
             </div>
           </div>
-          <div class="dash-card">
-            <div class="dash-donut-title" id="dash-fy-donut-title">FY income vs expenses</div>
-            <div id="dash-fy-donut"></div>
+          <div class="dash-charts-2col">
+            <div class="dash-card" style="margin-bottom:0">
+              <div class="dash-donut-title" id="dash-fy-donut-title">FY income vs expenses</div>
+              <div id="dash-fy-donut"></div>
+            </div>
+            <div class="dash-card" style="margin-bottom:0">
+              <div class="dash-card-title">Funds</div>
+              <div id="dash-funds-list"></div>
+            </div>
           </div>
           <div id="dash-fx-widget"></div>
           <div id="dash-unrealized-pl"></div>
