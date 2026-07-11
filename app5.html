@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v130';
+const CURRENT_VERSION = 'v131';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v130</title>
+<title>Artha-Sangraha v131</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -246,6 +246,11 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .dash-card{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:14px;}
 .dash-card-title{font-size:0.8rem;font-weight:600;color:var(--charcoal);margin-bottom:10px;}
 .dash-content-wrap{max-width:640px;margin:0 auto;}
+.rates-ticker-wrap{overflow:hidden;background:var(--navy);border-radius:10px;padding:7px 0;margin-bottom:10px;white-space:nowrap;position:relative;}
+.rates-ticker-track{display:inline-flex;animation:rates-scroll 28s linear infinite;}
+.rates-ticker-item{display:inline-flex;align-items:center;gap:5px;color:var(--ivory);font-size:0.72rem;font-weight:600;padding:0 18px;flex-shrink:0;}
+.rates-ticker-item .rt-code{color:var(--gold);font-weight:700;}
+@keyframes rates-scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .dash-menu-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px;}
 .dash-menu-tile{background:var(--card);border-radius:12px;padding:10px 4px;text-align:center;border:none;cursor:pointer;font-family:inherit;transition:transform 0.15s;}
 .dash-menu-tile:active{transform:scale(0.95);}
@@ -474,6 +479,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         </div>
         <div id="rates-notification" style="display:none"></div>
         <div class="dash-content-wrap">
+          <div id="dash-rates-ticker"></div>
           <div id="nw-banner-wrap"></div>
           <div class="dash-card"><div class="dash-card-title">Funds</div><div id="dash-funds-list"></div></div>
           <div class="dash-charts-2col">
@@ -3608,6 +3614,7 @@ function renderDashboard(){
   renderDashMenuTiles();
   renderDashNotifications();
   renderDashFundsList();
+  renderRatesTicker();
 }
 
 // Net worth as of each of the last N month-ends, using the same calcBalance(acc,asOfDate)
@@ -3932,6 +3939,18 @@ function renderDashFundsList(){
       options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}
     });
   }
+}
+
+// Continuously scrolling right-to-left ticker of the latest exchange rates
+// (same data already used for FX conversion throughout the app).
+function renderRatesTicker(){
+  const el=document.getElementById('dash-rates-ticker');
+  if(!el)return;
+  const entries=Object.entries(exchangeRates);
+  if(!entries.length){el.innerHTML='';return;}
+  const itemsHTML=entries.map(([code,rate])=>`<span class="rates-ticker-item"><span class="rt-code">${code}</span> 1 = ₹${rate.toFixed(2)}</span>`).join('');
+  // Duplicated once so the -50% keyframe loops seamlessly with no visible gap/jump
+  el.innerHTML=`<div class="rates-ticker-wrap"><div class="rates-ticker-track">${itemsHTML}${itemsHTML}</div></div>`;
 }
 
 // ═══════════════════════════════
