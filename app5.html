@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v126';
+const CURRENT_VERSION = 'v127';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v126</title>
+<title>Artha-Sangraha v127</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -226,6 +226,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 
 /* TABS */
 .tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--radius-sm);padding:4px;margin-bottom:20px;}
+.tabs::-webkit-scrollbar{display:none;}
 .tab-btn{flex:1;padding:8px 6px;border:none;border-radius:6px;background:transparent;color:var(--text2);font-size:0.8rem;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.2s;}
 .tab-btn.active{background:var(--card);color:var(--accent);box-shadow:var(--shadow);}
 
@@ -473,7 +474,16 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div id="rates-notification" style="display:none"></div>
         <div class="dash-content-wrap">
           <div id="nw-banner-wrap"></div>
-          <div class="dash-card"><div class="dash-card-title">Income vs expenses</div><div id="dash-chart" style="position:relative;height:110px"></div></div>
+          <div class="dash-charts-2col">
+            <div class="dash-card" style="margin-bottom:0">
+              <div class="dash-card-title">Income vs expenses</div>
+              <div id="dash-chart" style="position:relative;height:110px"></div>
+            </div>
+            <div class="dash-card" style="margin-bottom:0">
+              <div class="dash-card-title">Funds</div>
+              <div id="dash-funds-list"></div>
+            </div>
+          </div>
           <div class="dash-charts-2col">
             <div class="dash-card" style="margin-bottom:0">
               <div class="dash-donut-title">Spending by category</div>
@@ -492,7 +502,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <div id="dash-unrealized-pl"></div>
           <div class="dash-menu-grid" id="dash-tile-menu"></div>
           <div class="dash-card"><div class="dash-card-title">Notifications</div><div id="dash-notifications"></div></div>
-          <div class="dash-card" style="padding-bottom:4px"><div class="dash-card-title">Funds</div><div id="dash-funds-list"></div></div>
         </div>
       </div>
 
@@ -654,13 +663,13 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="page-header">
           <div><div class="page-title">Reports & Charts</div></div>
         </div>
-        <div class="tabs" style="flex-wrap:wrap;gap:4px">
-          <button class="tab-btn active" onclick="switchReportTab('bs',this)">Balance Sheet</button>
-          <button class="tab-btn" onclick="switchReportTab('pnl',this)">P&L</button>
-          <button class="tab-btn" onclick="switchReportTab('trial',this)">Trial Balance</button>
-          <button class="tab-btn" onclick="switchReportTab('incexp',this)">Income &amp; Expenses</button>
-          <button class="tab-btn" onclick="switchReportTab('fx',this)">FX Revaluation</button>
-          <button class="tab-btn" onclick="switchReportTab('recon',this)">Reconciliation</button>
+        <div class="tabs" style="flex-wrap:nowrap;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+          <button class="tab-btn active" style="white-space:nowrap;flex-shrink:0;padding:7px 10px;font-size:0.78rem" onclick="switchReportTab('bs',this)">Balance Sheet</button>
+          <button class="tab-btn" style="white-space:nowrap;flex-shrink:0;padding:7px 10px;font-size:0.78rem" onclick="switchReportTab('pnl',this)">P&L</button>
+          <button class="tab-btn" style="white-space:nowrap;flex-shrink:0;padding:7px 10px;font-size:0.78rem" onclick="switchReportTab('trial',this)">Trial Balance</button>
+          <button class="tab-btn" style="white-space:nowrap;flex-shrink:0;padding:7px 10px;font-size:0.78rem" onclick="switchReportTab('incexp',this)">Income &amp; Expenses</button>
+          <button class="tab-btn" style="white-space:nowrap;flex-shrink:0;padding:7px 10px;font-size:0.78rem" onclick="switchReportTab('fx',this)">FX Revaluation</button>
+          <button class="tab-btn" style="white-space:nowrap;flex-shrink:0;padding:7px 10px;font-size:0.78rem" onclick="switchReportTab('recon',this)">Reconciliation</button>
         </div>
         <div id="reports-content"></div>
       </div>
@@ -6461,50 +6470,128 @@ async function getLogoBase64(){
   return _logoBase64Cache;
 }
 
-async function exportReportPDF(title,subtitle,columns,rows,filename){
-  if(typeof window.jspdf==='undefined'){showToast('PDF export library still loading — try again in a moment.');return;}
-  const{jsPDF}=window.jspdf;
-  const doc=new jsPDF();
-  const logo=await getLogoBase64();
-  const pageW=doc.internal.pageSize.width;
-  let textX=14;
-  if(logo){
-    try{doc.addImage(logo,'PNG',14,10,14,14);textX=32;}catch(e){}
-  }
-  doc.setFontSize(15);
-  doc.setTextColor(16,27,51);
-  doc.setFont(undefined,'bold');
-  doc.text('Artha-Sangraha',textX,17);
-  doc.setFont(undefined,'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(120,118,109);
-  doc.text(subtitle||'',textX,23);
-  doc.setDrawColor(201,162,39);
-  doc.setLineWidth(0.6);
-  doc.line(14,27,pageW-14,27);
-  doc.setFontSize(12);
-  doc.setTextColor(33,31,28);
-  doc.setFont(undefined,'bold');
-  doc.text(title,14,36);
-  doc.setFont(undefined,'normal');
-  doc.autoTable({
-    startY:41,
-    head:[columns],
-    body:rows,
-    theme:'grid',
-    headStyles:{fillColor:[16,27,51],textColor:255,fontStyle:'bold',fontSize:9},
-    styles:{fontSize:8.5,cellPadding:3},
-    alternateRowStyles:{fillColor:[248,244,236]},
-    margin:{left:14,right:14}
+// Renders an off-screen Chart.js chart and returns it as a PNG data URL, for
+// embedding real charts into exported PDFs (not just tables).
+async function chartImageFor(type,data,options,w=560,h=300){
+  return new Promise((resolve)=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=w;canvas.height=h;
+    canvas.style.position='fixed';canvas.style.left='-9999px';canvas.style.top='0';
+    document.body.appendChild(canvas);
+    const chart=new Chart(canvas,{type,data,options:{...options,responsive:false,animation:false}});
+    setTimeout(()=>{
+      let img=null;
+      try{img=canvas.toDataURL('image/png',1.0);}catch(e){}
+      chart.destroy();
+      document.body.removeChild(canvas);
+      resolve(img);
+    },120);
   });
+}
+
+function pdfHeader(doc,logo,title,subtitle,pageW){
+  let textX=14;
+  if(logo){try{doc.addImage(logo,'PNG',14,9,15,15);textX=33;}catch(e){}}
+  doc.setFontSize(16);doc.setTextColor(16,27,51);doc.setFont(undefined,'bold');
+  doc.text('Artha-Sangraha',textX,17);
+  doc.setFont(undefined,'normal');doc.setFontSize(9);doc.setTextColor(120,118,109);
+  doc.text(subtitle||'',textX,23);
+  doc.setDrawColor(201,162,39);doc.setLineWidth(0.7);doc.line(14,28,pageW-14,28);
+  doc.setFontSize(13.5);doc.setTextColor(33,31,28);doc.setFont(undefined,'bold');
+  doc.text(title,14,37);doc.setFont(undefined,'normal');
+  return 44;
+}
+
+function pdfSummaryBoxes(doc,boxes,y,pageW){
+  const margin=14,gap=4,boxH=21;
+  const boxW=(pageW-margin*2-gap*(boxes.length-1))/boxes.length;
+  boxes.forEach((b,i)=>{
+    const x=margin+i*(boxW+gap);
+    doc.setFillColor(...(b.bg||[248,244,236]));
+    doc.roundedRect(x,y,boxW,boxH,2,2,'F');
+    doc.setFontSize(7.3);doc.setTextColor(110,108,100);doc.setFont(undefined,'normal');
+    doc.text(b.label,x+3.5,y+7,{maxWidth:boxW-7});
+    doc.setFontSize(11);doc.setFont(undefined,'bold');
+    doc.setTextColor(...(b.text||[33,31,28]));
+    doc.text(b.value,x+3.5,y+16,{maxWidth:boxW-7});
+    doc.setFont(undefined,'normal');
+  });
+  return y+boxH+9;
+}
+
+function pdfFooter(doc,pageW){
   const pageCount=doc.internal.getNumberOfPages();
   for(let i=1;i<=pageCount;i++){
     doc.setPage(i);
-    doc.setFontSize(7.5);
-    doc.setTextColor(150,150,150);
-    doc.text(`Generated ${formatDate(todayISO())} · Page ${i} of ${pageCount}`,14,doc.internal.pageSize.height-8);
+    doc.setDrawColor(230,230,230);doc.setLineWidth(0.3);
+    doc.line(14,doc.internal.pageSize.height-13,pageW-14,doc.internal.pageSize.height-13);
+    doc.setFontSize(7.3);doc.setTextColor(150,150,150);doc.setFont(undefined,'normal');
+    doc.text(`Generated ${formatDate(todayISO())}`,14,doc.internal.pageSize.height-8);
+    doc.text(`Page ${i} of ${pageCount}`,pageW-14,doc.internal.pageSize.height-8,{align:'right'});
   }
+}
+
+// Full professional report builder — logo header, colored summary boxes, embedded
+// chart image rows, then one or more titled tables. Used by every report export.
+async function buildProfessionalPDF({title,subtitle,summaryBoxes,chartRows,sections,filename}){
+  if(typeof window.jspdf==='undefined'){showToast('PDF export library still loading — try again in a moment.');return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const pageW=doc.internal.pageSize.width;
+  const pageH=doc.internal.pageSize.height;
+  const logo=await getLogoBase64();
+  let y=pdfHeader(doc,logo,title,subtitle,pageW);
+
+  if(summaryBoxes&&summaryBoxes.length)y=pdfSummaryBoxes(doc,summaryBoxes,y,pageW);
+
+  if(chartRows&&chartRows.length){
+    for(const row of chartRows){
+      const validCharts=row.filter(c=>c&&c.dataUrl);
+      if(!validCharts.length)continue;
+      const chartW=(pageW-28-6*(validCharts.length-1))/validCharts.length;
+      const chartH=chartW*0.56;
+      if(y+chartH+14>pageH-18){doc.addPage();y=18;}
+      validCharts.forEach((c,i)=>{
+        const x=14+i*(chartW+6);
+        if(c.title){doc.setFontSize(9);doc.setTextColor(80,78,72);doc.setFont(undefined,'bold');doc.text(c.title,x,y);doc.setFont(undefined,'normal');}
+        try{doc.addImage(c.dataUrl,'PNG',x,y+3,chartW,chartH);}catch(e){}
+      });
+      y+=chartH+14;
+    }
+  }
+
+  (sections||[]).forEach(sec=>{
+    if(y>pageH-30){doc.addPage();y=18;}
+    if(sec.heading){
+      doc.setFontSize(11);doc.setTextColor(16,27,51);doc.setFont(undefined,'bold');
+      doc.text(sec.heading,14,y+3);doc.setFont(undefined,'normal');
+      y+=7;
+    }
+    doc.autoTable({
+      startY:y,head:[sec.columns],body:sec.rows,theme:'grid',
+      headStyles:{fillColor:[16,27,51],textColor:255,fontStyle:'bold',fontSize:9},
+      styles:{fontSize:8.5,cellPadding:3},
+      alternateRowStyles:{fillColor:[248,244,236]},
+      margin:{left:14,right:14},
+      didParseCell:(data)=>{
+        // Bold any row whose first cell is in ALL CAPS or starts with "Total"/"Net"
+        const txt=String(data.row.raw[0]||'');
+        if(/^[A-Z][A-Z\s&]+$/.test(txt)||/^(Total|Net)/i.test(txt)){
+          data.cell.styles.fontStyle='bold';
+          if(/^[A-Z][A-Z\s&]+$/.test(txt))data.cell.styles.fillColor=[232,199,102];
+        }
+      }
+    });
+    y=doc.lastAutoTable.finalY+10;
+  });
+
+  pdfFooter(doc,pageW);
   doc.save(filename);
+}
+
+// Kept for compatibility — simple table-only PDF (no charts/summary boxes).
+async function exportReportPDF(title,subtitle,columns,rows,filename){
+  await buildProfessionalPDF({title,subtitle,sections:[{columns,rows}],filename});
 }
 
 function exportReportExcel(title,columns,rows,filename){
@@ -6573,9 +6660,9 @@ function buildBalanceSheetHTML(){
       const grpTotal=grpAccs.reduce((s,x)=>s+convertToDisplay(calcBalance(x),x.currency||'INR'),0);
       const gid='bs-'+grp.id;
       assetRows+=`<tr style="background:var(--bg2);cursor:pointer" onclick="toggleReportGroup('${gid}')">
-        <td colspan="2"><span id="rgrp-arrow-${gid}" style="display:inline-block;width:14px">▼</span><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length})</span></td>
+        <td colspan="2"><span id="rgrp-arrow-${gid}" style="display:inline-block;width:14px">▶</span><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length})</span></td>
         <td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(grpTotal,displayCurrency)}</td></tr>`;
-      grpAccs.forEach(x=>assetRows+=`<tr data-rgrp="${gid}"><td style="padding-left:28px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmtD(calcBalance(x),x.currency||'INR',true)}</td></tr>`);
+      grpAccs.forEach(x=>assetRows+=`<tr data-rgrp="${gid}" style="display:none"><td style="padding-left:28px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmtD(calcBalance(x),x.currency||'INR',true)}</td></tr>`);
     } else if(!grp){
       const bal=convertToDisplay(calcBalance(a),a.currency||'INR');
       if(bal!==0)assetRows+=`<tr><td>${accIcon(a.type)} ${a.name}</td><td></td><td style="text-align:right">${fmtD(calcBalance(a),a.currency||'INR',true)}</td></tr>`;
@@ -6614,19 +6701,44 @@ async function exportBalanceSheet(format){
   const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
     liabAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   const netWorth=totalAssets-totalLiab;
-  const columns=['Account','Type','Balance ('+displayCurrency+')'];
-  const rows=[];
-  rows.push(['ASSETS','','']);
-  assetAccs.forEach(a=>rows.push([a.name,capitalize(a.type),fmt(convertToDisplay(calcBalance(a),a.currency||'INR'),displayCurrency)]));
-  rows.push(['Total Assets','',fmt(totalAssets,displayCurrency)]);
-  rows.push(['LIABILITIES','','']);
-  loans.forEach(l=>rows.push([l.name,'Loan',fmt(convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),displayCurrency)]));
-  liabAccs.forEach(a=>rows.push([a.name,capitalize(a.type),fmt(convertToDisplay(calcBalance(a),a.currency||'INR'),displayCurrency)]));
-  rows.push(['Total Liabilities','',fmt(totalLiab,displayCurrency)]);
-  rows.push(['NET WORTH','',fmt(netWorth,displayCurrency)]);
+  const assetColumns=['Account','Type','Balance ('+displayCurrency+')'];
+  const assetRows=[];
+  assetAccs.forEach(a=>{
+    const bal=convertToDisplay(calcBalance(a),a.currency||'INR');
+    if(bal!==0)assetRows.push([a.name,capitalize(a.type),fmt(bal,displayCurrency)]);
+  });
+  assetRows.push(['Total Assets','',fmt(totalAssets,displayCurrency)]);
+  const liabColumns=['Account','Type','Balance ('+displayCurrency+')'];
+  const liabRows=[];
+  loans.forEach(l=>liabRows.push([l.name,'Loan',fmt(convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),displayCurrency)]));
+  liabAccs.forEach(a=>liabRows.push([a.name,capitalize(a.type),fmt(convertToDisplay(calcBalance(a),a.currency||'INR'),displayCurrency)]));
+  liabRows.push(['Total Liabilities','',fmt(totalLiab,displayCurrency)]);
+  liabRows.push(['NET WORTH','',fmt(netWorth,displayCurrency)]);
   const subtitle=`Balance Sheet · as of ${formatDate(todayISO())}`;
-  if(format==='pdf')await exportReportPDF('Balance Sheet',subtitle,columns,rows,`balance-sheet-${todayISO()}.pdf`);
-  else exportReportExcel('Balance Sheet',columns,rows,`balance-sheet-${todayISO()}.xlsx`);
+  if(format==='pdf'){
+    const chartImg=await chartImageFor('doughnut',{
+      labels:['Assets','Liabilities'],
+      datasets:[{data:[totalAssets,totalLiab],backgroundColor:['#0F6B4C','#7A2331'],borderWidth:2,borderColor:'#fff'}]
+    },{plugins:{legend:{position:'right',labels:{font:{size:13}}}}});
+    await buildProfessionalPDF({
+      title:'Balance Sheet',subtitle,
+      summaryBoxes:[
+        {label:'TOTAL ASSETS',value:fmt(totalAssets,displayCurrency),bg:[229,241,234],text:[15,107,76]},
+        {label:'TOTAL LIABILITIES',value:fmt(totalLiab,displayCurrency),bg:[247,231,233],text:[122,35,49]},
+        {label:'NET WORTH',value:fmt(netWorth,displayCurrency),bg:[253,243,217],text:[16,27,51]}
+      ],
+      chartRows:[[{title:'Assets vs Liabilities',dataUrl:chartImg}]],
+      sections:[
+        {heading:'Assets',columns:assetColumns,rows:assetRows},
+        {heading:'Liabilities & Net Worth',columns:liabColumns,rows:liabRows}
+      ],
+      filename:`balance-sheet-${todayISO()}.pdf`
+    });
+  } else {
+    const columns=['Account','Type','Balance ('+displayCurrency+')'];
+    const rows=[['ASSETS','',''],...assetRows,['LIABILITIES','',''],...liabRows];
+    exportReportExcel('Balance Sheet',columns,rows,`balance-sheet-${todayISO()}.xlsx`);
+  }
 }
 
 function buildPnLHTML(){
@@ -6710,16 +6822,34 @@ async function exportPnL(format){
     }
   });
   const columns=['Particulars','Amount ('+displayCurrency+')'];
-  const rows=[['INCOME','']];
-  Object.entries(incByCat).forEach(([c,v])=>rows.push([c,fmt(v,displayCurrency)]));
-  rows.push(['Total Income',fmt(incomeD,displayCurrency)]);
-  rows.push(['EXPENSES','']);
-  Object.entries(expByCat).forEach(([c,v])=>rows.push([c,fmt(v,displayCurrency)]));
-  rows.push(['Total Expenses',fmt(expD,displayCurrency)]);
-  rows.push([netD>=0?'Net Surplus':'Net Deficit',fmt(Math.abs(netD),displayCurrency)]);
+  const incRows=Object.entries(incByCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,fmt(v,displayCurrency)]);
+  incRows.push(['Total Income',fmt(incomeD,displayCurrency)]);
+  const expRows=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,fmt(v,displayCurrency)]);
+  expRows.push(['Total Expenses',fmt(expD,displayCurrency)]);
   const subtitle=`Profit & Loss · ${fy.label}`;
-  if(format==='pdf')await exportReportPDF('Profit & Loss',subtitle,columns,rows,`profit-loss-${todayISO()}.pdf`);
-  else exportReportExcel('Profit & Loss',columns,rows,`profit-loss-${todayISO()}.xlsx`);
+  if(format==='pdf'){
+    const barImg=await chartImageFor('bar',{
+      labels:['Income','Expenses',netD>=0?'Surplus':'Deficit'],
+      datasets:[{data:[incomeD,expD,Math.abs(netD)],backgroundColor:['#0F6B4C','#7A2331',netD>=0?'#1a56db':'#7A2331'],borderRadius:4}]
+    },{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+    await buildProfessionalPDF({
+      title:'Profit & Loss Statement',subtitle,
+      summaryBoxes:[
+        {label:'TOTAL INCOME',value:fmt(incomeD,displayCurrency),bg:[229,241,234],text:[15,107,76]},
+        {label:'TOTAL EXPENSES',value:fmt(expD,displayCurrency),bg:[247,231,233],text:[122,35,49]},
+        {label:netD>=0?'NET SURPLUS':'NET DEFICIT',value:fmt(Math.abs(netD),displayCurrency),bg:[253,243,217],text:[16,27,51]}
+      ],
+      chartRows:[[{title:'Income vs Expenses',dataUrl:barImg}]],
+      sections:[
+        {heading:'Income by Category',columns,rows:incRows},
+        {heading:'Expenses by Category',columns,rows:expRows}
+      ],
+      filename:`profit-loss-${todayISO()}.pdf`
+    });
+  } else {
+    const rows=[['INCOME',''],...incRows,['EXPENSES',''],...expRows,[netD>=0?'Net Surplus':'Net Deficit',fmt(Math.abs(netD),displayCurrency)]];
+    exportReportExcel('Profit & Loss',columns,rows,`profit-loss-${todayISO()}.xlsx`);
+  }
 }
 
 function buildTrialBalanceHTML(){
@@ -6738,7 +6868,7 @@ function buildTrialBalanceHTML(){
     const accs=accounts.filter(a=>a.classification===cls);
     if(!accs.length&&!(cls==='liability'&&Math.abs(fxNetINR)>=1))return;
     const gid='tb-'+cls;
-    rows+=`<tr class="group-row" style="cursor:pointer" onclick="toggleReportGroup('${gid}')"><td colspan="3"><span id="rgrp-arrow-${gid}" style="display:inline-block;width:14px">▼</span>${label}</td></tr>`;
+    rows+=`<tr class="group-row" style="cursor:pointer" onclick="toggleReportGroup('${gid}')"><td colspan="3"><span id="rgrp-arrow-${gid}" style="display:inline-block;width:14px">▶</span>${label}</td></tr>`;
     accs.forEach(a=>{
       const bal=calcBalance(a);
       const balINR=toINR(bal,a.currency||'INR');
@@ -6752,7 +6882,7 @@ function buildTrialBalanceHTML(){
       const drINR=effectiveDr?Math.abs(balINR):0;
       const crINR=effectiveCr?Math.abs(balINR):0;
       totalDr+=dr;totalCr+=cr;totalDrINR+=drINR;totalCrINR+=crINR;
-      rows+=`<tr data-rgrp="${gid}"><td style="padding-left:20px;font-size:0.82rem">${a.name}${a.currency!==displayCurrency?` <span style="font-size:0.7em;opacity:0.6">(${a.currency})</span>`:''}</td><td style="text-align:right;color:var(--green);font-size:0.82rem">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent);font-size:0.82rem">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
+      rows+=`<tr data-rgrp="${gid}" style="display:none"><td style="padding-left:20px;font-size:0.82rem">${a.name}${a.currency!==displayCurrency?` <span style="font-size:0.7em;opacity:0.6">(${a.currency})</span>`:''}</td><td style="text-align:right;color:var(--green);font-size:0.82rem">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent);font-size:0.82rem">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
     });
     if(cls==='liability'&&Math.abs(fxNetINR)>=1){
       // Liability/equity accounts are credit-normal: a gain adds to credit side,
@@ -6762,7 +6892,7 @@ function buildTrialBalanceHTML(){
       const dr=effectiveDr?Math.abs(fxD):0,cr=effectiveCr?Math.abs(fxD):0;
       const drINR=effectiveDr?Math.abs(fxNetINR):0,crINR=effectiveCr?Math.abs(fxNetINR):0;
       totalDr+=dr;totalCr+=cr;totalDrINR+=drINR;totalCrINR+=crINR;
-      rows+=`<tr data-rgrp="${gid}"><td style="padding-left:20px;font-size:0.82rem">🌍 Unrealized FX Gain/(Loss) <span style="font-size:0.7em;opacity:0.6">(vs. booking rate)</span></td><td style="text-align:right;color:var(--green);font-size:0.82rem">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent);font-size:0.82rem">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
+      rows+=`<tr data-rgrp="${gid}" style="display:none"><td style="padding-left:20px;font-size:0.82rem">🌍 Unrealized FX Gain/(Loss) <span style="font-size:0.7em;opacity:0.6">(vs. booking rate)</span></td><td style="text-align:right;color:var(--green);font-size:0.82rem">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent);font-size:0.82rem">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
     }
   });
   // Use INR totals for balance check to avoid currency conversion rounding errors
@@ -6811,8 +6941,26 @@ async function exportTrialBalance(format){
   });
   rows.push(['Total',fmt(totalDr,displayCurrency),fmt(totalCr,displayCurrency)]);
   const subtitle=`Trial Balance · as of ${formatDate(todayISO())}`;
-  if(format==='pdf')await exportReportPDF('Trial Balance',subtitle,columns,rows,`trial-balance-${todayISO()}.pdf`);
-  else exportReportExcel('Trial Balance',columns,rows,`trial-balance-${todayISO()}.xlsx`);
+  const balanced=Math.abs(totalDr-totalCr)<1;
+  if(format==='pdf'){
+    const barImg=await chartImageFor('bar',{
+      labels:['Debits','Credits'],
+      datasets:[{data:[totalDr,totalCr],backgroundColor:['#0F6B4C','#1a56db'],borderRadius:4}]
+    },{plugins:{legend:{display:false}},indexAxis:'y',scales:{x:{beginAtZero:true}}});
+    await buildProfessionalPDF({
+      title:'Trial Balance',subtitle,
+      summaryBoxes:[
+        {label:'TOTAL DEBITS',value:fmt(totalDr,displayCurrency),bg:[229,241,234],text:[15,107,76]},
+        {label:'TOTAL CREDITS',value:fmt(totalCr,displayCurrency),bg:[224,233,250],text:[26,86,219]},
+        {label:'STATUS',value:balanced?'Balanced ✓':'Out of balance',bg:balanced?[229,241,234]:[247,231,233],text:balanced?[15,107,76]:[122,35,49]}
+      ],
+      chartRows:[[{title:'Debits vs Credits',dataUrl:barImg}]],
+      sections:[{columns,rows}],
+      filename:`trial-balance-${todayISO()}.pdf`
+    });
+  } else {
+    exportReportExcel('Trial Balance',columns,rows,`trial-balance-${todayISO()}.xlsx`);
+  }
 }
 
 // Reusable net worth trend calc — used by the Dashboard "Net Worth History" popup
@@ -6916,13 +7064,13 @@ function renderIncExpMonthlyChart(){
 async function exportIncomeExpenses(format){
   const months=[];
   for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short',year:'2-digit'}),key:toMonthISO(d)});}
-  const columns=['Month','Income ('+displayCurrency+')','Expenses ('+displayCurrency+')','Net'];
-  const rows=months.map(m=>{
+  const monthlyColumns=['Month','Income ('+displayCurrency+')','Expenses ('+displayCurrency+')','Net'];
+  const monthlyData=months.map(m=>{
     const mTxns=transactions.filter(t=>t.date.startsWith(m.key));
     const{income,expenses}=calcIncomeExpense(mTxns);
-    const incD=convertToDisplay(income,'INR'),expD=convertToDisplay(expenses,'INR');
-    return[m.label,fmt(incD,displayCurrency),fmt(expD,displayCurrency),fmt(incD-expD,displayCurrency)];
+    return{label:m.label,incD:convertToDisplay(income,'INR'),expD:convertToDisplay(expenses,'INR')};
   });
+  const monthlyRows=monthlyData.map(m=>[m.label,fmt(m.incD,displayCurrency),fmt(m.expD,displayCurrency),fmt(m.incD-m.expD,displayCurrency)]);
   const incMap={},expMap={};
   transactions.forEach(t=>{
     const amt=convertToDisplay(parseFloat(t.amount||0),t.currency||'INR');
@@ -6931,14 +7079,55 @@ async function exportIncomeExpenses(format){
     if(t.type==='income'){const cat=(creditAcc?.classification==='income'?creditAcc.category_account:null)||t.category||'Other Income';incMap[cat]=(incMap[cat]||0)+amt;}
     else if(t.type==='expense'){const cat=(debitAcc?.classification==='expense'?debitAcc.category_account:null)||t.category||'Other';expMap[cat]=(expMap[cat]||0)+amt;}
   });
-  rows.push(['','','','']);
-  rows.push(['SPENDING BY CATEGORY','','','']);
-  Object.entries(expMap).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>rows.push([c,'',fmt(v,displayCurrency),'']));
-  rows.push(['INCOME BY CATEGORY','','','']);
-  Object.entries(incMap).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>rows.push([c,fmt(v,displayCurrency),'','']));
+  const catColumns=['Category','Amount ('+displayCurrency+')'];
+  const expRows=Object.entries(expMap).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,fmt(v,displayCurrency)]);
+  const incRows=Object.entries(incMap).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,fmt(v,displayCurrency)]);
   const subtitle=`Income & Expenses · last 12 months`;
-  if(format==='pdf')await exportReportPDF('Income & Expenses',subtitle,columns,rows,`income-expenses-${todayISO()}.pdf`);
-  else exportReportExcel('Income & Expenses',columns,rows,`income-expenses-${todayISO()}.xlsx`);
+  if(format==='pdf'){
+    const trendImg=await chartImageFor('bar',{
+      labels:monthlyData.map(m=>m.label),
+      datasets:[
+        {label:'Income',data:monthlyData.map(m=>m.incD),backgroundColor:'#0F6B4C',borderRadius:3},
+        {label:'Expenses',data:monthlyData.map(m=>m.expD),backgroundColor:'#7A2331',borderRadius:3}
+      ]
+    },{plugins:{legend:{position:'bottom'}}},700,300);
+    const palette=['#7A2331','#C9A227','#0F6B4C','#1a56db','#7C3AED','#0891b2','#4C4A46'];
+    const expDonutImg=expRows.length?await chartImageFor('doughnut',{
+      labels:Object.keys(expMap),datasets:[{data:Object.values(expMap),backgroundColor:palette,borderWidth:2,borderColor:'#fff'}]
+    },{plugins:{legend:{display:false}}},400,300):null;
+    const incDonutImg=incRows.length?await chartImageFor('doughnut',{
+      labels:Object.keys(incMap),datasets:[{data:Object.values(incMap),backgroundColor:palette,borderWidth:2,borderColor:'#fff'}]
+    },{plugins:{legend:{display:false}}},400,300):null;
+    const totalInc=monthlyData.reduce((s,m)=>s+m.incD,0),totalExp=monthlyData.reduce((s,m)=>s+m.expD,0);
+    await buildProfessionalPDF({
+      title:'Income & Expenses',subtitle,
+      summaryBoxes:[
+        {label:'INCOME (12 MO.)',value:fmt(totalInc,displayCurrency),bg:[229,241,234],text:[15,107,76]},
+        {label:'EXPENSES (12 MO.)',value:fmt(totalExp,displayCurrency),bg:[247,231,233],text:[122,35,49]},
+        {label:'NET',value:fmt(totalInc-totalExp,displayCurrency),bg:[253,243,217],text:[16,27,51]}
+      ],
+      chartRows:[
+        [{title:'Monthly Trend',dataUrl:trendImg}],
+        [{title:'Spending by Category',dataUrl:expDonutImg},{title:'Income by Category',dataUrl:incDonutImg}]
+      ],
+      sections:[
+        {heading:'Monthly Breakdown',columns:monthlyColumns,rows:monthlyRows},
+        {heading:'Spending by Category',columns:catColumns,rows:expRows},
+        {heading:'Income by Category',columns:catColumns,rows:incRows}
+      ],
+      filename:`income-expenses-${todayISO()}.pdf`
+    });
+  } else {
+    const rows=[
+      ...monthlyRows,
+      ['','','',''],
+      ['SPENDING BY CATEGORY','','',''],
+      ...expRows.map(r=>[r[0],'',r[1],'']),
+      ['INCOME BY CATEGORY','','','']  ,
+      ...incRows.map(r=>[r[0],r[1],'',''])
+    ];
+    exportReportExcel('Income & Expenses',monthlyColumns,rows,`income-expenses-${todayISO()}.xlsx`);
+  }
 }
 
 // ═══════════════════════════════
