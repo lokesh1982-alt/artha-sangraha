@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v125';
+const CURRENT_VERSION = 'v126';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v125</title>
+<title>Artha-Sangraha v126</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -658,9 +658,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="tab-btn active" onclick="switchReportTab('bs',this)">Balance Sheet</button>
           <button class="tab-btn" onclick="switchReportTab('pnl',this)">P&L</button>
           <button class="tab-btn" onclick="switchReportTab('trial',this)">Trial Balance</button>
-          <button class="tab-btn" onclick="switchReportTab('monthly',this)">Monthly</button>
-          <button class="tab-btn" onclick="switchReportTab('category',this)">By Category</button>
-          <button class="tab-btn" onclick="switchReportTab('networth',this)">Net Worth</button>
+          <button class="tab-btn" onclick="switchReportTab('incexp',this)">Income &amp; Expenses</button>
           <button class="tab-btn" onclick="switchReportTab('fx',this)">FX Revaluation</button>
           <button class="tab-btn" onclick="switchReportTab('recon',this)">Reconciliation</button>
         </div>
@@ -1508,6 +1506,18 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 </div>
 
 <!-- UPDATE PRICES MODAL -->
+<!-- NET WORTH HISTORY MODAL -->
+<div class="modal-overlay" id="nw-history-modal">
+  <div class="modal" style="max-width:400px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">📈 Net Worth History</div>
+      <button class="btn-close" onclick="closeModal('nw-history-modal')">✕</button>
+    </div>
+    <div style="font-size:0.76rem;color:var(--text2);margin-bottom:10px">Last 12 months, based on account balances as of each month-end.</div>
+    <div id="nw-history-content"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="update-prices-modal">
   <div class="modal" style="max-width:480px;max-height:88vh;overflow-y:auto">
     <div class="modal-header">
@@ -1874,6 +1884,9 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ═══════════════════════════════
 //  SUPABASE CONFIG
@@ -3559,7 +3572,11 @@ function renderDashboard(){
       </select>
     </div>
     <div class="nw-val">${fmt(netWorthDisplay,displayCurrency)}</div>
-    ${momPct!==null?`<div class="nw-trend-line" style="color:${momPct>=0?'#7FD9A8':'#F0A0A0'}">${momPct>=0?'▲':'▼'} ${Math.abs(momPct).toFixed(1)}% vs last month</div>`:'<div style="height:22px"></div>'}
+    <div style="display:flex;align-items:center;gap:8px;position:relative;z-index:1">
+      ${momPct!==null?`<div class="nw-trend-line" style="margin-bottom:0;color:${momPct>=0?'#7FD9A8':'#F0A0A0'}">${momPct>=0?'▲':'▼'} ${Math.abs(momPct).toFixed(1)}% vs last month</div>`:'<div></div>'}
+      <button onclick="openNetWorthHistoryModal()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:0.66rem;color:var(--ivory);cursor:pointer;font-family:inherit;margin-left:auto">📈 History</button>
+    </div>
+    <div style="height:6px"></div>
     <div class="nw-spark-wrap">
       ${buildSparklineSVG(trendVals,400,70,'#E8C766')}
       <div class="nw-spark-months">${trend.map(p=>`<span>${p.label}</span>`).join('')}</div>
@@ -3736,7 +3753,7 @@ function renderDashFXWidget(){
         <div style="font-size:9.5px;color:${p.unrealized>=0?'var(--emerald)':'var(--burgundy)'};margin-top:2px">${p.unrealized>=0?'▲':'▼'} ${fmt(Math.abs(p.unrealized),'INR')}</div>
       </div>`).join('')}
     </div>
-    <div style="text-align:right;margin-top:8px"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="switchSection('reports',null);setTimeout(()=>switchReportTab('fx',document.querySelectorAll('#sec-reports .tab-btn')[6]),50)">View FX Revaluation Report →</button></div>
+    <div style="text-align:right;margin-top:8px"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="switchSection('reports',null);setTimeout(()=>switchReportTab('fx',document.querySelectorAll('#sec-reports .tab-btn')[4]),50)">View FX Revaluation Report →</button></div>
   </div>`;
 }
 
@@ -3840,7 +3857,7 @@ function renderDashNotifications(){
     items.push({icon:'🔄',bg:'#F7E7E9',
       title:`${needsRecon.length} account${needsRecon.length>1?'s':''} need${needsRecon.length>1?'':'s'} reconciling`,
       sub:names,action:'Review ›',
-      fn:`switchSection('reports',null);setTimeout(()=>switchReportTab('recon',document.querySelectorAll('#sec-reports .tab-btn')[7]),50)`});
+      fn:`switchSection('reports',null);setTimeout(()=>switchReportTab('recon',document.querySelectorAll('#sec-reports .tab-btn')[5]),50)`});
   }
 
   if(!items.length){
@@ -3887,12 +3904,33 @@ function renderDashFundsList(){
     el.innerHTML='<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-text">No funds tracked yet.</div></div>';
     return;
   }
-  el.innerHTML=cats.map(c=>`<div class="dash-fund-row" onclick="${c.section}">
-    <div class="dash-fund-icon" style="background:${c.bg}">${c.icon}</div>
-    <div style="flex:1"><div class="dash-fund-label">${c.label}</div><div class="dash-fund-sub">${c.count} ${c.count===1?'account':'accounts'}${c.note?' · '+c.note:''}</div></div>
-    <div class="dash-fund-val">${fmt(c.total,displayCurrency)}</div>
-    <div class="dash-fund-chevron">›</div>
-  </div>`).join('');
+  const palette=['#0F6B4C','#7A2331','#C9A227','#1a56db','#7C3AED','#0891b2','#4C4A46'];
+  const total=cats.reduce((s,c)=>s+c.total,0);
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="position:relative;width:110px;height:110px;flex-shrink:0"><canvas id="dash-funds-donut"></canvas></div>
+      <div style="flex:1;min-width:140px;font-size:0.76rem">
+        ${cats.map((c,i)=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span><span class="dash-legend-dot" style="background:${palette[i%palette.length]}"></span>${c.label}</span>
+          <span style="font-weight:600">${total>0?Math.round(c.total/total*100):0}%</span>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <select id="dash-funds-nav" onchange="if(this.value){(new Function(this.value))();this.selectedIndex=0;}"
+        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;color:var(--charcoal);background:var(--card)">
+        <option value="">Go to fund screen →</option>
+        ${cats.map(c=>`<option value="${c.section.replace(/"/g,'&quot;')}">${c.icon} ${c.label} (${fmt(c.total,displayCurrency)})</option>`).join('')}
+      </select>
+    </div>`;
+  if(typeof Chart!=='undefined'){
+    destroyDashChart('dash-funds-donut');
+    _dashCharts['dash-funds-donut']=new Chart(document.getElementById('dash-funds-donut'),{
+      type:'doughnut',
+      data:{labels:cats.map(c=>c.label),datasets:[{data:cats.map(c=>c.total),backgroundColor:cats.map((c,i)=>palette[i%palette.length]),borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}
+    });
+  }
 }
 
 // ═══════════════════════════════
@@ -6245,9 +6283,7 @@ function renderReports(){
   if(currentReportTab==='bs')c.innerHTML=buildBalanceSheetHTML();
   else if(currentReportTab==='pnl')c.innerHTML=buildPnLHTML();
   else if(currentReportTab==='trial')c.innerHTML=buildTrialBalanceHTML();
-  else if(currentReportTab==='monthly')c.innerHTML=buildMonthlyHTML();
-  else if(currentReportTab==='category')c.innerHTML=buildCategoryHTML();
-  else if(currentReportTab==='networth')c.innerHTML=buildNetWorthHTML();
+  else if(currentReportTab==='incexp'){c.innerHTML=buildIncomeExpensesHTML();renderIncExpMonthlyChart();}
   else if(currentReportTab==='fx')c.innerHTML=buildFXRevaluationHTML();
   else if(currentReportTab==='recon')c.innerHTML=buildReconciliationStatusHTML();
 }
@@ -6340,15 +6376,19 @@ function buildFXRevaluationHTML(){
     const{acc,nativeBal,currentRate,currentINR,costBasisINR,unrealized,pct}=p;
     const color=unrealized>=0?'var(--green)':'var(--red)';
     const arrow=unrealized>0?'▲':unrealized<0?'▼':'—';
-    return`<tr>
-      <td>${accIcon(acc.type)} ${acc.name}<div style="font-size:0.68rem;color:var(--text3)">${acc.currency}</div></td>
-      <td style="text-align:right">${fmt(nativeBal,acc.currency)}</td>
-      <td style="text-align:right;font-size:0.8rem">₹${currentRate}</td>
-      <td style="text-align:right">${fmt(currentINR,'INR')}</td>
-      <td style="text-align:right;color:var(--text2)">${fmt(costBasisINR,'INR')}</td>
-      <td style="text-align:right;color:${color};font-weight:700">${arrow} ${fmt(Math.abs(unrealized),'INR')}</td>
-      <td style="text-align:right;color:${color}">${pct>=0?'+':''}${pct.toFixed(1)}%</td>
-    </tr>`;
+    return`<div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-size:0.82rem;font-weight:600">${accIcon(acc.type)} ${acc.name}<div style="font-size:0.68rem;color:var(--text3);font-weight:400">${acc.currency} · Rate ₹${currentRate}</div></div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:0.82rem;font-weight:600">${fmt(nativeBal,acc.currency)}</div>
+          <div style="font-size:0.7rem;color:${color};font-weight:700">${arrow} ${fmt(Math.abs(unrealized),'INR')} (${pct>=0?'+':''}${pct.toFixed(1)}%)</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text2);margin-top:6px">
+        <span>Current: ${fmt(currentINR,'INR')}</span>
+        <span>Cost Basis: ${fmt(costBasisINR,'INR')}</span>
+      </div>
+    </div>`;
   }).join('');
   return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
     <div class="stat-card"><div class="stat-label">Current Value (INR)</div><div class="stat-val">${fmt(totalCurrentINR,'INR')}</div></div>
@@ -6360,12 +6400,12 @@ function buildFXRevaluationHTML(){
       💡 This shows how much your foreign-currency balances have gained or lost in ₹ terms purely due to exchange-rate movement since each amount was originally posted — separate from any interest, price appreciation, or trading gains already captured elsewhere. Historical rates are sourced from your saved exchange-rate history; accounts/transactions older than your saved history use the earliest available rate as a best estimate.
     </div>
   </div>
-  <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:600px">
-    <thead><tr><th>Account</th><th style="text-align:right">Native Balance</th><th style="text-align:right">Rate Today</th><th style="text-align:right">Current (INR)</th><th style="text-align:right">Cost Basis (INR)</th><th style="text-align:right">Unrealized</th><th style="text-align:right">%</th></tr></thead>
-    <tbody>${rows}
-    <tr class="total-row"><td><b>Total</b></td><td></td><td></td><td style="text-align:right"><b>${fmt(totalCurrentINR,'INR')}</b></td><td style="text-align:right"><b>${fmt(totalCostINR,'INR')}</b></td><td style="text-align:right;color:${totalUnrealized>=0?'var(--green)':'var(--red)'}"><b>${totalUnrealized>=0?'+':'-'}${fmt(Math.abs(totalUnrealized),'INR')}</b></td><td></td></tr>
-    </tbody>
-  </table></div></div>`;
+  <div class="card" style="padding:0">${rows}
+    <div style="display:flex;justify-content:space-between;padding:12px 14px;font-weight:700">
+      <span>Total</span>
+      <span style="color:${totalUnrealized>=0?'var(--green)':'var(--red)'}">${totalUnrealized>=0?'+':'-'}${fmt(Math.abs(totalUnrealized),'INR')}</span>
+    </div>
+  </div>`;
 }
 
 function buildReconciliationStatusHTML(){
@@ -6383,13 +6423,14 @@ function buildReconciliationStatusHTML(){
     else if(daysSince<=30){statusLabel=`${daysSince} day(s) ago`;statusColor='var(--green)';}
     else if(daysSince<=60){statusLabel=`${daysSince} days ago`;statusColor='#D97706';}
     else{statusLabel=`${daysSince} days ago`;statusColor='var(--red)';}
-    return`<tr>
-      <td>${accIcon(a.type)} ${a.name}<div style="font-size:0.68rem;color:var(--text3)">${a.currency}</div></td>
-      <td>${last?formatDate(last.statement_date):'—'}</td>
-      <td style="text-align:right">${last?fmt(last.statement_balance,a.currency):'—'}</td>
-      <td style="color:${statusColor};font-weight:600">${statusLabel}</td>
-      <td style="text-align:right"><button class="btn-outline" style="padding:4px 10px;font-size:0.72rem" onclick="openReconcileStart('${a.id}')">🔄 Reconcile</button></td>
-    </tr>`;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);gap:10px">
+      <div style="min-width:0">
+        <div style="font-size:0.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${accIcon(a.type)} ${a.name}</div>
+        <div style="font-size:0.68rem;color:var(--text3)">${a.currency} · Last: ${last?formatDate(last.statement_date):'—'}${last?' · '+fmt(last.statement_balance,a.currency):''}</div>
+        <div style="font-size:0.72rem;font-weight:600;color:${statusColor};margin-top:2px">${statusLabel}</div>
+      </div>
+      <button class="btn-outline" style="padding:4px 10px;font-size:0.72rem;flex-shrink:0" onclick="openReconcileStart('${a.id}')">🔄</button>
+    </div>`;
   }).join('');
   const neverCount=eligible.filter(a=>!accountReconciliations.some(r=>r.account_id===a.id)).length;
   return`<div class="card" style="margin-bottom:14px">
@@ -6397,10 +6438,91 @@ function buildReconciliationStatusHTML(){
       💡 Shows when each asset/liability account was last reconciled against its actual bank/broker/FD statement. ${neverCount>0?`<b>${neverCount} account(s) have never been reconciled.</b>`:'All accounts have been reconciled at least once.'}
     </div>
   </div>
-  <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:560px">
-    <thead><tr><th>Account</th><th>Last Reconciled</th><th style="text-align:right">Statement Balance</th><th>Status</th><th></th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table></div></div>`;
+  <div class="card" style="padding:0">${rows}</div>`;
+}
+
+// ═══════════════════════════════
+//  REPORT EXPORT (PDF / Excel) — shared by Balance Sheet, P&L, Trial Balance,
+//  Income & Expenses. Consistent branded header with logo on every PDF.
+// ═══════════════════════════════
+let _logoBase64Cache=null;
+async function getLogoBase64(){
+  if(_logoBase64Cache)return _logoBase64Cache;
+  try{
+    const res=await fetch('as-icon-192.png');
+    const blob=await res.blob();
+    _logoBase64Cache=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(reader.result);
+      reader.onerror=reject;
+      reader.readAsDataURL(blob);
+    });
+  }catch(e){_logoBase64Cache=null;}
+  return _logoBase64Cache;
+}
+
+async function exportReportPDF(title,subtitle,columns,rows,filename){
+  if(typeof window.jspdf==='undefined'){showToast('PDF export library still loading — try again in a moment.');return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const logo=await getLogoBase64();
+  const pageW=doc.internal.pageSize.width;
+  let textX=14;
+  if(logo){
+    try{doc.addImage(logo,'PNG',14,10,14,14);textX=32;}catch(e){}
+  }
+  doc.setFontSize(15);
+  doc.setTextColor(16,27,51);
+  doc.setFont(undefined,'bold');
+  doc.text('Artha-Sangraha',textX,17);
+  doc.setFont(undefined,'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120,118,109);
+  doc.text(subtitle||'',textX,23);
+  doc.setDrawColor(201,162,39);
+  doc.setLineWidth(0.6);
+  doc.line(14,27,pageW-14,27);
+  doc.setFontSize(12);
+  doc.setTextColor(33,31,28);
+  doc.setFont(undefined,'bold');
+  doc.text(title,14,36);
+  doc.setFont(undefined,'normal');
+  doc.autoTable({
+    startY:41,
+    head:[columns],
+    body:rows,
+    theme:'grid',
+    headStyles:{fillColor:[16,27,51],textColor:255,fontStyle:'bold',fontSize:9},
+    styles:{fontSize:8.5,cellPadding:3},
+    alternateRowStyles:{fillColor:[248,244,236]},
+    margin:{left:14,right:14}
+  });
+  const pageCount=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setTextColor(150,150,150);
+    doc.text(`Generated ${formatDate(todayISO())} · Page ${i} of ${pageCount}`,14,doc.internal.pageSize.height-8);
+  }
+  doc.save(filename);
+}
+
+function exportReportExcel(title,columns,rows,filename){
+  if(typeof XLSX==='undefined'){showToast('Excel export library still loading — try again in a moment.');return;}
+  const wsData=[['Artha-Sangraha'],[title],[],columns,...rows];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=columns.map(()=>({wch:20}));
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:columns.length-1}},{s:{r:1,c:0},e:{r:1,c:columns.length-1}}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Report');
+  XLSX.writeFile(wb,filename);
+}
+
+function exportButtonsHTML(exportFnName){
+  return`<div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="btn-outline" style="flex:1;font-size:0.78rem" onclick="${exportFnName}('pdf')">📄 Export PDF</button>
+    <button class="btn-outline" style="flex:1;font-size:0.78rem" onclick="${exportFnName}('excel')">📊 Export Excel</button>
+  </div>`;
 }
 
 function buildSimpleDonut(segments,total){
@@ -6419,6 +6541,15 @@ function buildSimpleDonut(segments,total){
   </div>`;
 }
 
+function toggleReportGroup(id){
+  const rows=document.querySelectorAll(`[data-rgrp="${id}"]`);
+  if(!rows.length)return;
+  const isHidden=rows[0].style.display==='none';
+  rows.forEach(r=>r.style.display=isHidden?'':'none');
+  const icon=document.getElementById('rgrp-arrow-'+id);
+  if(icon)icon.textContent=isHidden?'▼':'▶';
+}
+
 function buildBalanceSheetHTML(){
   const assetAccs=accounts.filter(a=>a.classification==='asset');
   const liabAccs=accounts.filter(a=>a.classification==='liability');
@@ -6426,44 +6557,47 @@ function buildBalanceSheetHTML(){
   const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
     liabAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
   const netWorth=totalAssets-totalLiab;
-  const colors=['var(--accent)','var(--green)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#dc2626','#7c3aed','#d97706','#0284c7'];
-  const segments=[];const tableRows=[];const usedGroups=new Set();
+  const donut=buildSimpleDonut([
+    {label:'Assets',value:totalAssets,color:'var(--green)'},
+    {label:'Liabilities',value:totalLiab,color:'var(--red)'}
+  ],totalAssets+totalLiab);
+
+  // Group assets by Account Group (collapsible); ungrouped accounts listed individually
+  const usedGroups=new Set();
+  let assetRows='';
   assetAccs.forEach(a=>{
     const grp=a.group_id?groups.find(g=>g.id===a.group_id):null;
     if(grp&&!usedGroups.has(grp.id)){
       usedGroups.add(grp.id);
       const grpAccs=assetAccs.filter(x=>x.group_id===grp.id);
       const grpTotal=grpAccs.reduce((s,x)=>s+convertToDisplay(calcBalance(x),x.currency||'INR'),0);
-      if(grpTotal>0){
-        const color=colors[segments.length%colors.length];
-        segments.push({label:`${grp.icon||'📁'} ${grp.name}`,value:grpTotal,color});
-        tableRows.push(`<tr style="background:var(--bg2)"><td colspan="2"><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length} accounts)</span></td><td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(grpTotal,displayCurrency)}</td></tr>`);
-        grpAccs.forEach(x=>tableRows.push(`<tr><td style="padding-left:20px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmtD(calcBalance(x),x.currency||'INR',true)}</td></tr>`));
-      }
+      const gid='bs-'+grp.id;
+      assetRows+=`<tr style="background:var(--bg2);cursor:pointer" onclick="toggleReportGroup('${gid}')">
+        <td colspan="2"><span id="rgrp-arrow-${gid}" style="display:inline-block;width:14px">▼</span><b>${grp.icon||'📁'} ${grp.name}</b> <span style="font-size:0.72rem;color:var(--text3)">(${grpAccs.length})</span></td>
+        <td style="text-align:right;font-weight:700;color:var(--accent)" class="hide-figure">${fmt(grpTotal,displayCurrency)}</td></tr>`;
+      grpAccs.forEach(x=>assetRows+=`<tr data-rgrp="${gid}"><td style="padding-left:28px;font-size:0.78rem;color:var(--text2)">${accIcon(x.type)} ${x.name}</td><td></td><td style="text-align:right;font-size:0.78rem">${fmtD(calcBalance(x),x.currency||'INR',true)}</td></tr>`);
     } else if(!grp){
       const bal=convertToDisplay(calcBalance(a),a.currency||'INR');
-      if(bal>0){
-        const color=colors[segments.length%colors.length];
-        segments.push({label:a.name,value:bal,color});
-        tableRows.push(`<tr><td>${accIcon(a.type)} ${a.name}</td><td></td><td style="text-align:right">${fmtD(calcBalance(a),a.currency||'INR',true)}</td></tr>`);
-      }
+      if(bal!==0)assetRows+=`<tr><td>${accIcon(a.type)} ${a.name}</td><td></td><td style="text-align:right">${fmtD(calcBalance(a),a.currency||'INR',true)}</td></tr>`;
     }
   });
-  const donut=buildSimpleDonut(segments,totalAssets);
-  return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
-    <div class="stat-card"><div class="stat-label">Total Assets (${displayCurrency})</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,displayCurrency)}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Liabilities (${displayCurrency})</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,displayCurrency)}</div></div>
-    <div class="stat-card"><div class="stat-label">Net Worth (${displayCurrency})</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,displayCurrency)}</div></div>
+
+  return`${exportButtonsHTML('exportBalanceSheet')}
+  <div class="card" style="margin-bottom:14px;text-align:center">
+    ${donut}
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <div class="stat-label">Net Worth (${displayCurrency})</div>
+      <div style="font-family:'Fraunces',serif;font-size:1.5rem;font-weight:600;color:var(--accent)">${fmt(netWorth,displayCurrency)}</div>
+    </div>
   </div>
-  <div class="card" style="margin-bottom:14px">${donut}</div>
   <div class="card">
-    <div class="sec-title" style="margin-bottom:10px">Assets · ${displayCurrency}</div>
-    <table class="data-table"><thead><tr><th>Account / Group</th><th></th><th style="text-align:right">Balance (${displayCurrency})</th></tr></thead>
-    <tbody>${tableRows.join('')}
+    <div class="sec-title" style="margin-bottom:10px">📈 Assets · ${displayCurrency}</div>
+    <table class="data-table"><thead><tr><th>Account / Group</th><th></th><th style="text-align:right">Balance</th></tr></thead>
+    <tbody>${assetRows}
     <tr class="total-row"><td colspan="2"><b>Total Assets</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalAssets,displayCurrency)}</b></td></tr>
     </tbody></table>
     <div class="divider"></div>
-    <div class="sec-title" style="margin-bottom:10px">Liabilities · ${displayCurrency}</div>
+    <div class="sec-title" style="margin-bottom:10px">📉 Liabilities · ${displayCurrency}</div>
     <table class="data-table"><tbody>
     ${loans.map(l=>`<tr><td colspan="2">${l.name}</td><td style="text-align:right;color:var(--red)">${fmtD(parseFloat(l.principal||0),l.currency||'INR',true)}</td></tr>`).join('')}
     ${liabAccs.map(a=>`<tr><td colspan="2">${a.name}</td><td style="text-align:right;color:var(--red)">${fmtD(calcBalance(a),a.currency||'INR',true)}</td></tr>`).join('')}
@@ -6471,6 +6605,28 @@ function buildBalanceSheetHTML(){
     <tr class="total-row"><td colspan="2"><b>Net Worth</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(netWorth,displayCurrency)}</b></td></tr>
     </tbody></table>
   </div>`;
+}
+
+async function exportBalanceSheet(format){
+  const assetAccs=accounts.filter(a=>a.classification==='asset');
+  const liabAccs=accounts.filter(a=>a.classification==='liability');
+  const totalAssets=assetAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
+  const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
+    liabAccs.reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
+  const netWorth=totalAssets-totalLiab;
+  const columns=['Account','Type','Balance ('+displayCurrency+')'];
+  const rows=[];
+  rows.push(['ASSETS','','']);
+  assetAccs.forEach(a=>rows.push([a.name,capitalize(a.type),fmt(convertToDisplay(calcBalance(a),a.currency||'INR'),displayCurrency)]));
+  rows.push(['Total Assets','',fmt(totalAssets,displayCurrency)]);
+  rows.push(['LIABILITIES','','']);
+  loans.forEach(l=>rows.push([l.name,'Loan',fmt(convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),displayCurrency)]));
+  liabAccs.forEach(a=>rows.push([a.name,capitalize(a.type),fmt(convertToDisplay(calcBalance(a),a.currency||'INR'),displayCurrency)]));
+  rows.push(['Total Liabilities','',fmt(totalLiab,displayCurrency)]);
+  rows.push(['NET WORTH','',fmt(netWorth,displayCurrency)]);
+  const subtitle=`Balance Sheet · as of ${formatDate(todayISO())}`;
+  if(format==='pdf')await exportReportPDF('Balance Sheet',subtitle,columns,rows,`balance-sheet-${todayISO()}.pdf`);
+  else exportReportExcel('Balance Sheet',columns,rows,`balance-sheet-${todayISO()}.xlsx`);
 }
 
 function buildPnLHTML(){
@@ -6519,7 +6675,8 @@ function buildPnLHTML(){
       if(da?.classification==='expense'){const cat=da.category_account||t.category||'Other';expByCat[cat]=(expByCat[cat]||0)+amtD;}
     }
   });
-  return`<div class="sec-header" style="margin-bottom:10px"><div class="sec-title">${fy.label} · ${displayCurrency}</div></div>
+  return`${exportButtonsHTML('exportPnL')}
+  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">${fy.label} · ${displayCurrency}</div></div>
   <div class="card" style="margin-bottom:14px">${bar}</div>
   <div class="card">
     <table class="data-table"><thead><tr><th>Particulars</th><th style="text-align:right">Amount (${displayCurrency})</th></tr></thead>
@@ -6535,8 +6692,38 @@ function buildPnLHTML(){
   </div>`;
 }
 
+async function exportPnL(format){
+  const fy=getFinancialYear();
+  const fyTxns=transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end);
+  const{income,expenses}=calcIncomeExpense(fyTxns);
+  const incomeD=convertToDisplay(income,'INR'),expD=convertToDisplay(expenses,'INR');
+  const netD=incomeD-expD;
+  const incByCat={},expByCat={};
+  fyTxns.forEach(t=>{
+    const amtD=convertToDisplay(parseFloat(t.amount||0),t.currency||'INR');
+    if(t.type==='income'){const c=accounts.find(a=>a.id===t.credit_account_id);const cat=c?.category_account||t.category||'Other Income';incByCat[cat]=(incByCat[cat]||0)+amtD;}
+    else if(t.type==='expense'){const d=accounts.find(a=>a.id===t.debit_account_id);const cat=d?.category_account||t.category||'Other';expByCat[cat]=(expByCat[cat]||0)+amtD;}
+    else if(t.type==='journal'&&t.category!=='Opening Balance'&&t.category!=='Trading P&L'){
+      const ca=accounts.find(a=>a.id===t.credit_account_id),da=accounts.find(a=>a.id===t.debit_account_id);
+      if(ca?.classification==='income'){const cat=ca.category_account||t.category||'Other Income';incByCat[cat]=(incByCat[cat]||0)+amtD;}
+      if(da?.classification==='expense'){const cat=da.category_account||t.category||'Other';expByCat[cat]=(expByCat[cat]||0)+amtD;}
+    }
+  });
+  const columns=['Particulars','Amount ('+displayCurrency+')'];
+  const rows=[['INCOME','']];
+  Object.entries(incByCat).forEach(([c,v])=>rows.push([c,fmt(v,displayCurrency)]));
+  rows.push(['Total Income',fmt(incomeD,displayCurrency)]);
+  rows.push(['EXPENSES','']);
+  Object.entries(expByCat).forEach(([c,v])=>rows.push([c,fmt(v,displayCurrency)]));
+  rows.push(['Total Expenses',fmt(expD,displayCurrency)]);
+  rows.push([netD>=0?'Net Surplus':'Net Deficit',fmt(Math.abs(netD),displayCurrency)]);
+  const subtitle=`Profit & Loss · ${fy.label}`;
+  if(format==='pdf')await exportReportPDF('Profit & Loss',subtitle,columns,rows,`profit-loss-${todayISO()}.pdf`);
+  else exportReportExcel('Profit & Loss',columns,rows,`profit-loss-${todayISO()}.xlsx`);
+}
+
 function buildTrialBalanceHTML(){
-  const groups={asset:'Assets',liability:'Liabilities',equity:'Equity',income:'Income',expense:'Expenses'};
+  const groupDefs={asset:'Assets',liability:'Liabilities',equity:'Equity',income:'Income',expense:'Expenses'};
   let totalDr=0,totalCr=0,totalDrINR=0,totalCrINR=0,rows='';
   // Net Unrealized FX Gain/(Loss): foreign-currency assets/liabilities are shown
   // above (and on the Balance Sheet) marked-to-market at TODAY's rate, but the
@@ -6547,10 +6734,11 @@ function buildTrialBalanceHTML(){
   // report for the full account-by-account breakdown.
   const fxAccounts=accounts.filter(a=>(a.currency||'INR')!=='INR'&&['asset','liability'].includes(a.classification));
   const fxNetINR=fxAccounts.map(calcFXPosition).filter(Boolean).reduce((s,p)=>s+p.unrealized,0);
-  Object.entries(groups).forEach(([cls,label])=>{
+  Object.entries(groupDefs).forEach(([cls,label])=>{
     const accs=accounts.filter(a=>a.classification===cls);
     if(!accs.length&&!(cls==='liability'&&Math.abs(fxNetINR)>=1))return;
-    rows+=`<tr class="group-row"><td colspan="3">${label}</td></tr>`;
+    const gid='tb-'+cls;
+    rows+=`<tr class="group-row" style="cursor:pointer" onclick="toggleReportGroup('${gid}')"><td colspan="3"><span id="rgrp-arrow-${gid}" style="display:inline-block;width:14px">▼</span>${label}</td></tr>`;
     accs.forEach(a=>{
       const bal=calcBalance(a);
       const balINR=toINR(bal,a.currency||'INR');
@@ -6564,7 +6752,7 @@ function buildTrialBalanceHTML(){
       const drINR=effectiveDr?Math.abs(balINR):0;
       const crINR=effectiveCr?Math.abs(balINR):0;
       totalDr+=dr;totalCr+=cr;totalDrINR+=drINR;totalCrINR+=crINR;
-      rows+=`<tr><td style="padding-left:20px">${a.name}${a.currency!==displayCurrency?` <span style="font-size:0.7em;opacity:0.6">(${a.currency})</span>`:''}</td><td style="text-align:right;color:var(--green)">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent)">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
+      rows+=`<tr data-rgrp="${gid}"><td style="padding-left:20px;font-size:0.82rem">${a.name}${a.currency!==displayCurrency?` <span style="font-size:0.7em;opacity:0.6">(${a.currency})</span>`:''}</td><td style="text-align:right;color:var(--green);font-size:0.82rem">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent);font-size:0.82rem">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
     });
     if(cls==='liability'&&Math.abs(fxNetINR)>=1){
       // Liability/equity accounts are credit-normal: a gain adds to credit side,
@@ -6574,146 +6762,183 @@ function buildTrialBalanceHTML(){
       const dr=effectiveDr?Math.abs(fxD):0,cr=effectiveCr?Math.abs(fxD):0;
       const drINR=effectiveDr?Math.abs(fxNetINR):0,crINR=effectiveCr?Math.abs(fxNetINR):0;
       totalDr+=dr;totalCr+=cr;totalDrINR+=drINR;totalCrINR+=crINR;
-      rows+=`<tr><td style="padding-left:20px">🌍 Unrealized FX Gain/(Loss) <span style="font-size:0.7em;opacity:0.6">(vs. booking rate)</span></td><td style="text-align:right;color:var(--green)">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent)">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
+      rows+=`<tr data-rgrp="${gid}"><td style="padding-left:20px;font-size:0.82rem">🌍 Unrealized FX Gain/(Loss) <span style="font-size:0.7em;opacity:0.6">(vs. booking rate)</span></td><td style="text-align:right;color:var(--green);font-size:0.82rem">${dr>0?fmt(dr,displayCurrency):''}</td><td style="text-align:right;color:var(--accent);font-size:0.82rem">${cr>0?fmt(cr,displayCurrency):''}</td></tr>`;
     }
   });
   // Use INR totals for balance check to avoid currency conversion rounding errors
   const balanced=Math.abs(totalDrINR-totalCrINR)<1;
-  return`<div class="card" style="margin-bottom:14px">
+  return`${exportButtonsHTML('exportTrialBalance')}
+  <div class="card" style="margin-bottom:14px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
-      <div><div class="stat-label">Total Debits (Assets + Expenses)</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">${fmt(totalDr,displayCurrency)}</div></div>
-      <div><div class="stat-label">Total Credits (Liabilities + Income + Equity)</div><div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmt(totalCr,displayCurrency)}</div></div>
+      <div><div class="stat-label">Total Debits</div><div style="font-size:1.05rem;font-weight:700;color:var(--green)">${fmt(totalDr,displayCurrency)}</div></div>
+      <div><div class="stat-label">Total Credits</div><div style="font-size:1.05rem;font-weight:700;color:var(--accent)">${fmt(totalCr,displayCurrency)}</div></div>
     </div>
-    <div style="font-size:0.88rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">
+    <div style="font-size:0.85rem;font-weight:600;color:${balanced?'var(--green)':'var(--red)'}">
       ${balanced?'✅ Books are balanced!':'⚠️ Difference: '+fmt(Math.abs(totalDrINR-totalCrINR),'INR')+' (INR basis)'}
     </div>
   </div>
-  <div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:320px">
-    <thead><tr><th>Account</th><th style="text-align:right">Dr (${displayCurrency})</th><th style="text-align:right">Cr (${displayCurrency})</th></tr></thead>
+  <div class="card"><table class="data-table" style="width:100%;table-layout:fixed">
+    <thead><tr><th>Account</th><th style="text-align:right">Dr</th><th style="text-align:right">Cr</th></tr></thead>
     <tbody>${rows}<tr class="total-row"><td><b>Total</b></td><td style="text-align:right;color:var(--green)"><b>${fmt(totalDr,displayCurrency)}</b></td><td style="text-align:right;color:var(--accent)"><b>${fmt(totalCr,displayCurrency)}</b></td></tr></tbody>
-  </table></div></div>`;
+  </table></div>`;
 }
 
-function buildMonthlyHTML(){
+async function exportTrialBalance(format){
+  const groupDefs={asset:'Assets',liability:'Liabilities',equity:'Equity',income:'Income',expense:'Expenses'};
+  let totalDr=0,totalCr=0;
+  const columns=['Account','Dr ('+displayCurrency+')','Cr ('+displayCurrency+')'];
+  const rows=[];
+  const fxAccounts=accounts.filter(a=>(a.currency||'INR')!=='INR'&&['asset','liability'].includes(a.classification));
+  const fxNetINR=fxAccounts.map(calcFXPosition).filter(Boolean).reduce((s,p)=>s+p.unrealized,0);
+  Object.entries(groupDefs).forEach(([cls,label])=>{
+    const accs=accounts.filter(a=>a.classification===cls);
+    if(!accs.length&&!(cls==='liability'&&Math.abs(fxNetINR)>=1))return;
+    rows.push([label.toUpperCase(),'','']);
+    accs.forEach(a=>{
+      const balD=convertToDisplay(calcBalance(a),a.currency||'INR');
+      const isDebitNormal=['asset','expense'].includes(cls);
+      const dr=isDebitNormal?(balD>0?balD:0):(balD<0?Math.abs(balD):0);
+      const cr=isDebitNormal?(balD<0?Math.abs(balD):0):(balD>0?balD:0);
+      totalDr+=dr;totalCr+=cr;
+      rows.push([a.name,dr>0?fmt(dr,displayCurrency):'',cr>0?fmt(cr,displayCurrency):'']);
+    });
+    if(cls==='liability'&&Math.abs(fxNetINR)>=1){
+      const fxD=convertToDisplay(fxNetINR,'INR');
+      const dr=fxD<0?Math.abs(fxD):0,cr=fxD>0?fxD:0;
+      totalDr+=dr;totalCr+=cr;
+      rows.push(['Unrealized FX Gain/(Loss)',dr>0?fmt(dr,displayCurrency):'',cr>0?fmt(cr,displayCurrency):'']);
+    }
+  });
+  rows.push(['Total',fmt(totalDr,displayCurrency),fmt(totalCr,displayCurrency)]);
+  const subtitle=`Trial Balance · as of ${formatDate(todayISO())}`;
+  if(format==='pdf')await exportReportPDF('Trial Balance',subtitle,columns,rows,`trial-balance-${todayISO()}.pdf`);
+  else exportReportExcel('Trial Balance',columns,rows,`trial-balance-${todayISO()}.xlsx`);
+}
+
+// Reusable net worth trend calc — used by the Dashboard "Net Worth History" popup
+// (see openNetWorthHistoryModal) now that this no longer lives in Reports.
+function calcNetWorthMonthlyPoints(months=12){
+  const pts=[];
+  for(let i=months-1;i>=0;i--){
+    const d=new Date();d.setMonth(d.getMonth()-i);
+    const label=d.toLocaleString('default',{month:'short',year:'2-digit'});
+    const asOf=toMonthISO(d)+'-28';
+    const assets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
+    const liab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
+      accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
+    pts.push({label,val:assets-liab});
+  }
+  return pts;
+}
+
+function openNetWorthHistoryModal(){
+  const pts=calcNetWorthMonthlyPoints(12);
+  const el=document.getElementById('nw-history-content');
+  if(el){
+    el.innerHTML=`<div class="card" style="padding:0">${pts.map(p=>`<div style="display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border)">
+      <span style="font-size:0.82rem">${p.label}</span>
+      <span style="font-size:0.82rem;font-weight:700;color:${p.val>=0?'var(--accent)':'var(--red)'}">${fmt(p.val,displayCurrency)}</span>
+    </div>`).join('')}</div>`;
+  }
+  openModal('nw-history-modal');
+}
+
+// ═══════════════════════════════
+//  INCOME & EXPENSES (merged Monthly + By Category)
+// ═══════════════════════════════
+function buildIncomeExpensesHTML(){
   const months=[];
-  for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short',year:'2-digit'}),key:toMonthISO(d)});}
-  const rows=months.map(m=>{
+  for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short'}),key:toMonthISO(d)});}
+  const monthData=months.map(m=>{
     const mTxns=transactions.filter(t=>t.date.startsWith(m.key));
     const{income,expenses}=calcIncomeExpense(mTxns);
-    const incD=convertToDisplay(income,'INR');
-    const expD=convertToDisplay(expenses,'INR');
-    const net=incD-expD;
-    return`<tr><td style="white-space:nowrap">${m.label}</td><td style="color:var(--green)">${fmt(incD,displayCurrency)}</td><td style="color:var(--red)">${fmt(expD,displayCurrency)}</td><td style="color:${net>=0?'var(--green)':'var(--red)'};font-weight:600">${fmt(Math.abs(net),displayCurrency)}</td></tr>`;
-  }).join('');
-  return`<div class="card"><div style="overflow-x:auto"><table class="data-table" style="min-width:340px">
-    <thead><tr><th>Month</th><th>Income (${displayCurrency})</th><th>Expenses (${displayCurrency})</th><th>Net (${displayCurrency})</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table></div></div>`;
-}
+    return{label:m.label,inc:convertToDisplay(income,'INR'),exp:convertToDisplay(expenses,'INR')};
+  });
 
-function buildCategoryHTML(){
   const incMap={},expMap={};
   transactions.forEach(t=>{
     const amt=convertToDisplay(parseFloat(t.amount||0),t.currency||'INR');
-    // Determine category: use transaction category first, then look up from account
-    let cat=t.category||'';
     const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
     const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
     if(t.type==='income'){
-      // Category from credit account (income source) or transaction category
       const incAcc=creditAcc?.classification==='income'?creditAcc:null;
-      cat=incAcc?.category_account||t.category||'Other Income';
+      const cat=incAcc?.category_account||t.category||'Other Income';
       incMap[cat]=(incMap[cat]||0)+amt;
     } else if(t.type==='expense'){
-      // Category from debit account (expense destination) or transaction category
       const expAcc=debitAcc?.classification==='expense'?debitAcc:null;
-      cat=expAcc?.category_account||t.category||'Other';
+      const cat=expAcc?.category_account||t.category||'Other';
       expMap[cat]=(expMap[cat]||0)+amt;
     } else if(t.type==='journal'&&t.category!=='Opening Balance'&&t.category!=='Trading P&L'&&t.category!=='Trade Entry'){
-      if(debitAcc?.classification==='expense'){
-        cat=debitAcc.category_account||t.category||'Other';
-        expMap[cat]=(expMap[cat]||0)+amt;
-      }
-      if(creditAcc?.classification==='income'){
-        cat=creditAcc.category_account||t.category||'Other Income';
-        incMap[cat]=(incMap[cat]||0)+amt;
-      }
+      if(debitAcc?.classification==='expense'){const cat=debitAcc.category_account||t.category||'Other';expMap[cat]=(expMap[cat]||0)+amt;}
+      if(creditAcc?.classification==='income'){const cat=creditAcc.category_account||t.category||'Other Income';incMap[cat]=(incMap[cat]||0)+amt;}
     }
   });
   const colors=['var(--accent)','var(--green)','var(--red)','#f59e0b','var(--purple)','#0891b2','#c2410c','#4338ca','#059669','#d97706'];
   const expTotal=Object.values(expMap).reduce((s,v)=>s+v,0);
   const incTotal=Object.values(incMap).reduce((s,v)=>s+v,0);
-  const expSegments=Object.entries(expMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
-  const incSegments=Object.entries(incMap).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
-  const buildRows=(map,total)=>Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>`<tr>
-    <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:6px"></span>${c}</td>
-    <td style="text-align:right">${fmt(v,displayCurrency)}</td>
-    <td style="text-align:right">${total>0?Math.round(v/total*100):0}%</td>
-  </tr>`).join('');
-  return`
-  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">💸 Expenses by Category</div></div>
-  <div class="card" style="margin-bottom:14px">${expTotal?buildSimpleDonut(expSegments,expTotal):'<div style="color:var(--text3);font-size:0.85rem;padding:12px">No expense data</div>'}</div>
-  <div class="card" style="margin-bottom:20px"><table class="data-table">
-    <thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">%</th></tr></thead>
-    <tbody>${buildRows(expMap,expTotal)||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">No expense data</td></tr>'}</tbody>
-  </table></div>
-  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">💰 Income by Category</div></div>
-  <div class="card" style="margin-bottom:14px">${incTotal?buildSimpleDonut(incSegments,incTotal):'<div style="color:var(--text3);font-size:0.85rem;padding:12px">No income data</div>'}</div>
-  <div class="card"><table class="data-table">
-    <thead><tr><th>Category</th><th style="text-align:right">Amount</th><th style="text-align:right">%</th></tr></thead>
-    <tbody>${buildRows(incMap,incTotal)||'<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text3)">No income data</td></tr>'}</tbody>
-  </table></div>`;
+  const expSegments=Object.entries(expMap).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
+  const incSegments=Object.entries(incMap).sort((a,b)=>b[1]-a[1]).map(([c,v],i)=>({label:c,value:v,color:colors[i%colors.length]}));
+
+  return`${exportButtonsHTML('exportIncomeExpenses')}
+  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">Monthly Trend (12 months) · ${displayCurrency}</div></div>
+  <div class="card" style="margin-bottom:16px"><div id="incexp-monthly-chart" style="position:relative;height:160px"></div></div>
+  <div class="card-grid card-grid-2">
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:10px">💸 Spending by Category</div>
+      ${expTotal?buildSimpleDonut(expSegments,expTotal):'<div style="color:var(--text3);font-size:0.85rem;padding:12px">No expense data</div>'}
+    </div>
+    <div class="card">
+      <div class="sec-title" style="margin-bottom:10px">💰 Income by Category</div>
+      ${incTotal?buildSimpleDonut(incSegments,incTotal):'<div style="color:var(--text3);font-size:0.85rem;padding:12px">No income data</div>'}
+    </div>
+  </div>`;
 }
 
-function buildNetWorthHTML(){
-  // All figures in display currency
-  const totalAssets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
-  const totalLiab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
-    accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+convertToDisplay(calcBalance(a),a.currency||'INR'),0);
-  const netWorth=totalAssets-totalLiab;
-  const fy=getFinancialYear();
-  const{income:fyInc,expenses:fyExp}=calcIncomeExpense(transactions.filter(t=>t.date>=fy.start&&t.date<=fy.end));
+function renderIncExpMonthlyChart(){
+  const el=document.getElementById('incexp-monthly-chart');
+  if(!el||typeof Chart==='undefined')return;
   const months=[];
   for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short'}),key:toMonthISO(d)});}
-  const nwPoints=months.map(m=>{
-    const asOf=m.key+'-28';
-    const assets=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
-    const liab=loans.reduce((s,l)=>s+convertToDisplay(parseFloat(l.principal||0),l.currency||'INR'),0)+
-      accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+convertToDisplay(calcBalance(a,asOf),a.currency||'INR'),0);
-    return{label:m.label,val:assets-liab};
+  const incData=months.map(m=>convertToDisplay(transactions.filter(t=>t.date.startsWith(m.key)&&t.type==='income').reduce((s,t)=>s+toINR(parseFloat(t.amount||0),t.currency||'INR'),0),'INR'));
+  const expData=months.map(m=>convertToDisplay(transactions.filter(t=>t.date.startsWith(m.key)&&t.type==='expense').reduce((s,t)=>s+toINR(parseFloat(t.amount||0),t.currency||'INR'),0),'INR'));
+  el.innerHTML='<canvas id="incexp-monthly-canvas"></canvas>';
+  destroyDashChart('incexp-monthly');
+  _dashCharts['incexp-monthly']=new Chart(document.getElementById('incexp-monthly-canvas'),{
+    type:'bar',
+    data:{labels:months.map(m=>m.label),datasets:[
+      {label:'Income',data:incData,backgroundColor:'#0F6B4C',borderRadius:3},
+      {label:'Expenses',data:expData,backgroundColor:'#7A2331',borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{font:{size:9}}}}}
   });
-  const maxVal=Math.max(...nwPoints.map(p=>Math.abs(p.val)),1);
-  const minVal=Math.min(...nwPoints.map(p=>p.val),0);
-  const range=maxVal-minVal||1;
-  const W=280,H=100,pad=20;
-  const pts=nwPoints.map((p,i)=>{
-    const x=pad+i*(W-pad*2)/(nwPoints.length-1);
-    const y=H-pad-(p.val-minVal)/range*(H-pad*2);
-    return{x,y,val:p.val,label:p.label};
-  });
-  const polyline=pts.map(p=>`${p.x},${p.y}`).join(' ');
-  const areaPath=`M${pts[0].x},${H-pad} `+pts.map(p=>`L${p.x},${p.y}`).join(' ')+` L${pts[pts.length-1].x},${H-pad} Z`;
-  const lineChart=`<svg viewBox="0 0 ${W} ${H+30}" style="width:100%;max-height:160px">
-    <defs><linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a56db" stop-opacity="0.3"/><stop offset="100%" stop-color="#1a56db" stop-opacity="0"/></linearGradient></defs>
-    <path d="${areaPath}" fill="url(#nwGrad)"/>
-    <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
-    ${pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"/>`).join('')}
-    ${pts.filter((p,i)=>i%2===0||i===pts.length-1).map(p=>`<text x="${p.x}" y="${H+16}" text-anchor="middle" font-size="8" fill="#94A3B8">${p.label}</text>`).join('')}
-    <line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="var(--border)" stroke-width="1"/>
-  </svg>`;
+}
 
-  return`<div class="card-grid card-grid-3" style="margin-bottom:14px">
-    <div class="stat-card"><div class="stat-label">Total Assets (${displayCurrency})</div><div class="stat-val" style="color:var(--green)">${fmt(totalAssets,displayCurrency)}</div></div>
-    <div class="stat-card"><div class="stat-label">Total Liabilities (${displayCurrency})</div><div class="stat-val" style="color:var(--red)">${fmt(totalLiab,displayCurrency)}</div></div>
-    <div class="stat-card"><div class="stat-label">Net Worth (${displayCurrency})</div><div class="stat-val" style="color:var(--accent)">${fmt(netWorth,displayCurrency)}</div></div>
-  </div>
-  <div class="sec-header" style="margin-bottom:10px"><div class="sec-title">Net Worth Trend · ${displayCurrency} (12 months)</div></div>
-  <div class="card" style="margin-bottom:14px">${lineChart}</div>
-  <div class="card">
-    <table class="data-table"><thead><tr><th>Month</th><th style="text-align:right">Net Worth (${displayCurrency})</th></tr></thead>
-    <tbody>${nwPoints.map(p=>`<tr><td>${p.label}</td><td style="text-align:right;font-weight:600;color:${p.val>=0?'var(--accent)':'var(--red)'}">${fmt(p.val,displayCurrency)}</td></tr>`).join('')}</tbody>
-    </table>
-  </div>`;
+async function exportIncomeExpenses(format){
+  const months=[];
+  for(let i=11;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('default',{month:'short',year:'2-digit'}),key:toMonthISO(d)});}
+  const columns=['Month','Income ('+displayCurrency+')','Expenses ('+displayCurrency+')','Net'];
+  const rows=months.map(m=>{
+    const mTxns=transactions.filter(t=>t.date.startsWith(m.key));
+    const{income,expenses}=calcIncomeExpense(mTxns);
+    const incD=convertToDisplay(income,'INR'),expD=convertToDisplay(expenses,'INR');
+    return[m.label,fmt(incD,displayCurrency),fmt(expD,displayCurrency),fmt(incD-expD,displayCurrency)];
+  });
+  const incMap={},expMap={};
+  transactions.forEach(t=>{
+    const amt=convertToDisplay(parseFloat(t.amount||0),t.currency||'INR');
+    const debitAcc=accounts.find(a=>a.id===t.debit_account_id);
+    const creditAcc=accounts.find(a=>a.id===t.credit_account_id);
+    if(t.type==='income'){const cat=(creditAcc?.classification==='income'?creditAcc.category_account:null)||t.category||'Other Income';incMap[cat]=(incMap[cat]||0)+amt;}
+    else if(t.type==='expense'){const cat=(debitAcc?.classification==='expense'?debitAcc.category_account:null)||t.category||'Other';expMap[cat]=(expMap[cat]||0)+amt;}
+  });
+  rows.push(['','','','']);
+  rows.push(['SPENDING BY CATEGORY','','','']);
+  Object.entries(expMap).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>rows.push([c,'',fmt(v,displayCurrency),'']));
+  rows.push(['INCOME BY CATEGORY','','','']);
+  Object.entries(incMap).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>rows.push([c,fmt(v,displayCurrency),'','']));
+  const subtitle=`Income & Expenses · last 12 months`;
+  if(format==='pdf')await exportReportPDF('Income & Expenses',subtitle,columns,rows,`income-expenses-${todayISO()}.pdf`);
+  else exportReportExcel('Income & Expenses',columns,rows,`income-expenses-${todayISO()}.xlsx`);
 }
 
 // ═══════════════════════════════
