@@ -3,7 +3,7 @@
 <head>
 <script>
 // Version check - forces reload if cached version doesn't match
-const CURRENT_VERSION = 'v131';
+const CURRENT_VERSION = 'v132';
 if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionStorage.getItem('version_checked')){
   sessionStorage.setItem('version_checked','1');
   location.reload(true);
@@ -26,7 +26,7 @@ if(document.title && document.title.indexOf(CURRENT_VERSION) === -1 && !sessionS
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<title>Artha-Sangraha v131</title>
+<title>Artha-Sangraha v132</title>
 <link rel="manifest" href="as-manifest.json"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Fraunces:wght@500;600;700&display=swap');
@@ -453,6 +453,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
         <div class="sidebar-label">Reports</div>
         <button class="nav-item" onclick="switchSection('reports',this)"><span class="nav-icon">📊</span>Reports & Charts</button>
         <button class="nav-item" onclick="switchSection('budget',this)"><span class="nav-icon">🎯</span>Budget</button>
+        <button class="nav-item" onclick="switchSection('simulator',this)"><span class="nav-icon">🔮</span>Wealth Simulator</button>
       </div>
       <div class="sidebar-section">
         <div class="sidebar-label">Investments</div>
@@ -584,6 +585,14 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
           <button class="btn-sm" onclick="openModal('add-budget-modal')">+ Set Budget</button>
         </div>
         <div id="budget-content"></div>
+      </div>
+
+      <!-- WEALTH SIMULATOR -->
+      <div class="section" id="sec-simulator">
+        <div class="page-header">
+          <div><div class="page-title">🔮 Wealth Simulator</div><div class="page-sub">Project your net worth forward based on assumptions you set</div></div>
+        </div>
+        <div id="simulator-content"></div>
       </div>
 
       <!-- PORTFOLIO -->
@@ -3522,6 +3531,7 @@ function switchSection(name,btn){
   if(name==='categories')renderCategories();
   if(name==='family')renderFamily();
   if(name==='profile')renderProfile();
+  if(name==='simulator')renderWealthSimulator();
 }
 
 // ═══════════════════════════════
@@ -4508,6 +4518,146 @@ function renderPnL(){
 // ═══════════════════════════════
 //  BUDGET
 // ═══════════════════════════════
+// ═══════════════════════════════
+//  WEALTH SIMULATOR
+// ═══════════════════════════════
+// Pure compound-growth projection based on assumptions the person sets themselves —
+// not a market prediction. Monthly contributions compounding at a chosen annual
+// return, with an inflation-adjusted ("today's money") line shown alongside.
+let simState=null;
+
+function calcAvgMonthlySavings(months=6){
+  let total=0;
+  for(let i=0;i<months;i++){
+    const d=new Date();d.setMonth(d.getMonth()-i);
+    const key=toMonthISO(d);
+    const mTxns=transactions.filter(t=>t.date.startsWith(key));
+    const{income,expenses}=calcIncomeExpense(mTxns);
+    total+=convertToDisplay(income-expenses,'INR');
+  }
+  return Math.max(0,Math.round(total/months));
+}
+
+function projectWealth(startingNW,monthlyInv,annualReturnPct,years,inflationPct){
+  const monthlyR=(annualReturnPct/100)/12;
+  const points=[];
+  for(let y=0;y<=years;y++){
+    const n=y*12;
+    let nominal;
+    if(monthlyR===0){nominal=startingNW+monthlyInv*n;}
+    else{nominal=startingNW*Math.pow(1+monthlyR,n)+monthlyInv*((Math.pow(1+monthlyR,n)-1)/monthlyR);}
+    const real=nominal/Math.pow(1+inflationPct/100,y);
+    points.push({year:y,nominal,real});
+  }
+  return points;
+}
+
+function renderWealthSimulator(){
+  const totalAssetsINR=accounts.filter(a=>a.classification==='asset').reduce((s,a)=>s+toINR(calcBalance(a),a.currency||'INR'),0);
+  const totalLiabINR=loans.reduce((s,l)=>s+toINR(parseFloat(l.principal||0),l.currency||'INR'),0)+
+    accounts.filter(a=>a.classification==='liability').reduce((s,a)=>s+toINR(calcBalance(a),a.currency||'INR'),0);
+  const startingNW=convertToDisplay(totalAssetsINR-totalLiabINR,'INR');
+  if(!simState){
+    simState={startingNW,monthlyInv:calcAvgMonthlySavings(6),returnPct:11,years:20,inflationPct:6};
+  } else {
+    simState.startingNW=startingNW;
+  }
+
+  const el=document.getElementById('simulator-content');
+  if(!el)return;
+  el.innerHTML=`
+    <div style="background:linear-gradient(160deg,var(--navy),var(--navy2));border-radius:16px;padding:20px;color:var(--ivory);margin-bottom:14px">
+      <div style="font-size:11px;letter-spacing:0.04em;opacity:0.65;text-transform:uppercase" id="sim-hero-label">Projected net worth in ${simState.years} years</div>
+      <div style="font-family:'Fraunces',serif;font-size:1.9rem;font-weight:600;margin:6px 0 2px;color:var(--gold)" id="sim-hero-nominal">—</div>
+      <div style="font-size:0.78rem;color:#B9C6DB">In today's money: <b style="color:var(--ivory)" id="sim-hero-real">—</b></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-title">Growth projection</div>
+      <div style="position:relative;height:200px"><canvas id="sim-chart"></canvas></div>
+      <div style="display:flex;gap:14px;margin-top:8px;font-size:0.72rem">
+        <span><span class="dash-legend-dot" style="background:#E8C766"></span>Nominal value</span>
+        <span><span class="dash-legend-dot" style="background:#B4B2A9"></span>Inflation-adjusted</span>
+      </div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-title">Assumptions</div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:5px">
+          <span>Monthly investment</span><span style="font-weight:700" id="sim-monthlyinv-val">${fmt(simState.monthlyInv,displayCurrency)}</span>
+        </div>
+        <input type="range" min="0" max="${Math.max(150000,simState.monthlyInv*2)}" step="500" value="${simState.monthlyInv}" id="sim-monthlyinv" oninput="updateSimulation()" style="width:100%">
+        <div style="font-size:0.68rem;color:var(--text3)">Auto-filled from your average income minus expenses over the last 6 months — adjust freely.</div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:5px">
+          <span>Expected annual return</span><span style="font-weight:700;color:var(--green)" id="sim-return-val">${simState.returnPct}%</span>
+        </div>
+        <input type="range" min="0" max="25" step="0.5" value="${simState.returnPct}" id="sim-return" oninput="updateSimulation()" style="width:100%">
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:5px">
+          <span>Time horizon</span><span style="font-weight:700" id="sim-years-val">${simState.years} years</span>
+        </div>
+        <input type="range" min="1" max="40" step="1" value="${simState.years}" id="sim-years" oninput="updateSimulation()" style="width:100%">
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:5px">
+          <span>Inflation rate</span><span style="font-weight:700;color:var(--red)" id="sim-inflation-val">${simState.inflationPct}%</span>
+        </div>
+        <input type="range" min="0" max="15" step="0.5" value="${simState.inflationPct}" id="sim-inflation" oninput="updateSimulation()" style="width:100%">
+      </div>
+    </div>
+    <div class="card-grid card-grid-2" style="margin-bottom:14px">
+      <div class="stat-card"><div class="stat-label">Total Invested</div><div class="stat-val" id="sim-total-invested">—</div></div>
+      <div class="stat-card"><div class="stat-label">Growth from Returns</div><div class="stat-val" style="color:var(--green)" id="sim-total-growth">—</div></div>
+    </div>
+    <div style="background:#FDF3D9;border-radius:10px;padding:12px 14px;font-size:0.76rem;color:#6B5410;line-height:1.5">
+      💡 This is based entirely on the assumptions above, not a market prediction — actual returns and inflation will vary, sometimes a lot. Treat it as a planning tool, not a promise. Adjust the sliders to see how your plan responds to different scenarios.
+    </div>`;
+  updateSimulation();
+}
+
+function updateSimulation(){
+  if(!simState)return;
+  simState.monthlyInv=parseFloat(document.getElementById('sim-monthlyinv').value);
+  simState.returnPct=parseFloat(document.getElementById('sim-return').value);
+  simState.years=parseInt(document.getElementById('sim-years').value);
+  simState.inflationPct=parseFloat(document.getElementById('sim-inflation').value);
+
+  document.getElementById('sim-monthlyinv-val').textContent=fmt(simState.monthlyInv,displayCurrency);
+  document.getElementById('sim-return-val').textContent=simState.returnPct+'%';
+  document.getElementById('sim-years-val').textContent=simState.years+' years';
+  document.getElementById('sim-inflation-val').textContent=simState.inflationPct+'%';
+  document.getElementById('sim-hero-label').textContent=`Projected net worth in ${simState.years} years`;
+
+  const points=projectWealth(simState.startingNW,simState.monthlyInv,simState.returnPct,simState.years,simState.inflationPct);
+  const last=points[points.length-1];
+  document.getElementById('sim-hero-nominal').textContent=fmt(last.nominal,displayCurrency);
+  document.getElementById('sim-hero-real').textContent=fmt(last.real,displayCurrency);
+
+  const totalInvested=simState.startingNW+simState.monthlyInv*simState.years*12;
+  const growth=last.nominal-totalInvested;
+  document.getElementById('sim-total-invested').textContent=fmt(totalInvested,displayCurrency);
+  document.getElementById('sim-total-growth').textContent=(growth>=0?'+':'')+fmt(growth,displayCurrency);
+
+  if(typeof Chart==='undefined')return;
+  const el=document.getElementById('sim-chart');
+  if(!el)return;
+  destroyDashChart('sim-chart');
+  // Sample at most ~15 points along the horizon so the x-axis stays readable
+  const step=Math.max(1,Math.round(simState.years/15));
+  const sampled=points.filter((p,i)=>i%step===0||i===points.length-1);
+  _dashCharts['sim-chart']=new Chart(el,{
+    type:'line',
+    data:{labels:sampled.map(p=>'Yr '+p.year),datasets:[
+      {data:sampled.map(p=>p.nominal),borderColor:'#E8C766',backgroundColor:'rgba(232,199,102,0.15)',fill:true,tension:0.3,pointRadius:0,borderWidth:2},
+      {data:sampled.map(p=>p.real),borderColor:'#B4B2A9',backgroundColor:'transparent',borderDash:[4,3],fill:false,tension:0.3,pointRadius:0,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#78766D'}},y:{ticks:{font:{size:9},color:'#78766D'}}}}
+  });
+}
+
 function renderBudget(){
   const month=toMonthISO(new Date());
   const monthBudgets=budgets.filter(b=>b.month===month);
